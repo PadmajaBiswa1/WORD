@@ -2,17 +2,18 @@
 //  EtherX Word — UI Primitives
 // ═══════════════════════════════════════════════════════════════
 import { useState, useEffect, useRef } from 'react';
+import { useUIStore } from '@/store';
 
 /* ── Button ─────────────────────────────────────────────────── */
 const variantStyle = {
-  ghost:   { bg: 'transparent',    color: 'var(--text-primary)',  hoverBg: 'var(--bg-hover)', activeBg: 'var(--bg-active)' },
-  primary: { bg: 'var(--gold)',     color: 'var(--text-on-gold)',  hoverBg: 'var(--gold-hover)', activeBg: 'var(--gold)' },
-  outline: { bg: 'transparent',    color: 'var(--gold)',           hoverBg: 'var(--gold-dim)', activeBg: 'var(--gold-dim)', border: '1px solid var(--gold-border)' },
+  ghost:   { bg: 'transparent', color: 'var(--text-primary)', hoverBg: 'var(--bg-hover)', activeBg: 'var(--bg-active)' },
+  primary: { bg: 'var(--gold)', color: 'var(--text-on-gold)', hoverBg: 'var(--gold-hover)', activeBg: 'var(--gold)' },
+  outline: { bg: 'transparent', color: 'var(--gold)', hoverBg: 'var(--gold-dim)', activeBg: 'var(--gold-dim)', border: '1px solid var(--gold-border)' },
   danger:  { bg: '#c0392b',        color: '#fff',                  hoverBg: '#e74c3c', activeBg: '#c0392b' },
   subtle:  { bg: 'var(--bg-elevated)', color: 'var(--text-secondary)', hoverBg: 'var(--bg-hover)', activeBg: 'var(--bg-active)' },
 };
 
-export function Button({ children, onClick, variant = 'ghost', size = 'sm', active = false, disabled = false, title, className = '', style = {} }) {
+export function Button({ children, onClick, onMouseDown, variant = 'ghost', size = 'sm', active = false, disabled = false, title, className = '', style = {} }) {
   const v = variantStyle[variant] || variantStyle.ghost;
   const pad = { xs: '2px 5px', sm: '3px 8px', md: '6px 14px', lg: '8px 20px' }[size] || '3px 8px';
   const fz  = { xs: '11px', sm: '12px', md: '13px', lg: '14px' }[size] || '12px';
@@ -22,23 +23,35 @@ export function Button({ children, onClick, variant = 'ghost', size = 'sm', acti
       title={title}
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
+      onMouseDown={disabled ? undefined : onMouseDown}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-        padding: pad, fontSize: fz, fontFamily: 'var(--font-ui)', fontWeight: 500,
+        minWidth: 22, minHeight: 22, padding: pad, fontSize: fz, fontFamily: 'var(--font-ui)', fontWeight: 500,
         background: active ? v.activeBg : v.bg,
         color: active ? (variant === 'ghost' ? 'var(--gold)' : v.color) : v.color,
-        border: v.border || 'none',
-        borderBottom: active && variant === 'ghost' ? '2px solid var(--gold)' : v.border ? undefined : '2px solid transparent',
+        border: v.border || '1px solid transparent',
         borderRadius: 'var(--radius-sm)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.4 : 1,
-        transition: 'var(--transition)',
+        transition: 'background 0.1s, border-color 0.1s, color 0.1s',
         userSelect: 'none', whiteSpace: 'nowrap', outline: 'none',
         ...style,
       }}
       className={className}
-      onMouseEnter={(e) => { if (!disabled) { e.currentTarget.style.background = v.hoverBg; if (variant==='ghost') e.currentTarget.style.color='var(--gold)'; } }}
-      onMouseLeave={(e) => { if (!disabled) { e.currentTarget.style.background = active ? v.activeBg : v.bg; if (variant==='ghost') e.currentTarget.style.color = active?'var(--gold)':v.color; } }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.background = v.hoverBg;
+          e.currentTarget.style.borderColor = 'var(--gold)';
+          if (variant === 'ghost') e.currentTarget.style.color = 'var(--gold)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.background = active ? v.activeBg : v.bg;
+          e.currentTarget.style.borderColor = v.border ? 'var(--gold-border)' : 'transparent';
+          if (variant === 'ghost') e.currentTarget.style.color = active ? 'var(--gold)' : v.color;
+        }
+      }}
     >
       {children}
     </button>
@@ -58,6 +71,8 @@ export function Divider({ vertical = false }) {
 /* ── Tooltip ────────────────────────────────────────────────── */
 export function Tooltip({ children, text, shortcut, placement = 'top' }) {
   const [show, setShow] = useState(false);
+  const { theme } = useUIStore();
+  const isDark = theme === 'dark';
   const isTop = placement === 'top';
   return (
     <div style={{ position: 'relative', display: 'inline-flex' }}
@@ -66,10 +81,10 @@ export function Tooltip({ children, text, shortcut, placement = 'top' }) {
       {show && text && (
         <div className="anim-fade-in" style={{
           position: 'absolute', zIndex: 9999, whiteSpace: 'nowrap', pointerEvents: 'none',
-          background: '#0a0800', color: '#ece8dc',
+          background: isDark ? '#0a0800' : '#ffffff',
+          color: isDark ? '#ece8dc' : '#1a1a1a',
           border: '1px solid var(--border-gold)',
           fontSize: '11px', padding: '4px 9px', borderRadius: 'var(--radius-sm)',
-          boxShadow: 'var(--shadow-md)',
           ...(isTop ? { bottom: 'calc(100% + 7px)', left: '50%', transform: 'translateX(-50%)' }
                      : { top: 'calc(100% + 7px)',   left: '50%', transform: 'translateX(-50%)' }),
         }}>
@@ -83,16 +98,41 @@ export function Tooltip({ children, text, shortcut, placement = 'top' }) {
 
 /* ── Select ─────────────────────────────────────────────────── */
 export function Select({ value, onChange, options = [], width = 120, title }) {
+  const { theme } = useUIStore();
+  const isDark = theme === 'dark';
+  
+  const styles = {
+    background: isDark ? '#111111' : '#ffffff',
+    color: isDark ? '#f0e6c8' : '#1a1a1a',
+    border: isDark ? '1px solid #3d3000' : '1px solid #d0d0d0',
+    hoverBg: isDark ? '#1f1800' : '#f5efd0',
+    arrowColor: '#c9a84c',
+  };
+  
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} title={title}
       style={{
-        background: 'var(--bg-elevated)', color: 'var(--text-primary)',
-        border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-        padding: '2px 5px', fontSize: '12px', fontFamily: 'var(--font-ui)',
-        width, cursor: 'pointer', outline: 'none',
+        height: 22,
+        background: styles.background,
+        color: styles.color,
+        border: styles.border,
+        borderRadius: 2,
+        padding: '0 22px 0 6px',
+        fontSize: '12px',
+        fontFamily: 'var(--font-ui)',
+        width,
+        cursor: 'pointer',
+        outline: 'none',
+        appearance: 'none',
+        backgroundImage: `linear-gradient(45deg, transparent 50%, ${styles.arrowColor} 50%), linear-gradient(135deg, ${styles.arrowColor} 50%, transparent 50%)`,
+        backgroundPosition: 'calc(100% - 12px) 9px, calc(100% - 7px) 9px',
+        backgroundSize: '5px 5px, 5px 5px',
+        backgroundRepeat: 'no-repeat',
       }}
-      onFocus={(e) => (e.target.style.borderColor = 'var(--gold)')}
-      onBlur={(e)  => (e.target.style.borderColor = 'var(--border)')}>
+      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = styles.hoverBg; e.currentTarget.style.borderColor = '#c9a84c'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = styles.background; e.currentTarget.style.borderColor = styles.border.split('solid ')[1]; }}
+      onFocus={(e) => (e.target.style.borderColor = '#c9a84c')}
+      onBlur={(e)  => (e.target.style.borderColor = styles.border.split('solid ')[1])}>
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
@@ -121,13 +161,20 @@ export function Input({ value, onChange, placeholder, width = '100%', type = 'te
 
 /* ── ColorSwatch ────────────────────────────────────────────── */
 export function ColorSwatch({ color, onSelect, label, size = 18 }) {
+  const { theme } = useUIStore();
+  const isDark = theme === 'dark';
+  const borderColor = isDark ? '#3d3000' : '#d0d0d0';
+  
   return (
     <button title={label || color} onClick={() => onSelect(color)}
       style={{
         width: size, height: size, background: color,
-        border: '1px solid var(--border-strong)', borderRadius: '2px',
+        border: `1px solid ${borderColor}`, borderRadius: '2px',
         cursor: 'pointer', padding: 0, flexShrink: 0,
-      }} />
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c9a84c'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; }}
+    />
   );
 }
 

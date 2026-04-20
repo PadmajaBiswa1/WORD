@@ -14,7 +14,7 @@ export function InsertImageDialog() {
 
   const insertUrl = () => {
     if (!url.trim()) return;
-    editor?.chain().focus().setImage({ src: url.trim(), alt }).run();
+    editor?.chain().focus().setImage({ src: url.trim(), alt, width: '360' }).run();
     closeDialog('insertImage');
   };
 
@@ -30,7 +30,7 @@ export function InsertImageDialog() {
       } catch {
         src = await fileToBase64(file);
       }
-      editor?.chain().focus().setImage({ src, alt: alt || file.name }).run();
+      editor?.chain().focus().setImage({ src, alt: alt || file.name, width: '360' }).run();
       closeDialog('insertImage');
     } catch (err) {
       toast('Image upload failed', 'error');

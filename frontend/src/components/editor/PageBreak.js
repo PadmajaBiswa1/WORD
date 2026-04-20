@@ -3,7 +3,8 @@ import { Node, mergeAttributes } from '@tiptap/core';
 export const PAGE_H    = 1123;
 export const MARGIN_Y  = 96;
 export const MARGIN_X  = 96;
-export const CONTENT_H = PAGE_H - MARGIN_Y * 2; // 931px usable per page
+export const PAGE_GAP  = 18;
+export const CONTENT_H = PAGE_H - MARGIN_Y * 2 - PAGE_GAP; // usable per page
 
 export const PageBreak = Node.create({
   name: 'pageBreak',

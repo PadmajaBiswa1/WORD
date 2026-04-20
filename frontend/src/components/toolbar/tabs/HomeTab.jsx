@@ -1,108 +1,521 @@
+import { createPortal } from 'react-dom';
+import { useEffect, useRef, useState } from 'react';
 import { useEditorStore, useUIStore } from '@/store';
 import { Button, Divider, Tooltip, Select, ColorSwatch } from '@/components/ui';
 import { RibbonGroup } from '../RibbonGroup';
 
 const FONTS = [
-  'Crimson Pro','Times New Roman','Arial','Calibri','Garamond',
-  'Georgia','Helvetica','Verdana','Courier New','Trebuchet MS',
+  'Calibri', 'Crimson Pro', 'Times New Roman', 'Arial', 'Garamond',
+  'Georgia', 'Helvetica', 'Verdana', 'Courier New', 'Trebuchet MS',
+  'Segoe UI', 'Nirmala UI', 'Microsoft YaHei', 'Malgun Gothic',
+  'Meiryo', 'Yu Gothic UI', 'Leelawadee UI', 'Ebrima',
+  'Noto Sans', 'Noto Sans Devanagari', 'Noto Naskh Arabic',
 ].map((f) => ({ value: f, label: f }));
 
-const SIZES = ['8','9','10','11','12','14','16','18','20','24','28','32','36','48','72']
+const SIZES = ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '32', '36', '48', '72']
   .map((s) => ({ value: s, label: s }));
 
 const PARA_STYLES = [
-  { value: 'p',  label: 'Normal'    },
+  { value: 'p', label: 'Normal' },
   { value: 'h1', label: 'Heading 1' },
   { value: 'h2', label: 'Heading 2' },
-  { value: 'h3', label: 'Heading 3' },
-  { value: 'h4', label: 'Heading 4' },
+  { value: 'title', label: 'Title' },
 ];
 
-const TEXT_COLORS = ['#d4af37','#e8d98a','#ffffff','#cccccc','#888888','#333333',
-                     '#ff5555','#ff9800','#4caf50','#2196f3','#9c27b0','#000000'];
+const TEXT_COLORS = [
+  '#000000', '#333333', '#666666', '#999999', '#ffffff', '#ff4d4f',
+  '#fa8c16', '#fadb14', '#52c41a', '#13c2c2', '#1677ff', '#722ed1',
+];
+
+const HIGHLIGHT_COLORS = ['#fff200', '#c8f79a', '#8fe7ff', '#ffc4de', '#ffd591', '#d9f7be'];
 
 export function HomeTab() {
-  const { editor, fontFamily, fontSize, setFontFamily, setFontSize } = useEditorStore();
-  const { openDialog } = useUIStore();
+  const {
+    editor,
+    fontFamily,
+    fontSize,
+    setFontFamily,
+    setFontSize,
+    formatPainterMarks,
+    setFormatPainterMarks,
+  } = useEditorStore();
+  const { openDialog, toast } = useUIStore();
+  const painterActive = useRef(false);
+  const [showTextColors, setShowTextColors] = useState(false);
+  const [showHighlightColors, setShowHighlightColors] = useState(false);
+  const [showFormattingMarks, setShowFormattingMarks] = useState(false);
+  const [textPalettePos, setTextPalettePos] = useState({ top: 0, left: 0 });
+  const [highlightPalettePos, setHighlightPalettePos] = useState({ top: 0, left: 0 });
+
+  const run = (fn) => {
+    editor.view.focus();
+    fn();
+    editor.view.focus();
+  };
+
+  const getSheetTop = () => {
+    const sheet = document.getElementById('editor-scroll-area');
+    return sheet?.getBoundingClientRect().top ?? 0;
+  };
+
+  const openTextPalette = (event) => {
+    const rect = event.currentTarget?.getBoundingClientRect();
+    if (!rect) return;
+    const top = Math.max(rect.bottom + 8, getSheetTop() + 8);
+    setTextPalettePos({ top, left: rect.left });
+    setShowTextColors((v) => !v);
+    setShowHighlightColors(false);
+  };
+
+  const openHighlightPalette = (event) => {
+    const rect = event.currentTarget?.getBoundingClientRect();
+    if (!rect) return;
+    const top = Math.max(rect.bottom + 8, getSheetTop() + 8);
+    setHighlightPalettePos({ top, left: rect.left });
+    setShowHighlightColors((v) => !v);
+    setShowTextColors(false);
+  };
+
+  useEffect(() => {
+    const closeOnOutside = (event) => {
+      if (event.target.closest('[data-home-color-trigger="true"]')) return;
+      if (event.target.closest('[data-home-color-palette="true"]')) return;
+      setShowTextColors(false);
+      setShowHighlightColors(false);
+    };
+
+    document.addEventListener('mousedown', closeOnOutside);
+    return () => document.removeEventListener('mousedown', closeOnOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!editor?.view?.dom) return;
+    editor.view.dom.classList.toggle('etherx-show-formatting', showFormattingMarks);
+    return () => editor.view.dom.classList.remove('etherx-show-formatting');
+  }, [editor, showFormattingMarks]);
+
   if (!editor) return null;
 
-  const run = (fn) => { fn(); editor.view.focus(); };
+  const applyFontSize = (v) => {
+    setFontSize(v);
+    run(() => editor.chain().setFontSize(v + 'pt').run());
+  };
+
+  const parseStyle = (style = '') => {
+    const out = {};
+    String(style).split(';').forEach((pair) => {
+      const [k, v] = pair.split(':').map((s) => s?.trim());
+      if (k && v) out[k] = v;
+    });
+    return out;
+  };
+
+  const toStyle = (obj) => Object.entries(obj)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${k}:${v}`)
+    .join(';');
+
+  const updateParagraphStyle = (patch = {}) => {
+    const base = editor.getAttributes('paragraph')?.style || '';
+    const css = parseStyle(base);
+    Object.entries(patch).forEach(([k, v]) => {
+      if (v === null || v === undefined || v === '') delete css[k];
+      else css[k] = v;
+    });
+    run(() => editor.chain().updateAttributes('paragraph', { style: toStyle(css) }).run());
+  };
+
+  const growFont = () => {
+    const numeric = parseInt(String(fontSize), 10);
+    const fallbackIdx = SIZES.findIndex((s) => parseInt(s.value, 10) > numeric);
+    const idx = SIZES.findIndex((s) => s.value === fontSize);
+    const nextIdx = idx >= 0 ? idx + 1 : fallbackIdx;
+    if (nextIdx >= 0 && nextIdx < SIZES.length) applyFontSize(SIZES[nextIdx].value);
+  };
+
+  const shrinkFont = () => {
+    const numeric = parseInt(String(fontSize), 10);
+    const idx = SIZES.findIndex((s) => s.value === fontSize);
+    if (idx > 0) {
+      applyFontSize(SIZES[idx - 1].value);
+      return;
+    }
+    const smaller = SIZES.map((s) => parseInt(s.value, 10)).filter((v) => v < numeric);
+    if (!smaller.length) return;
+    const next = Math.max(...smaller);
+    applyFontSize(String(next));
+  };
+
+  const handleFormatPainter = () => {
+    const { from } = editor.state.selection;
+    const marks = editor.state.doc.resolve(from).marks();
+    setFormatPainterMarks(marks);
+    painterActive.current = true;
+    toast('Format Painter active', 'info');
+
+    const applyOnce = () => {
+      if (!painterActive.current) return;
+      painterActive.current = false;
+      const sel = editor.state.selection;
+      if (sel.from !== sel.to && marks.length > 0) {
+        const chain = editor.chain().focus();
+        marks.forEach((mark) => chain.setMark(mark.type.name, mark.attrs));
+        chain.run();
+      }
+      setFormatPainterMarks(null);
+      editor.off('selectionUpdate', applyOnce);
+    };
+
+    editor.on('selectionUpdate', applyOnce);
+  };
+
+  const handleCopy = async () => {
+    try {
+      const { from, to } = editor.state.selection;
+      const text = editor.state.doc.textBetween(from, to, ' ');
+      if (!text) return;
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+    } catch {
+      toast('Copy failed', 'error');
+    }
+  };
+
+  const handleCut = async () => {
+    try {
+      const { from, to } = editor.state.selection;
+      const text = editor.state.doc.textBetween(from, to, ' ');
+      if (!text) return;
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        run(() => editor.chain().deleteSelection().run());
+      }
+    } catch {
+      toast('Cut failed', 'error');
+    }
+  };
+
+  const handlePaste = async () => {
+    try {
+      if (navigator.clipboard?.readText) {
+        const text = await navigator.clipboard.readText();
+        run(() => editor.chain().insertContent(text).run());
+      }
+    } catch {
+      toast('Paste blocked by browser permissions', 'warning');
+    }
+  };
+
+  const indent = () => {
+    if (editor.isActive('listItem')) {
+      run(() => editor.chain().sinkListItem('listItem').run());
+    } else {
+      const node = editor.state.selection.$from.node();
+      const cur = parseInt((node.attrs.style || '').match(/margin-left:\s*(\d+)px/)?.[1] || '0', 10);
+      updateParagraphStyle({ 'margin-left': `${cur + 40}px` });
+    }
+  };
+
+  const outdent = () => {
+    if (editor.isActive('listItem')) {
+      run(() => editor.chain().liftListItem('listItem').run());
+    } else {
+      const node = editor.state.selection.$from.node();
+      const cur = parseInt((node.attrs.style || '').match(/margin-left:\s*(\d+)px/)?.[1] || '0', 10);
+      updateParagraphStyle({ 'margin-left': cur > 0 ? `${Math.max(0, cur - 40)}px` : null });
+    }
+  };
+
+  const changeCase = () => {
+    const { from, to } = editor.state.selection;
+    if (from === to) return;
+    const text = editor.state.doc.textBetween(from, to);
+    const next = text === text.toUpperCase() ? text.toLowerCase() : text.toUpperCase();
+    run(() => editor.chain().insertContentAt({ from, to }, next).run());
+  };
+
+  const cycleLineSpacing = () => {
+    const spacings = ['1', '1.15', '1.5', '2'];
+    const current = editor.getAttributes('paragraph')?.style || '';
+    const m = current.match(/line-height:\s*([0-9.]+)/i);
+    const cur = m ? m[1] : '1';
+    const idx = spacings.indexOf(cur);
+    const next = spacings[(idx + 1) % spacings.length];
+    updateParagraphStyle({ 'line-height': next });
+    toast(`Line spacing: ${next}`, 'success');
+  };
+
+  const toggleFormattingMarks = () => {
+    setShowFormattingMarks((v) => !v);
+  };
 
   const activeStyle = () => {
-    for (let l = 1; l <= 4; l++) if (editor.isActive('heading', { level: l })) return `h${l}`;
+    if (editor.isActive('heading', { level: 1 })) return 'h1';
+    if (editor.isActive('heading', { level: 2 })) return 'h2';
     return 'p';
   };
 
   const applyStyle = (val) => {
-    if (val === 'p') run(() => editor.chain().setParagraph().run());
-    else run(() => editor.chain().toggleHeading({ level: parseInt(val[1]) }).run());
+    if (val === 'p') {
+      run(() => editor.chain().setParagraph().run());
+    } else if (val === 'title') {
+      run(() => editor.chain().setHeading({ level: 1 }).setFontSize('2.4em').run());
+    } else {
+      run(() => editor.chain().setHeading({ level: parseInt(val[1]) }).run());
+    }
+  };
+
+  const toolBtn = {
+    width: 24,
+    height: 24,
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-primary)',
+    border: '1px solid var(--border)',
+    borderRadius: 2,
+    fontSize: 12,
+    padding: 0,
   };
 
   return (
     <>
-      {/* Clipboard */}
       <RibbonGroup label="Clipboard">
-        <Tooltip text="Cut" shortcut="Ctrl+X"><Button onClick={() => document.execCommand('cut')}>✂</Button></Tooltip>
-        <Tooltip text="Copy" shortcut="Ctrl+C"><Button onClick={() => document.execCommand('copy')}>⎘</Button></Tooltip>
-        <Tooltip text="Paste" shortcut="Ctrl+V"><Button onClick={() => document.execCommand('paste')}>📋</Button></Tooltip>
-      </RibbonGroup>
-
-      {/* Font */}
-      <RibbonGroup label="Font">
-        <Select value={fontFamily} width={130} onChange={(v) => { setFontFamily(v); run(() => editor.chain().setFontFamily(v).run()); }} options={FONTS} title="Font Family" />
-        <Select value={fontSize} width={50} onChange={(v) => { setFontSize(v); }} options={SIZES} title="Font Size" />
-        <Divider vertical />
-        <Tooltip text="Bold" shortcut="Ctrl+B">
-          <Button active={editor.isActive('bold')} onClick={() => run(() => editor.chain().toggleBold().run())}><b style={{ fontFamily:'serif' }}>B</b></Button>
-        </Tooltip>
-        <Tooltip text="Italic" shortcut="Ctrl+I">
-          <Button active={editor.isActive('italic')} onClick={() => run(() => editor.chain().toggleItalic().run())}><i style={{ fontFamily:'serif' }}>I</i></Button>
-        </Tooltip>
-        <Tooltip text="Underline" shortcut="Ctrl+U">
-          <Button active={editor.isActive('underline')} onClick={() => run(() => editor.chain().toggleUnderline().run())}><u>U</u></Button>
-        </Tooltip>
-        <Tooltip text="Strikethrough">
-          <Button active={editor.isActive('strike')} onClick={() => run(() => editor.chain().toggleStrike().run())}><s>S</s></Button>
-        </Tooltip>
-        <Tooltip text="Subscript"><Button active={editor.isActive('subscript')} onClick={() => run(() => editor.chain().toggleSubscript().run())}>x₂</Button></Tooltip>
-        <Tooltip text="Superscript"><Button active={editor.isActive('superscript')} onClick={() => run(() => editor.chain().toggleSuperscript().run())}>x²</Button></Tooltip>
-        <Divider vertical />
-        <Tooltip text="Highlight"><Button active={editor.isActive('highlight')} onClick={() => run(() => editor.chain().toggleHighlight().run())}>🖍</Button></Tooltip>
-        <div style={{ display:'flex', flexWrap:'wrap', width:46, gap:2, alignContent:'center' }}>
-          {TEXT_COLORS.map((c) => <ColorSwatch key={c} color={c} size={16} onSelect={(v) => run(() => editor.chain().setColor(v).run())} />)}
+        <div style={{ display: 'flex', gap: 4 }}>
+          <Tooltip text="Paste" shortcut="Ctrl+V">
+            <Button
+              onClick={handlePaste}
+              style={{
+                width: 52,
+                height: 60,
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-primary)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+                fontSize: 11,
+              }}
+            >
+              <span style={{ fontSize: 20 }}>📋</span>
+              <span>Paste</span>
+            </Button>
+          </Tooltip>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Tooltip text="Cut" shortcut="Ctrl+X">
+              <Button style={{ ...toolBtn, width: 84, justifyContent: 'flex-start', padding: '0 6px' }} onClick={handleCut}>✂ Cut</Button>
+            </Tooltip>
+            <Tooltip text="Copy" shortcut="Ctrl+C">
+              <Button style={{ ...toolBtn, width: 84, justifyContent: 'flex-start', padding: '0 6px' }} onClick={handleCopy}>📄 Copy</Button>
+            </Tooltip>
+            <Tooltip text="Format Painter">
+              <Button
+                style={{ ...toolBtn, width: 84, justifyContent: 'flex-start', padding: '0 6px', color: formatPainterMarks ? 'var(--text-gold)' : 'var(--text-primary)' }}
+                active={!!formatPainterMarks}
+                onClick={handleFormatPainter}
+              >
+                🖌 Format Painter
+              </Button>
+            </Tooltip>
+          </div>
         </div>
       </RibbonGroup>
 
-      {/* Paragraph */}
+      <RibbonGroup label="Font">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Select
+              value={fontFamily}
+              width={138}
+              onChange={(v) => {
+                setFontFamily(v);
+                run(() => editor.chain().setFontFamily(v).run());
+              }}
+              options={FONTS}
+              title="Font Family"
+            />
+            <Select value={fontSize} width={52} onChange={applyFontSize} options={SIZES} title="Font Size" />
+            <Tooltip text="Grow Font (Ctrl+])"><Button style={toolBtn} onClick={growFont}>A^</Button></Tooltip>
+            <Tooltip text="Shrink Font (Ctrl+[)"><Button style={toolBtn} onClick={shrinkFont}>Av</Button></Tooltip>
+            <Tooltip text="Change Case"><Button style={{ ...toolBtn, width: 30 }} onClick={changeCase}>Aa</Button></Tooltip>
+            <Tooltip text="Clear Formatting"><Button style={{ ...toolBtn, width: 30 }} onClick={() => run(() => editor.chain().clearNodes().unsetAllMarks().run())}>A</Button></Tooltip>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Tooltip text="Bold" shortcut="Ctrl+B"><Button style={toolBtn} active={editor.isActive('bold')} onClick={() => run(() => editor.chain().toggleBold().run())}><b style={{ fontFamily: 'serif' }}>B</b></Button></Tooltip>
+            <Tooltip text="Italic" shortcut="Ctrl+I"><Button style={toolBtn} active={editor.isActive('italic')} onClick={() => run(() => editor.chain().toggleItalic().run())}><i style={{ fontFamily: 'serif' }}>I</i></Button></Tooltip>
+            <Tooltip text="Underline" shortcut="Ctrl+U"><Button style={toolBtn} active={editor.isActive('underline')} onClick={() => run(() => editor.chain().toggleUnderline().run())}><u>U</u></Button></Tooltip>
+            <Tooltip text="Strikethrough"><Button style={toolBtn} active={editor.isActive('strike')} onClick={() => run(() => editor.chain().toggleStrike().run())}>ab</Button></Tooltip>
+            <Tooltip text="Subscript"><Button style={toolBtn} active={editor.isActive('subscript')} onClick={() => run(() => editor.chain().toggleSubscript().run())}>x2</Button></Tooltip>
+            <Tooltip text="Superscript"><Button style={toolBtn} active={editor.isActive('superscript')} onClick={() => run(() => editor.chain().toggleSuperscript().run())}>x2</Button></Tooltip>
+            <Divider vertical />
+            <Tooltip text="Highlight Color">
+              <div>
+                <Button
+                  data-home-color-trigger="true"
+                  style={{ ...toolBtn, width: 36, fontWeight: 700 }}
+                  onClick={openHighlightPalette}
+                >
+                  ab
+                </Button>
+              </div>
+            </Tooltip>
+            <Divider vertical />
+            <Tooltip text="Text Color">
+              <div>
+                <Button
+                  data-home-color-trigger="true"
+                  style={{ ...toolBtn, width: 34, fontWeight: 700 }}
+                  onClick={openTextPalette}
+                >
+                  A
+                </Button>
+              </div>
+            </Tooltip>
+          </div>
+        </div>
+      </RibbonGroup>
+
       <RibbonGroup label="Paragraph">
-        <Tooltip text="Align Left"   shortcut="Ctrl+L"><Button active={editor.isActive({textAlign:'left'})}    onClick={() => run(() => editor.chain().setTextAlign('left').run())}>   ≡</Button></Tooltip>
-        <Tooltip text="Center"       shortcut="Ctrl+E"><Button active={editor.isActive({textAlign:'center'})}  onClick={() => run(() => editor.chain().setTextAlign('center').run())}> ≡</Button></Tooltip>
-        <Tooltip text="Align Right"  shortcut="Ctrl+R"><Button active={editor.isActive({textAlign:'right'})}   onClick={() => run(() => editor.chain().setTextAlign('right').run())}>  ≡</Button></Tooltip>
-        <Tooltip text="Justify">     <Button active={editor.isActive({textAlign:'justify'})} onClick={() => run(() => editor.chain().setTextAlign('justify').run())}>≡</Button></Tooltip>
-        <Divider vertical />
-        <Tooltip text="Bullet List"> <Button active={editor.isActive('bulletList')}  onClick={() => run(() => editor.chain().toggleBulletList().run())}>  •≡</Button></Tooltip>
-        <Tooltip text="Ordered List"><Button active={editor.isActive('orderedList')} onClick={() => run(() => editor.chain().toggleOrderedList().run())}>1≡</Button></Tooltip>
-        <Tooltip text="Task List">   <Button active={editor.isActive('taskList')}    onClick={() => run(() => editor.chain().toggleTaskList().run())}>    ☑</Button></Tooltip>
-        <Tooltip text="Blockquote">  <Button active={editor.isActive('blockquote')}  onClick={() => run(() => editor.chain().toggleBlockquote().run())}>" "</Button></Tooltip>
-        <Tooltip text="Code Block">  <Button active={editor.isActive('codeBlock')}   onClick={() => run(() => editor.chain().toggleCodeBlock().run())}>  &lt;/&gt;</Button></Tooltip>
-        <Tooltip text="Increase indent">  <Button onClick={() => run(() => editor.chain().sinkListItem('listItem').run())}>→</Button></Tooltip>
-        <Tooltip text="Decrease indent">  <Button onClick={() => run(() => editor.chain().liftListItem('listItem').run())}>←</Button></Tooltip>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, width: 128 }}>
+          <Tooltip text="Align Left" shortcut="Ctrl+L"><Button style={toolBtn} active={editor.isActive({ textAlign: 'left' })} onClick={() => run(() => editor.chain().setTextAlign('left').run())}>≡</Button></Tooltip>
+          <Tooltip text="Center" shortcut="Ctrl+E"><Button style={toolBtn} active={editor.isActive({ textAlign: 'center' })} onClick={() => run(() => editor.chain().setTextAlign('center').run())}>≣</Button></Tooltip>
+          <Tooltip text="Align Right" shortcut="Ctrl+R"><Button style={toolBtn} active={editor.isActive({ textAlign: 'right' })} onClick={() => run(() => editor.chain().setTextAlign('right').run())}>≡</Button></Tooltip>
+          <Tooltip text="Justify"><Button style={toolBtn} active={editor.isActive({ textAlign: 'justify' })} onClick={() => run(() => editor.chain().setTextAlign('justify').run())}>☰</Button></Tooltip>
+          <Tooltip text="Bullet List"><Button style={toolBtn} active={editor.isActive('bulletList')} onClick={() => run(() => editor.chain().toggleBulletList().run())}>•≡</Button></Tooltip>
+          <Tooltip text="Ordered List"><Button style={toolBtn} active={editor.isActive('orderedList')} onClick={() => run(() => editor.chain().toggleOrderedList().run())}>1≡</Button></Tooltip>
+          <Tooltip text="Task List"><Button style={toolBtn} active={editor.isActive('taskList')} onClick={() => run(() => editor.chain().toggleTaskList().run())}>☑</Button></Tooltip>
+          <Tooltip text="Blockquote"><Button style={toolBtn} active={editor.isActive('blockquote')} onClick={() => run(() => editor.chain().toggleBlockquote().run())}>"</Button></Tooltip>
+          <Tooltip text="Increase Indent"><Button style={toolBtn} onClick={indent}>→</Button></Tooltip>
+          <Tooltip text="Decrease Indent"><Button style={toolBtn} onClick={outdent}>←</Button></Tooltip>
+          <Tooltip text="Line Spacing"><Button style={toolBtn} onClick={cycleLineSpacing}>↕</Button></Tooltip>
+          <Tooltip text="Show Formatting Marks"><Button style={toolBtn} active={showFormattingMarks} onClick={toggleFormattingMarks}>¶</Button></Tooltip>
+        </div>
       </RibbonGroup>
 
-      {/* Styles */}
       <RibbonGroup label="Styles">
-        <Select value={activeStyle()} width={105} onChange={applyStyle} options={PARA_STYLES} title="Paragraph Style" />
+        <div style={{ display: 'flex', gap: 4 }}>
+          {PARA_STYLES.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => applyStyle(s.value)}
+              style={{
+                width: s.value === 'title' ? 90 : 76,
+                height: 62,
+                border: `1px solid ${activeStyle() === s.value ? 'var(--border-gold)' : 'var(--border)'}`,
+                borderRadius: 2,
+                background: activeStyle() === s.value ? 'var(--bg-hover)' : 'var(--bg-elevated)',
+                cursor: 'pointer',
+                padding: '4px 6px',
+                textAlign: 'left',
+                fontFamily: 'var(--font-ui)',
+                color: activeStyle() === s.value ? 'var(--text-gold)' : 'var(--text-primary)',
+                fontSize: s.value === 'title' ? 18 : s.value === 'h1' ? 14 : s.value === 'h2' ? 12 : 11,
+                fontWeight: s.value.startsWith('h') || s.value === 'title' ? 700 : 400,
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </RibbonGroup>
 
-      {/* Editing */}
       <RibbonGroup label="Editing">
-        <Tooltip text="Undo" shortcut="Ctrl+Z"><Button disabled={!editor.can().undo()} onClick={() => run(() => editor.chain().undo().run())}>↩</Button></Tooltip>
-        <Tooltip text="Redo" shortcut="Ctrl+Y"><Button disabled={!editor.can().redo()} onClick={() => run(() => editor.chain().redo().run())}>↪</Button></Tooltip>
-        <Divider vertical />
-        <Tooltip text="Find & Replace" shortcut="Ctrl+H"><Button onClick={() => openDialog('findReplace')}>🔍</Button></Tooltip>
-        <Tooltip text="Clear Formatting"><Button onClick={() => run(() => editor.chain().clearNodes().unsetAllMarks().run())}>Tx</Button></Tooltip>
-        <Tooltip text="Select All" shortcut="Ctrl+A"><Button onClick={() => run(() => editor.chain().selectAll().run())}>⊞</Button></Tooltip>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Tooltip text="Undo" shortcut="Ctrl+Z"><Button style={{ ...toolBtn, width: 28 }} disabled={!editor.can().undo()} onClick={() => run(() => editor.chain().undo().run())}>↩</Button></Tooltip>
+          <Tooltip text="Redo" shortcut="Ctrl+Y"><Button style={{ ...toolBtn, width: 28 }} disabled={!editor.can().redo()} onClick={() => run(() => editor.chain().redo().run())}>↪</Button></Tooltip>
+          <Divider vertical />
+          <Tooltip text="Find & Replace" shortcut="Ctrl+H"><Button style={{ ...toolBtn, width: 68 }} onClick={() => openDialog('findReplace')}>Find</Button></Tooltip>
+          <Tooltip text="Select All" shortcut="Ctrl+A"><Button style={{ ...toolBtn, width: 68 }} onClick={() => run(() => editor.chain().selectAll().run())}>Select</Button></Tooltip>
+        </div>
       </RibbonGroup>
+
+      <RibbonGroup label="Add-ins">
+        <Tooltip text="Add-ins">
+          <Button
+            style={{
+              width: 72,
+              height: 52,
+              flexDirection: 'column',
+              background: 'var(--bg-elevated)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border)',
+              fontSize: 11,
+            }}
+            onClick={() => window.open('https://appsource.microsoft.com/en-us/marketplace/apps?product=office%3Bword', '_blank', 'noopener,noreferrer')}
+          >
+            <span style={{ fontSize: 18 }}>▦</span>
+            <span>Add-ins</span>
+          </Button>
+        </Tooltip>
+      </RibbonGroup>
+
+      {createPortal(
+        <>
+          {showHighlightColors && (
+            <div
+              data-home-color-palette="true"
+              style={{
+                position: 'fixed',
+                top: highlightPalettePos.top,
+                left: highlightPalettePos.left,
+                zIndex: 2000,
+                border: '1px solid var(--border)',
+                background: 'var(--bg-elevated)',
+                borderRadius: 4,
+                padding: 6,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 4,
+                minWidth: 70,
+                boxShadow: 'var(--shadow-md)',
+              }}
+            >
+              {HIGHLIGHT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  title={`Highlight: ${c}`}
+                  onClick={() => {
+                    run(() => editor.chain().toggleHighlight({ color: c }).run());
+                    setShowHighlightColors(false);
+                  }}
+                  style={{ width: 14, height: 14, background: c, border: '1px solid var(--border)', borderRadius: 2, cursor: 'pointer', padding: 0 }}
+                />
+              ))}
+            </div>
+          )}
+
+          {showTextColors && (
+            <div
+              data-home-color-palette="true"
+              style={{
+                position: 'fixed',
+                top: textPalettePos.top,
+                left: textPalettePos.left,
+                zIndex: 2000,
+                border: '1px solid var(--border)',
+                background: 'var(--bg-elevated)',
+                borderRadius: 4,
+                padding: 6,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 4,
+                minWidth: 92,
+                boxShadow: 'var(--shadow-md)',
+              }}
+            >
+              {TEXT_COLORS.map((c) => (
+                <ColorSwatch
+                  key={c}
+                  color={c}
+                  size={12}
+                  onSelect={(v) => {
+                    run(() => editor.chain().setColor(v).run());
+                    setShowTextColors(false);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </>,
+        document.body,
+      )}
     </>
   );
 }

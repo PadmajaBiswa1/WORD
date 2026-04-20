@@ -33,7 +33,7 @@ export function InsertShapeDialog() {
     const svg  = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${size}" height="${size}" opacity="${opacity}">${inner}</svg>`;
     const blob = new Blob([svg], { type:'image/svg+xml' });
     const url  = URL.createObjectURL(blob);
-    editor?.chain().focus().setImage({ src: url, alt: shape.label }).run();
+    editor?.chain().focus().setImage({ src: url, alt: shape.label, width: String(size) }).run();
     closeDialog('insertShape');
   };
 

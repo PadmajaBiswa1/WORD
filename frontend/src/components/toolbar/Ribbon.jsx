@@ -1,65 +1,127 @@
 import { useUIStore } from '@/store';
-import { HomeTab }   from './tabs/HomeTab';
-import { InsertTab } from './tabs/InsertTab';
-import { LayoutTab } from './tabs/LayoutTab';
-import { ReviewTab } from './tabs/ReviewTab';
-import { ViewTab }   from './tabs/ViewTab';
+import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { HomeTab }      from './tabs/HomeTab';
+import { InsertTab }    from './tabs/InsertTab';
+import { DrawTab }      from './tabs/DrawTab';
+import { DesignTab }    from './tabs/DesignTab';
+import { LayoutTab }    from './tabs/LayoutTab';
+import { ReferenceTab } from './tabs/ReferenceTab';
+import { MailingsTab }  from './tabs/MailingsTab';
+import { ReviewTab }    from './tabs/ReviewTab';
+import { ViewTab }      from './tabs/ViewTab';
+import { HelpTab }      from './tabs/HelpTab';
 
 const TABS = [
-  { id: 'home',   label: 'Home'   },
-  { id: 'insert', label: 'Insert' },
-  { id: 'layout', label: 'Layout' },
-  { id: 'review', label: 'Review' },
-  { id: 'view',   label: 'View'   },
+  { id: 'file',      label: 'File'      },
+  { id: 'home',      label: 'Home'      },
+  { id: 'insert',    label: 'Insert'    },
+  { id: 'draw',      label: 'Draw'      },
+  { id: 'design',    label: 'Design'    },
+  { id: 'layout',    label: 'Layout'    },
+  { id: 'reference', label: 'References'},
+  { id: 'mailings',  label: 'Mailings'  },
+  { id: 'review',    label: 'Review'    },
+  { id: 'view',      label: 'View'      },
+  { id: 'help',      label: 'Help'      },
 ];
 
-const TAB_CONTENT = { home: HomeTab, insert: InsertTab, layout: LayoutTab, review: ReviewTab, view: ViewTab };
+const TAB_CONTENT = {
+  home: HomeTab, insert: InsertTab, draw: DrawTab, design: DesignTab,
+  layout: LayoutTab, reference: ReferenceTab, mailings: MailingsTab,
+  review: ReviewTab, view: ViewTab, help: HelpTab,
+};
 
 export function Ribbon() {
-  const { activeTab, setActiveTab, ribbonCollapsed, toggleRibbon } = useUIStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { activeTab, setActiveTab } = useUIStore();
   const Content = TAB_CONTENT[activeTab] || HomeTab;
+  const onTabClick = (id) => {
+    if (id === 'file') {
+      navigate('/home', { state: { returnTo: location.pathname } });
+      return;
+    }
+    setActiveTab(id);
+  };
+  const ribbonVars = {
+    '--ribbon-surface': 'var(--bg-surface)',
+    '--ribbon-surface-2': 'var(--bg-elevated)',
+    '--ribbon-ink': 'var(--text-primary)',
+    '--ribbon-divider': 'var(--border)',
+    '--ribbon-hover': 'var(--bg-hover)',
+  };
 
   return (
-    <div style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-      {/* Tab strip */}
-      <div style={{ display: 'flex', alignItems: 'center', height: 30, padding: '0 6px', gap: 0, borderBottom: '1px solid var(--border)' }}>
+    <div style={{ flexShrink: 0, ...ribbonVars }}>
+      {/* ── Tab strip ── */}
+      <div
+        className="ribbon-scroll"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          minHeight: 30,
+          padding: '0 8px',
+          gap: 2,
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--bg-app)',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          fontFamily: 'var(--font-ui)',
+        }}
+      >
         {TABS.map((t) => {
           const active = t.id === activeTab;
+          const isFile = t.id === 'file';
           return (
-            <button key={t.id}
-              onClick={() => { if (active) toggleRibbon(); else { setActiveTab(t.id); if (ribbonCollapsed) toggleRibbon(); } }}
+            <button
+              key={t.id}
+              onClick={() => onTabClick(t.id)}
               style={{
-                background:   active ? 'var(--bg-active)' : 'transparent',
-                border:       'none',
-                borderBottom: active ? '2px solid var(--gold)' : '2px solid transparent',
-                color:        active ? 'var(--gold)' : 'var(--text-secondary)',
-                fontFamily:   'var(--font-ui)', fontSize: 12, fontWeight: active ? 700 : 400,
-                letterSpacing: '.06em', textTransform: 'uppercase',
-                padding: '0 14px', height: '100%', cursor: 'pointer',
-                transition: 'var(--transition)', outline: 'none',
+                background: isFile ? '#1e1400' : active ? 'var(--bg-elevated)' : 'transparent',
+                border: '1px solid transparent',
+                borderTop: active ? '2px solid var(--gold)' : '2px solid transparent',
+                borderRadius: 2,
+                color: isFile ? 'var(--gold)' : active ? 'var(--text-primary)' : 'var(--gold)',
+                fontFamily: 'var(--font-ui)',
+                fontSize: 12,
+                padding: '0 12px',
+                height: 28,
+                cursor: 'pointer',
+                transition: 'background 0.1s, border-color 0.1s',
+                outline: 'none',
+                whiteSpace: 'nowrap',
               }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = 'var(--text-primary)'; }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = 'var(--text-secondary)'; }}>
+              onMouseEnter={(e) => {
+                if (!active) e.currentTarget.style.background = 'var(--ribbon-hover)';
+              }}
+              onMouseLeave={(e) => {
+                if (!active) e.currentTarget.style.background = 'transparent';
+              }}
+            >
               {t.label}
             </button>
           );
         })}
-        <div style={{ flex: 1 }} />
-        <button onClick={toggleRibbon} title={ribbonCollapsed ? 'Expand ribbon' : 'Collapse ribbon'}
-          style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:10, padding:'4px 10px' }}>
-          {ribbonCollapsed ? '▼' : '▲'}
-        </button>
       </div>
 
-      {/* Tab content */}
-      {!ribbonCollapsed && (
-        <div style={{
-          display: 'flex', alignItems: 'center', height: 60,
-          padding: '0 6px', overflowX: 'auto', overflowY: 'hidden', gap: 2,
-        }}>
-          <Content />
-        </div>
-      )}
+      {/* ── Ribbon content ── */}
+      <div
+        className="ribbon-scroll"
+        style={{
+          background: 'var(--ribbon-surface)',
+          borderBottom: '1px solid var(--border)',
+          minHeight: 92,
+          padding: '2px 8px 0',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          display: 'flex',
+          alignItems: 'stretch',
+          gap: 6,
+        }}
+      >
+        <Content />
+      </div>
     </div>
   );
 }

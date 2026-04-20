@@ -1,43 +1,39 @@
-import { useDocumentStore, useUIStore, useEditorStore } from '@/store';
+import { useCollaborationStore, useDocumentStore, useUIStore } from '@/store';
 
 export function StatusBar() {
-  const { wordCount = 0, charCount = 0, pageCount = 1, readingTime = 0, trackChanges = false } = useDocumentStore();
-  const { zoom, setZoom } = useUIStore();
-  const { spellCheck } = useEditorStore();
-
+  const { wordCount = 0, pageCount = 1 } = useDocumentStore();
+  const { zoom, setZoom, activePage } = useUIStore();
+  const { connected, collaborators, status } = useCollaborationStore();
+  const currentPage = Math.min(pageCount, Math.max(1, activePage + 1));
   return (
     <div style={{
-      height: 26, flexShrink: 0,
+      height: 22, flexShrink: 0,
       background: 'var(--bg-surface)',
       borderTop: '1px solid var(--border)',
       display: 'flex', alignItems: 'center',
-      padding: '0 14px', gap: 0,
+      padding: '0 8px', gap: 0,
       fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-muted)',
       userSelect: 'none',
     }}>
-      <Stat label="Page" value="1" />
+      <Stat label="Page" value={`${currentPage} of ${pageCount}`} />
       <Sep />
-      <Stat label="of" value={pageCount} />
+      <Stat label="" value={`${(wordCount || 0).toLocaleString()} words`} />
       <Sep />
-      <Stat label="Words" value={(wordCount || 0).toLocaleString()} />
+      <Stat label="" value={`${status}${collaborators.length ? ` • ${collaborators.length} collaborator${collaborators.length === 1 ? '' : 's'}` : ''}`} />
       <Sep />
-      <Stat label="Chars" value={(charCount || 0).toLocaleString()} />
-      <Sep />
-      <Stat label="Read" value={`~${readingTime} min`} />
-      {trackChanges && <><Sep /><span style={{ color: 'var(--gold)', fontSize: 10 }}>● Track Changes ON</span></>}
-      {!spellCheck   && <><Sep /><span style={{ color: '#e67e22', fontSize: 10 }}>⚠ Spell Check Off</span></>}
-
-      {/* Right side */}
+      <Stat label="" value="English (United States)" />
       <div style={{ flex: 1 }} />
-      <span style={{ marginRight: 4 }}>A4 · Portrait</span>
+      <span style={{ ...statusDot, background: connected ? 'var(--gold)' : 'var(--text-muted)' }} />
+      <button style={viewBtn} onMouseEnter={onHover} onMouseLeave={onLeave}>▤</button>
+      <button style={viewBtn} onMouseEnter={onHover} onMouseLeave={onLeave}>▦</button>
+      <button style={viewBtn} onMouseEnter={onHover} onMouseLeave={onLeave}>▥</button>
       <Sep />
-      {/* Zoom slider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <button onClick={() => setZoom(zoom - 10)} style={btnStyle}>−</button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <button onClick={() => setZoom(zoom - 10)} style={zoomBtn} onMouseEnter={onHover} onMouseLeave={onLeave}>−</button>
         <input type="range" min={25} max={200} value={zoom} onChange={(e) => setZoom(+e.target.value)}
-          style={{ width: 80, accentColor: 'var(--gold)', cursor: 'pointer' }} />
-        <button onClick={() => setZoom(zoom + 10)} style={btnStyle}>+</button>
-        <button onClick={() => setZoom(100)} style={{ ...btnStyle, minWidth: 42, color: 'var(--gold)' }}>{zoom}%</button>
+          style={{ width: 86, accentColor: 'var(--gold)', cursor: 'pointer' }} />
+        <button onClick={() => setZoom(zoom + 10)} style={zoomBtn} onMouseEnter={onHover} onMouseLeave={onLeave}>+</button>
+        <button onClick={() => setZoom(100)} style={{ ...zoomBtn, minWidth: 38, color: 'var(--text-primary)' }} onMouseEnter={onHover} onMouseLeave={onLeave}>{zoom}%</button>
       </div>
     </div>
   );
@@ -46,15 +42,47 @@ export function StatusBar() {
 function Stat({ label, value }) {
   return (
     <span>
-      <span style={{ color: 'var(--text-muted)' }}>{label} </span>
-      <span style={{ color: 'var(--text-secondary)' }}>{value}</span>
+      {label ? <span style={{ color: 'var(--text-secondary)' }}>{label} </span> : null}
+      <span style={{ color: 'var(--text-primary)' }}>{value}</span>
     </span>
   );
 }
 function Sep() {
-  return <span style={{ margin: '0 10px', color: 'var(--border-strong)' }}>|</span>;
+  return <span style={{ margin: '0 8px', color: 'var(--border-strong)' }}>|</span>;
 }
-const btnStyle = {
-  background: 'none', border: 'none', color: 'var(--text-muted)',
-  cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1,
+const zoomBtn = {
+  height: 18,
+  minWidth: 18,
+  border: '1px solid transparent',
+  borderRadius: 2,
+  background: 'transparent',
+  color: 'var(--gold)',
+  cursor: 'pointer',
+  fontSize: 12,
+  padding: '0 4px',
+  lineHeight: 1,
+  transition: 'background 0.1s, border-color 0.1s',
 };
+
+const viewBtn = {
+  ...zoomBtn,
+  marginRight: 2,
+};
+
+const statusDot = {
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  display: 'inline-block',
+  marginRight: 6,
+};
+
+function onHover(e) {
+  e.currentTarget.style.background = 'var(--bg-hover)';
+  e.currentTarget.style.borderColor = 'var(--gold)';
+}
+
+function onLeave(e) {
+  e.currentTarget.style.background = 'transparent';
+  e.currentTarget.style.borderColor = 'transparent';
+}

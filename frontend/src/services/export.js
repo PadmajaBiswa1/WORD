@@ -7,14 +7,16 @@ function sanitize(name) {
   return (name || 'document').replace(/[^a-z0-9_\-\s]/gi, '_').trim();
 }
 
-/* ── HTML ───────────────────────────────────────────────────── */
-export function exportToHtml(title, html) {
-  const blob = new Blob([
-    `<!DOCTYPE html><html><head><meta charset="utf-8">
+export function buildHtmlDocument(title, html) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
      <title>${title}</title>
      <style>body{font-family:'Georgia',serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.7}</style>
-     </head><body>${html}</body></html>`,
-  ], { type: 'text/html;charset=utf-8' });
+     </head><body>${html}</body></html>`;
+}
+
+/* ── HTML ───────────────────────────────────────────────────── */
+export function exportToHtml(title, html) {
+  const blob = new Blob([buildHtmlDocument(title, html)], { type: 'text/html;charset=utf-8' });
   saveAs(blob, `${sanitize(title)}.html`);
 }
 
@@ -41,7 +43,7 @@ export async function exportToPdf(title, el) {
 }
 
 /* ── DOCX (via docx library) ────────────────────────────────── */
-export async function exportToDocx(title, html) {
+export async function buildDocxBlob(html) {
   const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import('docx');
   const div = document.createElement('div');
   div.innerHTML = html;
@@ -57,6 +59,10 @@ export async function exportToDocx(title, html) {
   });
 
   const doc    = new Document({ sections: [{ properties: {}, children }] });
-  const buffer = await Packer.toBlob(doc);
+  return Packer.toBlob(doc);
+}
+
+export async function exportToDocx(title, html) {
+  const buffer = await buildDocxBlob(html);
   saveAs(buffer, `${sanitize(title)}.docx`);
 }

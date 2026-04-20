@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '@/hooks/useTheme';
-import { authApi } from '@/services/api';
 
 export function SignInPage() {
   const navigate = useNavigate();
@@ -16,16 +15,15 @@ export function SignInPage() {
     setError('');
     setLoading(true);
     try {
-      const { token, user } = await authApi.signin(form);
-      localStorage.setItem('etherx_token', token);
-      localStorage.setItem('etherx_user', JSON.stringify(user));
+      // Frontend-only mock: always succeed, no backend needed
+      const fakeToken = 'demo-frontend-token-' + Date.now();
+      const fakeUser = { 
+        name: form.email.split('@')[0] || 'User', 
+        email: form.email 
+      };
+      localStorage.setItem('etherx_token', fakeToken);
+      localStorage.setItem('etherx_user', JSON.stringify(fakeUser));
       navigate('/home');
-    } catch (err) {
-      if (err.status === 403) {
-        setError('Email not verified. Please check your inbox for the OTP.');
-      } else {
-        setError(err.message);
-      }
     } finally {
       setLoading(false);
     }
@@ -48,7 +46,7 @@ export function SignInPage() {
           <div className="auth-field">
             <label className="auth-label">Email</label>
             <input
-              type="email" required placeholder="you@example.com"
+              type="email" placeholder="you@example.com"
               value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
               className={`auth-input${focused === 'email' ? ' focused' : ''}`}
               onFocus={() => setFocused('email')} onBlur={() => setFocused('')}
@@ -60,7 +58,7 @@ export function SignInPage() {
               <Link to="/forgot-password" className="auth-link" style={{ fontSize: 11 }}>Forgot password?</Link>
             </div>
             <input
-              type="password" required placeholder="••••••••"
+              type="password" placeholder="••••••••"
               value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
               className={`auth-input${focused === 'password' ? ' focused' : ''}`}
               onFocus={() => setFocused('password')} onBlur={() => setFocused('')}

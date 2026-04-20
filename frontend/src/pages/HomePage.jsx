@@ -1,452 +1,1536 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { EtherXLogo } from '@/components/ui/EtherXLogo';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { documentApi, exportApi } from '@/services/api';
+import { buildDocxBlob, buildHtmlDocument, exportToDocx, exportToHtml, exportToPdf } from '@/services/export';
 import { useTheme } from '@/hooks/useTheme';
+import { useUIStore, useDocumentStore } from '@/store';
 
-const TEMPLATES = [
-  { id: 'blank',    icon: <BlankIcon />,    title: 'Blank Document',  desc: 'Start with a clean page' },
-  { id: 'report',   icon: <ReportIcon />,   title: 'Business Report', desc: 'Professional report layout' },
-  { id: 'letter',   icon: <LetterIcon />,   title: 'Formal Letter',   desc: 'Letterhead + structure' },
-  { id: 'resume',   icon: <ResumeIcon />,   title: 'Résumé',          desc: 'Clean one-page résumé' },
-  { id: 'proposal', icon: <ProposalIcon />, title: 'Proposal',        desc: 'Project proposal layout' },
-  { id: 'invoice',  icon: <InvoiceIcon />,  title: 'Invoice',         desc: 'Business invoice template' },
+const LOCAL_FILE_DOCS_KEY = 'etherx_file_docs';
+
+const MENU_ITEMS = [
+  { key: 'home', label: 'Home', icon: '⌂' },
+  { key: 'new', label: 'New', icon: '✧' },
+  { key: 'open', label: 'Open', icon: '◫' },
+  { key: 'save', label: 'Save', icon: '⎙' },
+  { key: 'saveAs', label: 'Save As', icon: '⇪' },
+  { key: 'print', label: 'Print', icon: '⎘' },
+  { key: 'export', label: 'Export', icon: '⇩' },
+  { key: 'share', label: 'Share', icon: '⤴' },
+  { key: 'info', label: 'Info', icon: 'ⓘ' },
+  { key: 'statistics', label: 'Statistics', icon: '↕' },
+  { key: 'settings', label: 'Settings', icon: '✶' },
+  { key: 'close', label: 'Close', icon: '✕', danger: true },
 ];
 
-const INITIAL_DOCS = [
-  { id: '1', title: 'Q4 Strategy Report',     updated: '2 hours ago',  pages: 8,  pinned: false, favorite: false },
-  { id: '2', title: 'Product Roadmap 2025',   updated: 'Yesterday',    pages: 12, pinned: true,  favorite: true  },
-  { id: '3', title: 'Client Proposal — Apex', updated: '3 days ago',   pages: 5,  pinned: false, favorite: true  },
-  { id: '4', title: 'Meeting Notes — Oct',    updated: '5 days ago',   pages: 2,  pinned: false, favorite: false },
-  { id: '5', title: 'Brand Guidelines',       updated: 'Last week',    pages: 18, pinned: true,  favorite: false },
+const START_TEMPLATES = [
+  { key: 'blank', label: 'Blank' },
+  { key: 'business', label: 'Business' },
+  { key: 'letter', label: 'Letter' },
+  { key: 'resume', label: 'Resume' },
+  { key: 'proposal', label: 'Proposal' },
+  { key: 'invoice', label: 'Invoice' },
 ];
 
-const NAV = [
-  { key: 'home',      icon: '', label: 'Home' },
-  { key: 'new',       icon: '', label: 'New' },
-  { key: 'recent',    icon: '', label: 'Recent' },
-  { key: 'pinned',    icon: '', label: 'Pinned' },
-  { key: 'favorites', icon: '', label: 'Favorites' },
+const SAVE_AS_FORMATS = [
+  { key: 'etherx', label: 'EtherX Document (.ethex)' },
+  { key: 'docx', label: 'Word Document (.docx)' },
+  { key: 'html', label: 'Web Page (.html)' },
 ];
+
+const SAVE_AS_LOCATIONS = [
+  { key: 'recent', label: 'Recent', icon: '◷', area: 'leftTop' },
+  { key: 'onedrive', label: 'OneDrive - Personal', icon: '☁', area: 'personal' },
+  { key: 'share', label: 'Share', icon: '⇪', area: 'share' },
+  { key: 'copyLink', label: 'Copy Link', icon: '⎘', area: 'share' },
+  { key: 'thisPc', label: 'This PC', icon: '🖥', area: 'other' },
+  { key: 'addPlace', label: 'Add a Place', icon: '＋', area: 'other' },
+  { key: 'browse', label: 'Browse', icon: '📁', area: 'other' },
+];
+
+const SAVE_AS_FAVORITES = [
+  { key: 'adaptive', label: 'adaptive', path: 'OneDrive - Personal » Desktop » adaptive', updatedAt: '30-03-2026 14:15' },
+  { key: 'onedriveRoot', label: 'OneDrive - Personal', path: 'OneDrive - Personal' },
+];
+
+function templateContent(key) {
+  const map = {
+    blank: '<p></p>',
+    business: '<h1>Business Document</h1><p>Prepared for: Client Name</p><h2>Executive Summary</h2><p>Summary text...</p>',
+    letter: '<p>Date</p><p>Recipient Name</p><p>Subject: Letter</p><p>Dear ...</p><p>Sincerely,</p>',
+    resume: '<h1>Full Name</h1><p>Email | Phone | Location</p><h2>Experience</h2><p>Role details...</p><h2>Education</h2><p>Degree details...</p>',
+    proposal: '<h1>Project Proposal</h1><h2>Objective</h2><p>Objective details...</p><h2>Scope</h2><p>Scope details...</p>',
+    invoice: '<h1>Invoice</h1><p>Invoice #INV-001</p><table><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Total</th></tr></thead><tbody><tr><td>Service</td><td>1</td><td>100</td><td>100</td></tr></tbody></table>',
+  };
+  return map[key] || '<p></p>';
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function relativeTimeLabel(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 'Unknown';
+  const diffMs = Date.now() - date.getTime();
+  const hour = 3600000;
+  const day = 86400000;
+  if (diffMs < day) {
+    const h = Math.max(1, Math.floor(diffMs / hour));
+    return `${h} hour${h > 1 ? 's' : ''} ago`;
+  }
+  const d = Math.max(1, Math.floor(diffMs / day));
+  return `${d} day${d > 1 ? 's' : ''} ago`;
+}
+
+function estimatePagesFromHtml(html) {
+  const text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = text ? text.split(' ').length : 0;
+  return Math.max(1, Math.ceil(words / 420));
+}
+
+function cleanBaseName(title = 'Untitled Document') {
+  const base = String(title || 'Untitled Document').replace(/\.[^/.]+$/, '').trim();
+  return base || 'Untitled Document';
+}
+
+function nextCopyName(title = 'Untitled Document') {
+  const base = cleanBaseName(title);
+  if (/^copy of\s+/i.test(base)) return base;
+  return `Copy of ${base}`;
+}
+
+function downloadEtherxFile(title, content) {
+  const payload = {
+    title: cleanBaseName(title),
+    content: content || '<p></p>',
+    exportedAt: new Date().toISOString(),
+    format: 'ethex-document',
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const safe = cleanBaseName(title).replace(/[^a-z0-9_\-\s]/gi, '_');
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${safe || 'document'}.ethex`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function filePickerSupported() {
+  return typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function';
+}
+
+function pickerOptions(name, format) {
+  const byFormat = {
+    etherx: {
+      suggestedName: `${name}.ethex`,
+      types: [{ description: 'EtherX Document', accept: { 'application/json': ['.ethex'] } }],
+    },
+    html: {
+      suggestedName: `${name}.html`,
+      types: [{ description: 'Web Page', accept: { 'text/html': ['.html'] } }],
+    },
+    docx: {
+      suggestedName: `${name}.docx`,
+      types: [{ description: 'Word Document', accept: { 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'] } }],
+    },
+  };
+  return byFormat[format] || byFormat.etherx;
+}
+
+async function saveWithFilePicker(name, format, content) {
+  if (!filePickerSupported()) return false;
+
+  const { suggestedName, types } = pickerOptions(name, format);
+  try {
+    const handle = await window.showSaveFilePicker({ suggestedName, types });
+    const writable = await handle.createWritable();
+
+    if (format === 'docx') {
+      const blob = await buildDocxBlob(content || '<p></p>');
+      await writable.write(blob);
+    } else if (format === 'html') {
+      const html = buildHtmlDocument(name, content || '<p></p>');
+      await writable.write(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    } else {
+      const payload = {
+        title: cleanBaseName(name),
+        content: content || '<p></p>',
+        exportedAt: new Date().toISOString(),
+        format: 'ethex-document',
+      };
+      await writable.write(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' }));
+    }
+
+    await writable.close();
+    return true;
+  } catch (error) {
+    if (error?.name === 'AbortError') return null;
+    throw error;
+  }
+}
+
+function selectedStyle(active, danger) {
+  return {
+    ...styles.menuBtn,
+    ...(active ? styles.menuBtnActive : null),
+    ...(danger ? styles.menuBtnDanger : null),
+  };
+}
+
+function readLocalDocs() {
+  try {
+    const raw = localStorage.getItem(LOCAL_FILE_DOCS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((d) => ({
+      id: String(d.id),
+      title: d.title || 'Untitled Document',
+      content: d.content || '',
+      updatedAt: d.updatedAt || new Date().toISOString(),
+      localOnly: true,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalDocs(list) {
+  localStorage.setItem(LOCAL_FILE_DOCS_KEY, JSON.stringify(list));
+}
+
+function upsertLocalDoc(doc) {
+  const list = readLocalDocs();
+  const next = [doc, ...list.filter((d) => d.id !== doc.id)].slice(0, 100);
+  writeLocalDocs(next);
+  return next;
+}
+
+function createLocalDoc({ title, content }) {
+  const doc = {
+    id: `local-${Date.now()}`,
+    title: title || 'Untitled Document',
+    content: content || '<p></p>',
+    updatedAt: new Date().toISOString(),
+    localOnly: true,
+  };
+  const next = upsertLocalDoc(doc);
+  return { doc, next };
+}
 
 export function HomePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
-  const [activeNav, setActiveNav]   = useState('home');
-  const [docs, setDocs]             = useState(INITIAL_DOCS);
-  const [search, setSearch]         = useState('');
-  const [contextMenu, setContextMenu] = useState(null); // { docId, x, y }
-  const [hoveredDoc, setHoveredDoc] = useState(null);
+  const toast = useUIStore((s) => s.toast);
+  const resetDoc = useDocumentStore((s) => s.reset);
+  const setDocTitle = useDocumentStore((s) => s.setTitle);
+  const setDocContent = useDocumentStore((s) => s.setContent);
 
-  const user = (() => { try { return JSON.parse(localStorage.getItem('etherx_user')); } catch { return null; } })();
+  const [activeMenu, setActiveMenu] = useState('home');
+  const [loading, setLoading] = useState(true);
+  const [docs, setDocs] = useState([]);
+  const [selectedDocId, setSelectedDocId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [saveAsName, setSaveAsName] = useState('');
+  const [saveAsFormat, setSaveAsFormat] = useState('etherx');
+  const [saveAsLocation, setSaveAsLocation] = useState('onedrive');
+  const [saveAsBusy, setSaveAsBusy] = useState(false);
 
-  const togglePin      = (id) => setDocs((d) => d.map((doc) => doc.id === id ? { ...doc, pinned: !doc.pinned } : doc));
-  const toggleFavorite = (id) => setDocs((d) => d.map((doc) => doc.id === id ? { ...doc, favorite: !doc.favorite } : doc));
-  const removeDoc      = (id) => setDocs((d) => d.filter((doc) => doc.id !== id));
+  const returnTo = location.state?.returnTo || '/doc/new';
+  const fileInputRef = useRef(null);
 
-  const handleContextMenu = (e, docId) => {
-    e.preventDefault();
-    setContextMenu({ docId, x: e.clientX, y: e.clientY });
-  };
+  const currentDocIdFromRoute = (() => {
+    const p = location.state?.returnTo || '';
+    const m = p.match(/^\/doc\/([^/]+)$/);
+    return m?.[1] || null;
+  })();
 
-  const closeContext = () => setContextMenu(null);
+  useEffect(() => {
+    let alive = true;
+    async function loadDocs() {
+      setLoading(true);
+      try {
+        const data = await documentApi.list();
+        const list = Array.isArray(data) ? data : data.documents || data.items || [];
+        const locals = readLocalDocs();
+        if (!alive) return;
+        const normalized = [...locals, ...list.map((d, i) => ({
+          id: String(d.id || d._id || i + 1),
+          title: d.title || 'Untitled Document',
+          updatedAt: d.updatedAt || d.updated || new Date().toISOString(),
+          content: d.content || '',
+          localOnly: Boolean(d.localOnly),
+        }))];
+        setDocs(normalized);
+        if (currentDocIdFromRoute && normalized.some((d) => d.id === currentDocIdFromRoute)) {
+          setSelectedDocId(currentDocIdFromRoute);
+        } else if (normalized[0]) {
+          setSelectedDocId(normalized[0].id);
+        }
+      } catch {
+        const fallback = readLocalDocs();
+        if (!alive) return;
+        setDocs(fallback);
+        setSelectedDocId(fallback[0]?.id || null);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+    loadDocs();
+    return () => { alive = false; };
+  }, [currentDocIdFromRoute]);
 
-  const filtered = docs.filter((d) => {
-    const matchSearch = d.title.toLowerCase().includes(search.toLowerCase());
-    if (activeNav === 'pinned')    return d.pinned    && matchSearch;
-    if (activeNav === 'favorites') return d.favorite  && matchSearch;
-    if (activeNav === 'recent')    return matchSearch;
-    return matchSearch;
-  });
+  const selectedDoc = useMemo(() => docs.find((d) => d.id === selectedDocId) || null, [docs, selectedDocId]);
 
-  const pinned    = docs.filter((d) => d.pinned);
-  const favorites = docs.filter((d) => d.favorite);
+  useEffect(() => {
+    if (!selectedDoc) {
+      setSaveAsName('');
+      return;
+    }
+    setSaveAsName((current) => current || nextCopyName(selectedDoc.title));
+  }, [selectedDoc]);
 
-  const ctxDoc = contextMenu ? docs.find((d) => d.id === contextMenu.docId) : null;
+  const visibleDocs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const filtered = q ? docs.filter((d) => d.title.toLowerCase().includes(q)) : docs;
+    return filtered.slice(0, 4);
+  }, [docs, search]);
 
-  const greeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
-  };
+  async function createFromTemplate(key) {
+    if (key === 'blank') {
+      const { doc, next } = createLocalDoc({
+        title: 'Untitled Document',
+        content: '<p></p>',
+      });
+      setDocs(next);
+      setSelectedDocId(doc.id);
+      resetDoc();
+      setDocTitle(doc.title);
+      setDocContent(doc.content);
+      toast('Blank document created', 'success');
+      navigate('/doc/new');
+      return;
+    }
+
+    const title = `${key[0].toUpperCase()}${key.slice(1)} ${new Date().toLocaleDateString()}`;
+    const content = templateContent(key);
+    try {
+      const created = await documentApi.create({ title, content });
+      const newId = String(created?.id || created?._id || created?.document?.id || created?.document?._id || 'new');
+      setDocs((prev) => [
+        {
+          id: newId,
+          title,
+          content,
+          updatedAt: new Date().toISOString(),
+          localOnly: false,
+        },
+        ...prev.filter((d) => d.id !== newId),
+      ]);
+      setSelectedDocId(newId);
+      toast(`${key} template created`, 'success');
+      navigate(`/doc/${newId}`);
+    } catch {
+      const { doc, next } = createLocalDoc({ title, content });
+      setDocs(next);
+      setSelectedDocId(doc.id);
+      resetDoc();
+      setDocTitle(doc.title);
+      setDocContent(doc.content);
+      toast('Template created locally', 'success');
+      navigate('/doc/new');
+    }
+  }
+
+  async function deleteDoc(doc) {
+    if (!doc) return;
+
+    try {
+      if (doc.localOnly) {
+        const next = readLocalDocs().filter((d) => d.id !== doc.id);
+        writeLocalDocs(next);
+      } else {
+        await documentApi.delete(doc.id);
+      }
+
+      setDocs((prev) => {
+        const next = prev.filter((d) => d.id !== doc.id);
+        if (selectedDocId === doc.id) {
+          setSelectedDocId(next[0]?.id || null);
+        }
+        return next;
+      });
+      toast('Document deleted', 'success');
+    } catch {
+      toast('Unable to delete this document', 'error');
+    }
+  }
+
+  function openDoc(doc) {
+    if (!doc) return;
+    if (doc.localOnly) {
+      resetDoc();
+      setDocTitle(doc.title || 'Untitled Document');
+      setDocContent(doc.content || '<p></p>');
+      navigate('/doc/new');
+      return;
+    }
+    navigate(`/doc/${doc.id}`);
+  }
+
+  function setThemeMode(mode) {
+    if (mode !== theme) toggleTheme();
+  }
+
+  async function runMenuAction(key) {
+      if (key === 'home' || key === 'open' || key === 'export' || key === 'share' || key === 'saveAs' || key === 'info' || key === 'statistics' || key === 'settings') {
+        setActiveMenu(key);
+        if (key === 'saveAs' && selectedDoc) {
+          setSaveAsName(nextCopyName(selectedDoc.title));
+        }
+        return;
+      }
+
+    if (key === 'new') {
+      await createFromTemplate('blank');
+      setActiveMenu('home');
+      return;
+    }
+
+    if (key === 'save') {
+      if (!selectedDoc) return toast('Select a document first', 'info');
+      if (selectedDoc.localOnly) {
+        const localDoc = { ...selectedDoc, updatedAt: new Date().toISOString(), localOnly: true };
+        const next = upsertLocalDoc(localDoc);
+        setDocs(next);
+        setSelectedDocId(localDoc.id);
+        toast('Document saved locally', 'success');
+        setActiveMenu('home');
+        return;
+      }
+      try {
+        await documentApi.save(selectedDoc.id, { title: selectedDoc.title, content: selectedDoc.content || '' });
+        toast('Document saved', 'success');
+      } catch {
+        const localDoc = { ...selectedDoc, id: `local-${Date.now()}`, updatedAt: new Date().toISOString(), localOnly: true };
+        const next = upsertLocalDoc(localDoc);
+        setDocs(next);
+        setSelectedDocId(localDoc.id);
+        toast('Cloud save failed, saved locally', 'warning');
+      }
+      setActiveMenu('home');
+      return;
+    }
+
+    if (key === 'print') {
+      if (!selectedDoc) return toast('Select a document first', 'info');
+      const popup = window.open('', '_blank', 'width=980,height=760');
+      if (!popup) return toast('Popup blocked for printing', 'warning');
+      popup.document.write(`<html><head><title>${selectedDoc.title}</title></head><body><h1>${selectedDoc.title}</h1><div>${selectedDoc.content || '<p>No content available.</p>'}</div></body></html>`);
+      popup.document.close();
+      popup.focus();
+      popup.print();
+      setActiveMenu('home');
+      return;
+    }
+
+    if (key === 'close') {
+      navigate(returnTo);
+    }
+  }
+
+  async function exportSelectedDoc() {
+    if (!selectedDoc) return toast('Select a document first', 'info');
+    const fmt = (window.prompt('Export format: html, pdf, docx', 'html') || 'html').toLowerCase();
+    const exportLocally = async () => {
+      if (fmt === 'docx') {
+        await exportToDocx(selectedDoc.title, selectedDoc.content || '<p></p>');
+        return;
+      }
+
+      if (fmt === 'pdf') {
+        const frame = document.createElement('div');
+        frame.style.position = 'fixed';
+        frame.style.left = '-10000px';
+        frame.style.top = '0';
+        frame.style.width = '794px';
+        frame.style.background = '#ffffff';
+        frame.style.padding = '40px';
+        frame.innerHTML = selectedDoc.content || '<p></p>';
+        document.body.appendChild(frame);
+        try {
+          await exportToPdf(selectedDoc.title, frame);
+        } finally {
+          frame.remove();
+        }
+        return;
+      }
+
+      exportToHtml(selectedDoc.title, selectedDoc.content || '<p></p>');
+    };
+
+    try {
+      const blob = selectedDoc.localOnly
+        ? null
+        : fmt === 'pdf'
+          ? await exportApi.pdf(selectedDoc.id)
+          : fmt === 'docx'
+            ? await exportApi.docx(selectedDoc.id)
+            : await exportApi.html(selectedDoc.id);
+
+      if (!blob) {
+        await exportLocally();
+        toast(`Exported as ${fmt.toUpperCase()}`, 'success');
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${selectedDoc.title}.${fmt === 'pdf' || fmt === 'docx' ? fmt : 'html'}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Export complete', 'success');
+    } catch {
+      try {
+        await exportLocally();
+        toast('Cloud export failed, exported locally', 'warning');
+      } catch {
+        const fallback = new Blob([selectedDoc.content || '<p></p>'], { type: 'text/html' });
+        const url = URL.createObjectURL(fallback);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${selectedDoc.title}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('Cloud export failed, exported HTML locally', 'warning');
+      }
+    }
+  }
+
+  async function shareSelectedDoc() {
+    if (!selectedDoc) return toast('Select a document first', 'info');
+    try {
+      const targetDoc = await ensureCloudDocForShare(selectedDoc);
+      const response = await documentApi.share(targetDoc.id, { role: 'viewer' });
+      const link = response?.shareUrl || `${window.location.origin}/doc/${targetDoc.id}`;
+      await navigator.clipboard.writeText(link);
+      toast('Share link copied', 'success');
+    } catch {
+      const link = `${window.location.origin}/doc/${selectedDoc.id}`;
+      window.prompt('Copy share link', link);
+    }
+  }
+
+  async function createCloudCopyFrom(doc, titleOverride) {
+    const content = doc?.content || '<p></p>';
+    const title = cleanBaseName(titleOverride || doc?.title || 'Untitled Document');
+    const created = await documentApi.create({
+      title,
+      content,
+      comments: [],
+      trackChanges: false,
+    });
+    const newId = String(created?.id || created?._id || created?.document?.id || created?.document?._id || '');
+    const newDoc = {
+      id: newId,
+      title,
+      content,
+      updatedAt: new Date().toISOString(),
+      localOnly: false,
+    };
+    if (newId) {
+      setDocs((prev) => [newDoc, ...prev.filter((d) => d.id !== newId)]);
+      setSelectedDocId(newId);
+    }
+    return newDoc;
+  }
+
+  async function ensureCloudDocForShare(sourceDoc) {
+    if (!sourceDoc?.localOnly) return sourceDoc;
+    const cloudDoc = await createCloudCopyFrom(sourceDoc, sourceDoc.title);
+    toast('Created cloud copy for sharing', 'success');
+    return cloudDoc;
+  }
+
+  async function performSaveAs() {
+    if (!selectedDoc) {
+      toast('Select a document first', 'info');
+      return;
+    }
+
+    const finalName = cleanBaseName(saveAsName || nextCopyName(selectedDoc.title));
+    if (!finalName) {
+      toast('Enter a file name', 'warning');
+      return;
+    }
+
+    setSaveAsBusy(true);
+    try {
+      if (saveAsLocation === 'share') {
+        const targetDoc = await ensureCloudDocForShare(selectedDoc);
+        const response = await documentApi.share(targetDoc.id, { role: 'viewer' });
+        const link = response?.shareUrl || `${window.location.origin}/doc/${targetDoc.id}`;
+        await navigator.clipboard.writeText(link);
+        toast('Share link copied', 'success');
+        return;
+      }
+      if (saveAsLocation === 'copyLink') {
+        const targetDoc = await ensureCloudDocForShare(selectedDoc);
+        const link = `${window.location.origin}/doc/${targetDoc.id}`;
+        await navigator.clipboard.writeText(link);
+        toast('Document link copied', 'success');
+        return;
+      }
+
+      const wantsLocalFile = saveAsLocation === 'thisPc' || saveAsLocation === 'browse' || saveAsLocation === 'addPlace';
+
+      if (wantsLocalFile) {
+        const pickerResult = await saveWithFilePicker(finalName, saveAsFormat, selectedDoc.content || '<p></p>');
+        if (pickerResult === null) {
+          toast('Save As cancelled', 'info');
+          return;
+        }
+
+        if (pickerResult !== true) {
+          if (saveAsFormat === 'docx') {
+            await exportToDocx(finalName, selectedDoc.content || '<p></p>');
+          } else if (saveAsFormat === 'html') {
+            exportToHtml(finalName, selectedDoc.content || '<p></p>');
+          } else {
+            downloadEtherxFile(finalName, selectedDoc.content || '<p></p>');
+          }
+        }
+        toast('Saved to local files', 'success');
+        setActiveMenu('home');
+        return;
+      }
+
+      const createdDoc = await createCloudCopyFrom(selectedDoc, finalName);
+      const newId = createdDoc.id;
+      toast('Saved as a new cloud document', 'success');
+      if (newId) {
+        navigate(`/doc/${newId}`);
+      } else {
+        setActiveMenu('home');
+      }
+    } catch {
+      const { doc, next } = createLocalDoc({ title: finalName, content: selectedDoc.content || '<p></p>' });
+      setDocs(next);
+      setSelectedDocId(doc.id);
+      toast('Cloud Save As failed, saved locally', 'warning');
+      setActiveMenu('home');
+    } finally {
+      setSaveAsBusy(false);
+    }
+  }
+
+  async function handleUploadOpen(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const created = await documentApi.create({
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        content: `<pre>${escapeHtml(text.slice(0, 50000))}</pre>`,
+      });
+      const newId = String(created?.id || created?._id || created?.document?.id || created?.document?._id || 'new');
+      toast('File opened as a new document', 'success');
+      navigate(`/doc/${newId}`);
+    } catch {
+      const { doc, next } = createLocalDoc({
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        content: `<pre>${escapeHtml(text.slice(0, 50000))}</pre>`,
+      });
+      setDocs(next);
+      setSelectedDocId(doc.id);
+      resetDoc();
+      setDocTitle(doc.title);
+      setDocContent(doc.content);
+      toast('Opened file locally', 'warning');
+      navigate('/doc/new');
+    } finally {
+      event.target.value = '';
+    }
+  }
+
+  const stats = selectedDoc
+    ? (() => {
+        const text = String(selectedDoc.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        const words = text ? text.split(' ').length : 0;
+        return {
+          words,
+          chars: text.length,
+          pages: estimatePagesFromHtml(selectedDoc.content),
+        };
+      })()
+    : { words: 0, chars: 0, pages: 0 };
 
   return (
-    <div onClick={closeContext} style={{ height: '100vh', width: '100vw', display: 'flex', background: 'var(--bg-app)', color: 'var(--text-primary)', overflow: 'hidden' }}>
+    <div style={styles.page}>
+      <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleUploadOpen} />
 
-      {/* ── Sidebar ── */}
-      <div style={{
-        width: 220, flexShrink: 0, background: 'var(--bg-surface)',
-        borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column',
-        padding: '16px 0',
-      }}>
-        {/* Logo */}
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <img
-            src="/assets/etherxwordlogo.png"
-            alt="EtherX Word"
-            style={{ height: 100, objectFit: 'contain' }}
-          />
-        </div>
+      <aside style={styles.sidebar}>
+        <img src="/assets/etherxwordlogo.png" alt="EtherX Word Logo" style={{ ...styles.fileMenuTitle, maxHeight: '100%', objectFit: 'contain' }} />
 
-        {/* Nav items */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '0 8px' }}>
-          {NAV.map(({ key, icon, label }) => (
-            <button key={key} onClick={() => setActiveNav(key)} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '9px 12px', borderRadius: 'var(--radius-md)',
-              background: activeNav === key ? 'rgba(212,175,55,0.12)' : 'none',
-              border: activeNav === key ? '1px solid rgba(212,175,55,0.25)' : '1px solid transparent',
-              color: activeNav === key ? 'var(--gold)' : 'var(--text-secondary)',
-              cursor: 'pointer', fontFamily: 'var(--font-ui)', fontSize: 13,
-              fontWeight: activeNav === key ? 600 : 400,
-              transition: 'var(--transition)', textAlign: 'left', width: '100%',
-            }}
-              onMouseEnter={(e) => { if (activeNav !== key) e.currentTarget.style.background = 'var(--bg-elevated)'; }}
-              onMouseLeave={(e) => { if (activeNav !== key) e.currentTarget.style.background = 'none'; }}>
-              <span style={{ fontSize: 15 }}>{icon}</span>
-              {label}
-              {key === 'pinned'    && pinned.length    > 0 && <span style={badge}>{pinned.length}</span>}
-              {key === 'favorites' && favorites.length > 0 && <span style={badge}>{favorites.length}</span>}
+        <div style={styles.menuList}>
+          {MENU_ITEMS.map((item) => (
+            <button
+              key={item.key}
+              style={selectedStyle(activeMenu === item.key, item.danger)}
+              onClick={() => runMenuAction(item.key)}
+              title={item.label}
+            >
+              <span style={styles.menuIcon}>{item.icon}</span>
+              <span>{item.label}</span>
             </button>
           ))}
         </div>
 
-        {/* User + theme */}
-        <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border)' }}>
-          {user && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: '50%',
-                background: 'linear-gradient(135deg,#d4af37,#b8941e)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 13, color: '#0a0800',
-              }}>{user.name?.[0]?.toUpperCase()}</div>
-              <div>
-                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{user.name}</div>
-                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--text-muted)' }}>{user.email}</div>
-              </div>
-            </div>
-          )}
-          <button onClick={toggleTheme} style={{
-            width: '100%', padding: '6px 0', background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-secondary)', cursor: 'pointer',
-            fontFamily: 'var(--font-ui)', fontSize: 11,
-          }}>{theme === 'dark' ? '☀ Light Mode' : '🌙 Dark Mode'}</button>
+        <div style={styles.sidebarFooter}>
+          <div style={styles.docPill}>
+            <div style={styles.docPillTitle}>{selectedDoc?.title || 'Untitled Document'}</div>
+            <div style={styles.docPillMeta}>{stats.words} words • {stats.pages} page</div>
+          </div>
+          <div style={styles.themeSwitchRow}>
+            <button
+              style={{ ...styles.themeSwitchBtn, ...(theme === 'light' ? styles.themeSwitchBtnActive : null) }}
+              onClick={() => setThemeMode('light')}
+              title="Light mode"
+            >
+              Light
+            </button>
+            <button
+              style={{ ...styles.themeSwitchBtn, ...(theme === 'dark' ? styles.themeSwitchBtnActive : null) }}
+              onClick={() => setThemeMode('dark')}
+              title="Dark mode"
+            >
+              Dark
+            </button>
+          </div>
+          <button style={styles.backEditorBtn} onClick={() => navigate(returnTo)}>← Back to Editor</button>
         </div>
-      </div>
+      </aside>
 
-      {/* ── Main ── */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <main style={styles.main}>
+        <button style={styles.topBar} onClick={() => navigate(returnTo)}>← Editor</button>
 
-        {/* ── HOME view ── */}
-        {(activeNav === 'home' || activeNav === 'new') && (
-          <div style={{ padding: '48px 56px', maxWidth: 900, width: '100%', margin: '0 auto' }}>
+        <section style={styles.hero}>
+          <h1 style={styles.heroTitle}>Start Here</h1>
+          <p style={styles.heroSub}>Create a new document or access your recent files</p>
+        </section>
 
-            {/* Greeting */}
-            <div style={{ marginBottom: 40 }}>
-              <h1 style={{ fontFamily: 'var(--font-ui)', fontSize: 28, fontWeight: 700, color: 'var(--gold)', letterSpacing: '.06em', marginBottom: 4 }}>
-                {greeting()}{user ? `, ${user.name.split(' ')[0]}` : ''}.
-              </h1>
-              <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--text-secondary)' }}>What would you like to create today?</p>
+        {activeMenu === 'home' && (
+          <section style={styles.gridArea}>
+            <div>
+              <div style={styles.sectionLabel}>RECENT DOCUMENTS</div>
+              {loading ? (
+                <div style={styles.empty}>Loading...</div>
+              ) : (
+                <div style={styles.recentsWrap}>
+                  {visibleDocs.map((doc) => (
+                    <div key={doc.id} style={styles.recentCard}>
+                      <button style={styles.recentOpenBtn} onClick={() => openDoc(doc)}>
+                        <span style={styles.recentIcon}>▣</span>
+                        <span style={styles.recentTextWrap}>
+                          <span style={styles.recentTitle}>{doc.title}</span>
+                          <span style={styles.recentMeta}>{relativeTimeLabel(doc.updatedAt)} • {estimatePagesFromHtml(doc.content)} pages</span>
+                        </span>
+                      </button>
+                      <button
+                        style={styles.recentDeleteBtn}
+                        onClick={() => deleteDoc(doc)}
+                        title="Delete document"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button style={styles.viewAllBtn} onClick={() => runMenuAction('open')}>View All Recent →</button>
+                </div>
+              )}
             </div>
 
-            {/* Templates */}
-            <div style={{ marginBottom: 52 }}>
-              <SectionLabel>New Document</SectionLabel>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px,1fr))', gap: 12, marginTop: 14 }}>
-                {TEMPLATES.map((t) => (
-                  <button key={t.id} onClick={() => navigate('/doc/new')} style={{
-                    background: 'var(--bg-surface)', border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius-lg)', padding: '18px 14px',
-                    cursor: 'pointer', textAlign: 'left', transition: 'var(--transition)',
-                    display: 'flex', flexDirection: 'column', gap: 8,
-                  }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--gold-glow)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', width:36, height:36, background:'var(--gold-dim)', borderRadius:'var(--radius-sm)' }}>
-                      {t.icon}
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 3 }}>{t.title}</div>
-                      <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-muted)' }}>{t.desc}</div>
-                    </div>
+            <div>
+              <div style={styles.sectionLabel}>TEMPLATE CATEGORIES</div>
+              <div style={styles.templateGrid}>
+                {START_TEMPLATES.map((tpl) => (
+                  <button key={tpl.key} style={styles.templateBtn} onClick={() => createFromTemplate(tpl.key)}>
+                    {tpl.label}
                   </button>
                 ))}
               </div>
             </div>
+          </section>
+        )}
 
-            {/* Pinned section on home */}
-            {pinned.length > 0 && (
-              <div style={{ marginBottom: 40 }}>
-                <SectionLabel>📌 Pinned</SectionLabel>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 14 }}>
-                  {pinned.map((doc) => (
-                    <DocRow key={doc.id} doc={doc} hovered={hoveredDoc === doc.id}
-                      onHover={setHoveredDoc} onNavigate={() => navigate(`/doc/${doc.id}`)}
-                      onPin={togglePin} onFavorite={toggleFavorite} onRemove={removeDoc}
-                      onContextMenu={handleContextMenu} />
+        {activeMenu === 'info' && (
+          <section style={styles.panel}>
+            <h2 style={styles.panelTitle}>Document Info</h2>
+            <div style={styles.panelRow}>Name: {selectedDoc?.title || '-'}</div>
+            <div style={styles.panelRow}>Last modified: {selectedDoc ? relativeTimeLabel(selectedDoc.updatedAt) : '-'}</div>
+            <div style={styles.panelRow}>Pages: {stats.pages}</div>
+          </section>
+        )}
+
+        {activeMenu === 'statistics' && (
+          <section style={styles.panel}>
+            <h2 style={styles.panelTitle}>Statistics</h2>
+            <div style={styles.panelRow}>Words: {stats.words}</div>
+            <div style={styles.panelRow}>Characters: {stats.chars}</div>
+            <div style={styles.panelRow}>Pages: {stats.pages}</div>
+          </section>
+        )}
+
+        {activeMenu === 'settings' && (
+          <section style={styles.panel}>
+            <h2 style={styles.panelTitle}>Settings</h2>
+            <div style={styles.panelRow}>Appearance mode</div>
+            <div style={styles.panelActionsLeft}>
+              <button
+                style={{ ...styles.secondaryActionBtn, ...(theme === 'light' ? styles.modeBtnActive : null) }}
+                onClick={() => setThemeMode('light')}
+              >
+                Light mode
+              </button>
+              <button
+                style={{ ...styles.secondaryActionBtn, ...(theme === 'dark' ? styles.modeBtnActive : null) }}
+                onClick={() => setThemeMode('dark')}
+              >
+                Dark mode
+              </button>
+            </div>
+          </section>
+        )}
+
+        {activeMenu === 'saveAs' && (
+          <section style={styles.saveAsShell}>
+            <h2 style={styles.saveAsTitle}>Save As</h2>
+            <div style={styles.saveAsLayout}>
+              <aside style={styles.saveAsLeft}>
+                <div style={styles.saveAsBlock}>
+                  {SAVE_AS_LOCATIONS.filter((item) => item.area === 'leftTop').map((item) => (
+                    <button
+                      key={item.key}
+                      style={{
+                        ...styles.saveAsItem,
+                        ...(saveAsLocation === item.key ? styles.saveAsItemActive : null),
+                      }}
+                      onClick={() => setSaveAsLocation(item.key)}
+                    >
+                      <span style={styles.saveAsIcon}>{item.icon}</span>
+                      <span>{item.label}</span>
+                    </button>
                   ))}
                 </div>
-              </div>
-            )}
 
-            {/* Recent */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <SectionLabel>Recent</SectionLabel>
-                <SearchBox value={search} onChange={setSearch} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {docs.filter((d) => d.title.toLowerCase().includes(search.toLowerCase())).map((doc) => (
-                  <DocRow key={doc.id} doc={doc} hovered={hoveredDoc === doc.id}
-                    onHover={setHoveredDoc} onNavigate={() => navigate(`/doc/${doc.id}`)}
-                    onPin={togglePin} onFavorite={toggleFavorite} onRemove={removeDoc}
-                    onContextMenu={handleContextMenu} />
-                ))}
+                <div style={styles.saveAsSectionTitle}>Personal</div>
+                <div style={styles.saveAsBlock}>
+                  {SAVE_AS_LOCATIONS.filter((item) => item.area === 'personal').map((item) => (
+                    <button
+                      key={item.key}
+                      style={{
+                        ...styles.saveAsItem,
+                        ...(saveAsLocation === item.key ? styles.saveAsItemActive : null),
+                      }}
+                      onClick={() => setSaveAsLocation(item.key)}
+                    >
+                      <span style={styles.saveAsIcon}>{item.icon}</span>
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div style={styles.saveAsSectionTitle}>Share Options</div>
+                <div style={styles.saveAsBlock}>
+                  {SAVE_AS_LOCATIONS.filter((item) => item.area === 'share').map((item) => (
+                    <button
+                      key={item.key}
+                      style={{
+                        ...styles.saveAsItem,
+                        ...(saveAsLocation === item.key ? styles.saveAsItemActive : null),
+                      }}
+                      onClick={() => setSaveAsLocation(item.key)}
+                    >
+                      <span style={styles.saveAsIcon}>{item.icon}</span>
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div style={styles.saveAsSectionTitle}>Other locations</div>
+                <div style={styles.saveAsBlock}>
+                  {SAVE_AS_LOCATIONS.filter((item) => item.area === 'other').map((item) => (
+                    <button
+                      key={item.key}
+                      style={{
+                        ...styles.saveAsItem,
+                        ...(saveAsLocation === item.key ? styles.saveAsItemActive : null),
+                      }}
+                      onClick={() => setSaveAsLocation(item.key)}
+                    >
+                      <span style={styles.saveAsIcon}>{item.icon}</span>
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </aside>
+
+              <div style={styles.saveAsRight}>
+                <div style={styles.saveAsRightHeading}>Favorites</div>
+                <p style={styles.saveAsMuted}>
+                  Favorite folders you want to easily find later. Click the star icon that appears when you hover over a folder.
+                </p>
+
+                <div style={{ ...styles.saveAsRightHeading, marginTop: 18 }}>Older</div>
+                <div style={styles.saveAsFavoritesList}>
+                  {SAVE_AS_FAVORITES.map((fav) => (
+                    <button
+                      key={fav.key}
+                      style={{
+                        ...styles.saveAsFavoriteRow,
+                        ...(saveAsLocation === fav.key ? styles.saveAsItemActive : null),
+                      }}
+                      onClick={() => setSaveAsLocation(fav.key)}
+                    >
+                      <span style={styles.saveAsFavoriteFolder}>▢</span>
+                      <span style={styles.saveAsFavoriteMain}>
+                        <span style={styles.saveAsFavoriteTitle}>{fav.label}</span>
+                        <span style={styles.saveAsFavoritePath}>{fav.path}</span>
+                      </span>
+                      {fav.updatedAt ? <span style={styles.saveAsFavoriteTime}>{fav.updatedAt}</span> : null}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={styles.saveAsFormRow}>
+                  <label style={styles.saveAsFieldLabel}>File name</label>
+                  <input
+                    value={saveAsName}
+                    onChange={(e) => setSaveAsName(e.target.value)}
+                    placeholder="Copy of Untitled Document"
+                    style={styles.saveAsInput}
+                  />
+                </div>
+
+                <div style={styles.saveAsFormRow}>
+                  <label style={styles.saveAsFieldLabel}>Save as type</label>
+                  <select
+                    value={saveAsFormat}
+                    onChange={(e) => setSaveAsFormat(e.target.value)}
+                    style={styles.saveAsSelect}
+                  >
+                    {SAVE_AS_FORMATS.map((fmt) => (
+                      <option key={fmt.key} value={fmt.key}>{fmt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={styles.saveAsActionRow}>
+                  <button
+                    style={styles.secondaryActionBtn}
+                    onClick={() => setActiveMenu('home')}
+                    disabled={saveAsBusy}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    style={{ ...styles.primaryActionBtn, marginBottom: 0 }}
+                    onClick={performSaveAs}
+                    disabled={saveAsBusy}
+                  >
+                    {saveAsBusy ? 'Saving…' : 'Save As'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* ── RECENT / PINNED / FAVORITES views ── */}
-        {(activeNav === 'recent' || activeNav === 'pinned' || activeNav === 'favorites') && (
-          <div style={{ padding: '48px 56px', maxWidth: 900, width: '100%', margin: '0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h1 style={{ fontFamily: 'var(--font-ui)', fontSize: 20, fontWeight: 700, color: 'var(--text-heading)', letterSpacing: '.06em' }}>
-                {activeNav === 'recent' ? '🕐 Recent' : activeNav === 'pinned' ? '📌 Pinned' : '⭐ Favorites'}
-              </h1>
-              <SearchBox value={search} onChange={setSearch} />
-            </div>
-
-            {filtered.length === 0 ? (
-              <EmptyState activeNav={activeNav} />
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {filtered.map((doc) => (
-                  <DocRow key={doc.id} doc={doc} hovered={hoveredDoc === doc.id}
-                    onHover={setHoveredDoc} onNavigate={() => navigate(`/doc/${doc.id}`)}
-                    onPin={togglePin} onFavorite={toggleFavorite} onRemove={removeDoc}
-                    onContextMenu={handleContextMenu} />
-                ))}
-              </div>
+        {(activeMenu === 'open' || activeMenu === 'share' || activeMenu === 'export') && (
+          <section style={styles.panel}>
+            <h2 style={styles.panelTitle}>{activeMenu[0].toUpperCase() + activeMenu.slice(1)}</h2>
+            {activeMenu === 'open' && (
+              <button style={styles.primaryActionBtn} onClick={() => fileInputRef.current?.click()}>
+                Browse from device
+              </button>
             )}
-          </div>
+            {activeMenu === 'share' && (
+              <button style={styles.primaryActionBtn} onClick={shareSelectedDoc}>
+                Copy share link for selected document
+              </button>
+            )}
+            {activeMenu === 'export' && (
+              <button style={styles.primaryActionBtn} onClick={exportSelectedDoc}>
+                Export selected document
+              </button>
+            )}
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search documents"
+              style={styles.search}
+            />
+            <div style={styles.panelList}>
+              {docs.filter((d) => d.title.toLowerCase().includes(search.toLowerCase())).slice(0, 8).map((doc) => (
+                <div key={doc.id} style={styles.panelItem}>
+                  <button style={styles.panelItemMain} onClick={() => setSelectedDocId(doc.id)}>
+                    <span>{doc.title}</span>
+                    <span style={styles.panelItemMeta}>{relativeTimeLabel(doc.updatedAt)}</span>
+                  </button>
+                  <button
+                    style={styles.panelDeleteBtn}
+                    onClick={() => deleteDoc(doc)}
+                    title="Delete document"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div style={styles.panelActions}>
+              <button style={styles.secondaryActionBtn} onClick={() => selectedDoc && openDoc(selectedDoc)}>
+                Open selected
+              </button>
+            </div>
+          </section>
         )}
-      </div>
-
-      {/* ── Context Menu ── */}
-      {contextMenu && ctxDoc && (
-        <div onClick={(e) => e.stopPropagation()} style={{
-          position: 'fixed', top: contextMenu.y, left: contextMenu.x, zIndex: 9999,
-          background: 'var(--bg-surface)', border: '1px solid var(--border-gold)',
-          borderRadius: 'var(--radius-md)', boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-          minWidth: 190, overflow: 'hidden',
-        }}>
-          {[
-            { icon: '📂', label: 'Open',                    action: () => { navigate(`/doc/${ctxDoc.id}`); closeContext(); } },
-            { icon: ctxDoc.pinned    ? '📌 Unpin' : '📌', label: ctxDoc.pinned ? 'Unpin'            : 'Pin to top',     action: () => { togglePin(ctxDoc.id);      closeContext(); } },
-            { icon: ctxDoc.favorite  ? '⭐' : '☆',         label: ctxDoc.favorite ? 'Remove favorite' : 'Add to favorites', action: () => { toggleFavorite(ctxDoc.id); closeContext(); } },
-            null,
-            { icon: '🗑', label: 'Remove from list',        action: () => { removeDoc(ctxDoc.id);     closeContext(); }, danger: true },
-          ].map((item, i) =>
-            item === null
-              ? <div key={i} style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
-              : (
-                <button key={i} onClick={item.action} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  width: '100%', padding: '9px 14px', background: 'none',
-                  border: 'none', cursor: 'pointer', textAlign: 'left',
-                  fontFamily: 'var(--font-ui)', fontSize: 13,
-                  color: item.danger ? '#e05c5c' : 'var(--text-primary)',
-                  transition: 'background 0.1s',
-                }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = item.danger ? 'rgba(224,92,92,0.1)' : 'var(--bg-elevated)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}>
-                  <span>{item.icon}</span>{item.label}
-                </button>
-              )
-          )}
-        </div>
-      )}
+      </main>
     </div>
   );
 }
 
-/* ── DocRow ── */
-function DocRow({ doc, hovered, onHover, onNavigate, onPin, onFavorite, onRemove, onContextMenu }) {
-  return (
-    <div onMouseEnter={() => onHover(doc.id)} onMouseLeave={() => onHover(null)}
-      onContextMenu={(e) => onContextMenu(e, doc.id)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 14, padding: '11px 14px',
-        background: hovered ? 'var(--bg-elevated)' : 'var(--bg-surface)',
-        border: `1px solid ${hovered ? 'var(--border-gold)' : 'var(--border)'}`,
-        borderRadius: 'var(--radius-md)', transition: 'var(--transition)', cursor: 'pointer',
-      }}>
-
-      {/* Doc icon */}
-      <span style={{ fontSize: 22, flexShrink: 0 }}>📄</span>
-
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }} onClick={onNavigate}>
-        <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {doc.title}
-        </div>
-        <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-muted)' }}>
-          {doc.updated} · {doc.pages} page{doc.pages !== 1 ? 's' : ''}
-        </div>
-      </div>
-
-      {/* Action buttons — visible on hover */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: hovered ? 1 : 0, transition: 'opacity 0.15s' }}>
-        {/* Pin */}
-        <IconBtn title={doc.pinned ? 'Unpin' : 'Pin to top'} active={doc.pinned} onClick={(e) => { e.stopPropagation(); onPin(doc.id); }}>
-          📌
-        </IconBtn>
-        {/* Favorite */}
-        <IconBtn title={doc.favorite ? 'Remove favorite' : 'Add to favorites'} active={doc.favorite} onClick={(e) => { e.stopPropagation(); onFavorite(doc.id); }}>
-          {doc.favorite ? '⭐' : '☆'}
-        </IconBtn>
-        {/* Open */}
-        <IconBtn title="Open" onClick={(e) => { e.stopPropagation(); onNavigate(); }}>
-          →
-        </IconBtn>
-      </div>
-
-      {/* Persistent badges */}
-      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-        {doc.pinned    && <span style={{ fontSize: 12 }} title="Pinned">📌</span>}
-        {doc.favorite  && <span style={{ fontSize: 12 }} title="Favorite">⭐</span>}
-      </div>
-    </div>
-  );
-}
-
-/* ── IconBtn ── */
-function IconBtn({ children, onClick, title, active }) {
-  return (
-    <button onClick={onClick} title={title} style={{
-      background: active ? 'rgba(212,175,55,0.15)' : 'none',
-      border: `1px solid ${active ? 'rgba(212,175,55,0.4)' : 'transparent'}`,
-      borderRadius: 'var(--radius-sm)', padding: '3px 7px',
-      cursor: 'pointer', fontSize: 13, color: active ? 'var(--gold)' : 'var(--text-muted)',
-      transition: 'var(--transition)',
-    }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-elevated)'; e.currentTarget.style.borderColor = 'var(--border-gold)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = active ? 'rgba(212,175,55,0.15)' : 'none'; e.currentTarget.style.borderColor = active ? 'rgba(212,175,55,0.4)' : 'transparent'; }}>
-      {children}
-    </button>
-  );
-}
-
-/* ── Helpers ── */
-function SectionLabel({ children }) {
-  return (
-    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-      {children}
-    </div>
-  );
-}
-
-function SearchBox({ value, onChange }) {
-  return (
-    <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Search documents…"
-      style={{
-        background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-sm)', padding: '5px 12px',
-        fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--text-primary)',
-        outline: 'none', width: 200,
-      }}
-      onFocus={(e) => e.target.style.borderColor = 'var(--gold)'}
-      onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
-  );
-}
-
-function EmptyState({ activeNav }) {
-  const msgs = {
-    pinned:    { icon: '📌', text: 'No pinned documents yet.', sub: 'Hover a document and click 📌 to pin it.' },
-    favorites: { icon: '⭐', text: 'No favorites yet.',        sub: 'Hover a document and click ☆ to favorite it.' },
-    recent:    { icon: '🕐', text: 'No documents found.',      sub: 'Create a new document to get started.' },
-  };
-  const m = msgs[activeNav] || msgs.recent;
-  return (
-    <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>{m.icon}</div>
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{m.text}</div>
-      <div style={{ fontSize: 12 }}>{m.sub}</div>
-    </div>
-  );
-}
-
-const badge = {
-  marginLeft: 'auto', background: 'rgba(212,175,55,0.2)',
-  color: 'var(--gold)', borderRadius: 10, padding: '1px 7px',
-  fontSize: 10, fontWeight: 700,
+const styles = {
+  page: {
+    display: 'flex',
+    width: '100vw',
+    height: '100vh',
+    background: 'var(--bg-app)',
+    color: 'var(--text-primary)',
+    fontFamily: 'var(--font-ui)',
+    overflow: 'hidden',
+  },
+  sidebar: {
+    width: 238,
+    borderRight: '1px solid var(--border-strong)',
+    background: 'var(--bg-surface)',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  fileMenuTitle: {
+    height: 90,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottom: '1px solid var(--border)',
+    color: 'var(--text-secondary)',
+    letterSpacing: '.12em',
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  menuList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    padding: '10px 8px',
+  },
+  menuBtn: {
+    border: '1px solid transparent',
+    background: 'transparent',
+    color: 'var(--text-secondary)',
+    padding: '10px 10px',
+    borderRadius: 8,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    textAlign: 'left',
+    fontSize: 15,
+    lineHeight: 1,
+    fontWeight: 500,
+  },
+  menuBtnActive: {
+    background: 'var(--bg-hover)',
+    borderColor: 'var(--border-gold)',
+    color: 'var(--text-gold)',
+  },
+  menuBtnDanger: {
+    color: '#cf5d5d',
+  },
+  menuIcon: {
+    width: 18,
+    textAlign: 'center',
+    fontSize: 17,
+    opacity: 0.92,
+  },
+  sidebarFooter: {
+    marginTop: 'auto',
+    borderTop: '1px solid var(--border)',
+    padding: '10px 8px 10px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  docPill: {
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    padding: '10px 10px',
+    background: 'var(--bg-elevated)',
+  },
+  docPillTitle: {
+    fontSize: 13,
+    color: 'var(--text-primary)',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  docPillMeta: {
+    marginTop: 4,
+    fontSize: 11,
+    color: 'var(--text-muted)',
+  },
+  backEditorBtn: {
+    border: '1px solid var(--border-gold)',
+    borderRadius: 8,
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-gold)',
+    padding: '8px 10px',
+    cursor: 'pointer',
+    fontSize: 16,
+    textAlign: 'left',
+  },
+  themeSwitchRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 6,
+  },
+  themeSwitchBtn: {
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    padding: '7px 0',
+    cursor: 'pointer',
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  themeSwitchBtnActive: {
+    borderColor: 'var(--border-gold)',
+    background: 'var(--bg-hover)',
+    color: 'var(--text-gold)',
+  },
+  main: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    background: 'var(--bg-app)',
+    overflowY: 'auto',
+  },
+  topBar: {
+    height: 70,
+    borderBottom: '1px solid var(--border-strong)',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0 20px',
+    color: 'var(--text-muted)',
+    fontSize: 13,
+    background: 'transparent',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    textAlign: 'left',
+  },
+  hero: {
+    padding: '46px 54px 10px',
+  },
+  heroTitle: {
+    margin: 0,
+    fontSize: 44,
+    letterSpacing: '.03em',
+    color: 'var(--text-heading)',
+  },
+  heroSub: {
+    marginTop: 8,
+    marginBottom: 0,
+    color: 'var(--text-muted)',
+    fontSize: 17,
+  },
+  gridArea: {
+    padding: '20px 54px 40px',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 44,
+    minWidth: 860,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    color: 'var(--text-muted)',
+    letterSpacing: '.12em',
+    fontWeight: 700,
+    marginBottom: 14,
+  },
+  recentsWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  recentCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    border: '1px solid var(--border)',
+    background: 'var(--bg-elevated)',
+    borderRadius: 10,
+    padding: '8px 10px 8px 14px',
+    textAlign: 'left',
+    color: 'var(--text-primary)',
+  },
+  recentOpenBtn: {
+    border: 'none',
+    background: 'transparent',
+    color: 'inherit',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'left',
+    padding: '6px 2px',
+  },
+  recentDeleteBtn: {
+    border: '1px solid var(--border)',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-muted)',
+    borderRadius: 6,
+    cursor: 'pointer',
+    width: 28,
+    height: 28,
+    flex: '0 0 auto',
+  },
+  recentIcon: {
+    fontSize: 14,
+    color: 'var(--text-secondary)',
+  },
+  recentTextWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
+  },
+  recentTitle: {
+    fontSize: 16,
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  recentMeta: {
+    marginTop: 4,
+    fontSize: 13,
+    color: 'var(--text-muted)',
+  },
+  viewAllBtn: {
+    border: '1px solid var(--border-gold)',
+    borderRadius: 3,
+    background: 'transparent',
+    color: 'var(--text-gold)',
+    padding: '8px 14px',
+    cursor: 'pointer',
+    fontSize: 15,
+    fontWeight: 600,
+  },
+  templateGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 10,
+  },
+  templateBtn: {
+    border: '1px solid var(--border)',
+    borderRadius: 10,
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-primary)',
+    minHeight: 58,
+    cursor: 'pointer',
+    fontSize: 16,
+    fontWeight: 600,
+  },
+  panel: {
+    margin: '10px 54px 40px',
+    border: '1px solid var(--border)',
+    background: 'var(--bg-elevated)',
+    borderRadius: 10,
+    padding: 18,
+    maxWidth: 760,
+  },
+  panelTitle: {
+    margin: '0 0 12px',
+    color: 'var(--text-heading)',
+    fontSize: 26,
+  },
+  panelRow: {
+    fontSize: 14,
+    color: 'var(--text-primary)',
+    marginBottom: 8,
+  },
+  panelList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    marginTop: 10,
+  },
+  panelItem: {
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    padding: '8px 10px',
+  },
+  panelItemMain: {
+    border: 'none',
+    background: 'transparent',
+    color: 'inherit',
+    textAlign: 'left',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    flex: 1,
+    minWidth: 0,
+    padding: '2px 4px',
+  },
+  panelItemMeta: {
+    fontSize: 12,
+    color: 'var(--text-muted)',
+    whiteSpace: 'nowrap',
+  },
+  panelDeleteBtn: {
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-muted)',
+    padding: '5px 8px',
+    cursor: 'pointer',
+    fontSize: 12,
+    whiteSpace: 'nowrap',
+  },
+  panelActions: {
+    marginTop: 12,
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+  panelActionsLeft: {
+    marginTop: 12,
+    display: 'flex',
+    gap: 10,
+    justifyContent: 'flex-start',
+  },
+  primaryActionBtn: {
+    border: '1px solid var(--border-gold)',
+    borderRadius: 8,
+    background: 'var(--bg-hover)',
+    color: 'var(--text-gold)',
+    padding: '9px 12px',
+    cursor: 'pointer',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  secondaryActionBtn: {
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    padding: '8px 12px',
+    cursor: 'pointer',
+    fontSize: 13,
+  },
+  modeBtnActive: {
+    borderColor: 'var(--border-gold)',
+    background: 'var(--bg-hover)',
+    color: 'var(--text-gold)',
+  },
+  search: {
+    width: '100%',
+    border: '1px solid var(--border)',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    borderRadius: 8,
+    padding: '9px 12px',
+    fontSize: 14,
+  },
+  saveAsShell: {
+    margin: '10px 54px 40px',
+    borderRadius: 10,
+    border: '1px solid var(--border)',
+    background: 'var(--bg-elevated)',
+    padding: 18,
+    maxWidth: 980,
+  },
+  saveAsTitle: {
+    margin: '0 0 12px',
+    fontSize: 26,
+    color: 'var(--text-heading)',
+  },
+  saveAsLayout: {
+    display: 'grid',
+    gridTemplateColumns: '332px 1fr',
+    borderTop: '1px solid var(--border)',
+    minHeight: 420,
+  },
+  saveAsLeft: {
+    padding: '12px 14px 12px 0',
+    borderRight: '1px solid var(--border)',
+  },
+  saveAsRight: {
+    padding: '12px 0 0 22px',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  saveAsBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    paddingBottom: 12,
+    marginBottom: 8,
+    borderBottom: '1px solid var(--border)',
+  },
+  saveAsSectionTitle: {
+    color: 'var(--text-secondary)',
+    fontWeight: 700,
+    marginBottom: 8,
+    fontSize: 18,
+  },
+  saveAsItem: {
+    border: '1px solid transparent',
+    borderRadius: 6,
+    background: 'transparent',
+    color: 'var(--text-primary)',
+    padding: '10px 10px',
+    cursor: 'pointer',
+    textAlign: 'left',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    fontSize: 15,
+  },
+  saveAsItemActive: {
+    background: 'var(--bg-hover)',
+    borderColor: 'var(--border-gold)',
+    color: 'var(--text-gold)',
+  },
+  saveAsIcon: {
+    width: 40,
+    textAlign: 'center',
+    opacity: 0.9,
+  },
+  saveAsRightHeading: {
+    margin: 0,
+    color: 'var(--text-primary)',
+    fontSize: 22,
+    fontWeight: 700,
+  },
+  saveAsMuted: {
+    marginTop: 6,
+    color: 'var(--text-muted)',
+    fontSize: 13,
+    maxWidth: 780,
+  },
+  saveAsFavoritesList: {
+    marginTop: 8,
+    borderTop: '1px solid var(--border)',
+    borderBottom: '1px solid var(--border)',
+  },
+  saveAsFavoriteRow: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    border: 'none',
+    borderBottom: '1px solid var(--border)',
+    background: 'transparent',
+    color: 'var(--text-primary)',
+    cursor: 'pointer',
+    textAlign: 'left',
+    padding: '10px 10px',
+    fontSize: 15,
+  },
+  saveAsFavoriteFolder: {
+    fontSize: 24,
+    color: 'var(--text-secondary)',
+    width: 40,
+    textAlign: 'center',
+  },
+  saveAsFavoriteMain: {
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
+    flex: 1,
+  },
+  saveAsFavoriteTitle: {
+    fontSize: 15,
+    fontWeight: 500,
+    color: 'var(--text-primary)',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  saveAsFavoritePath: {
+    marginTop: 2,
+    color: 'var(--text-muted)',
+    fontSize: 12,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  saveAsFavoriteTime: {
+    color: 'var(--text-muted)',
+    fontSize: 12,
+    whiteSpace: 'nowrap',
+  },
+  saveAsFormRow: {
+    marginTop: 16,
+    display: 'grid',
+    gridTemplateColumns: '130px 1fr',
+    alignItems: 'center',
+    gap: 10,
+  },
+  saveAsFieldLabel: {
+    color: 'var(--text-secondary)',
+    fontSize: 13,
+  },
+  saveAsInput: {
+    border: '1px solid var(--border)',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    borderRadius: 6,
+    padding: '9px 10px',
+    fontSize: 14,
+  },
+  saveAsSelect: {
+    border: '1px solid var(--border)',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    borderRadius: 6,
+    padding: '9px 10px',
+    fontSize: 14,
+  },
+  saveAsActionRow: {
+    marginTop: 'auto',
+    paddingTop: 16,
+    display: 'flex',
+    gap: 10,
+    justifyContent: 'flex-end',
+  },
+  empty: {
+    color: 'var(--text-muted)',
+    fontSize: 14,
+  },
 };
-
-const G = '#d4af37'; // gold
-const S = 20;        // icon size
-
-function BlankIcon() {
-  return (
-    <svg width={S} height={S} viewBox="0 0 20 20" fill="none">
-      <rect x="2" y="1" width="13" height="17" rx="2" stroke={G} strokeWidth="1.4"/>
-      <path d="M5 6h7M5 9h7M5 12h4" stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M13 1v4h4" stroke={G} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function ReportIcon() {
-  return (
-    <svg width={S} height={S} viewBox="0 0 20 20" fill="none">
-      <rect x="2" y="1" width="16" height="18" rx="2" stroke={G} strokeWidth="1.4"/>
-      <rect x="5" y="9" width="2" height="5" fill={G} opacity="0.8"/>
-      <rect x="9" y="7" width="2" height="7" fill={G} opacity="0.8"/>
-      <rect x="13" y="5" width="2" height="9" fill={G} opacity="0.8"/>
-      <path d="M5 6h7" stroke={G} strokeWidth="1.1" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function LetterIcon() {
-  return (
-    <svg width={S} height={S} viewBox="0 0 20 20" fill="none">
-      <rect x="2" y="4" width="16" height="12" rx="2" stroke={G} strokeWidth="1.4"/>
-      <path d="M2 5l8 6 8-6" stroke={G} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function ResumeIcon() {
-  return (
-    <svg width={S} height={S} viewBox="0 0 20 20" fill="none">
-      <rect x="2" y="1" width="16" height="18" rx="2" stroke={G} strokeWidth="1.4"/>
-      <circle cx="10" cy="6" r="2.2" stroke={G} strokeWidth="1.2"/>
-      <path d="M5 13c0-2.2 2.2-3.5 5-3.5s5 1.3 5 3.5" stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M5 15.5h6M5 17h4" stroke={G} strokeWidth="1.1" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function ProposalIcon() {
-  return (
-    <svg width={S} height={S} viewBox="0 0 20 20" fill="none">
-      <rect x="2" y="1" width="16" height="18" rx="2" stroke={G} strokeWidth="1.4"/>
-      <path d="M5 5h10M5 8h10M5 11h6" stroke={G} strokeWidth="1.1" strokeLinecap="round"/>
-      <circle cx="14" cy="14" r="3.5" fill="none" stroke={G} strokeWidth="1.2"/>
-      <path d="M13 14l1 1 2-2" stroke={G} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function InvoiceIcon() {
-  return (
-    <svg width={S} height={S} viewBox="0 0 20 20" fill="none">
-      <rect x="2" y="1" width="16" height="18" rx="2" stroke={G} strokeWidth="1.4"/>
-      <path d="M5 5h6M5 8h10M5 11h10M12 14h3" stroke={G} strokeWidth="1.1" strokeLinecap="round"/>
-      <text x="5.5" y="16.5" fill={G} fontSize="5" fontWeight="700" fontFamily="serif">$</text>
-    </svg>
-  );
-}

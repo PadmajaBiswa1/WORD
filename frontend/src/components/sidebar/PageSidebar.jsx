@@ -7,23 +7,19 @@ const PAGE_H   = 1123;
 const MARGIN_Y = 96;
 const CONTENT_H = PAGE_H - MARGIN_Y * 2;
 
-// Split ProseMirror DOM children into page buckets using actual rendered offsetTop
-// Accounts for zoom level to properly detect page boundaries
-function getPageBuckets(pageCount, zoom = 100) {
+// Split ProseMirror DOM children into page buckets using rendered offsetTop.
+function getPageBuckets(pageCount) {
   const proseMirror = document.querySelector('.ProseMirror');
   if (!proseMirror) return null;
 
   const children = Array.from(proseMirror.children);
   if (!children.length) return null;
 
-  // Scale content height based on current zoom level
-  const scale = zoom / 100;
-  const scaledContentHeight = CONTENT_H * scale;
   const buckets = Array.from({ length: pageCount }, () => []);
 
   children.forEach((child) => {
     // offsetTop is relative to the ProseMirror container (which starts after top margin)
-    const page = Math.min(Math.floor(child.offsetTop / scaledContentHeight), pageCount - 1);
+    const page = Math.min(Math.floor(child.offsetTop / CONTENT_H), pageCount - 1);
     buckets[Math.max(0, page)].push(child.outerHTML);
   });
 
@@ -31,7 +27,7 @@ function getPageBuckets(pageCount, zoom = 100) {
 }
 
 export function PageSidebar() {
-  const { sidebarOpen, activePage, setActivePage, zoom } = useUIStore();
+  const { sidebarOpen, activePage, setActivePage } = useUIStore();
   const { pageCount, pageOrder, reorderPages, pageThumbnails } = useDocumentStore();
   const editor = useEditorStore((s) => s.editor);
 
@@ -67,8 +63,8 @@ export function PageSidebar() {
     e.preventDefault();
     const from = dragNode.current;
     if (from !== null && from !== i && editor) {
-      // 1. Get page buckets from real DOM with current zoom level
-      const buckets = getPageBuckets(pageCount, zoom);
+      // 1. Get page buckets from rendered DOM
+      const buckets = getPageBuckets(pageCount);
       if (buckets) {
         // 2. Reorder buckets
         const reordered = [...buckets];

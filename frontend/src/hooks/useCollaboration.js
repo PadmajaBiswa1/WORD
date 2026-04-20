@@ -1,0 +1,240 @@
+import { useEffect, useRef } from 'react';
+import { useCollaborationStore, useDocumentStore, useEditorStore, useUIStore } from '@/store';
+import { getCollab, initCollab } from '@/services/websocket';
+
+const CHANGE_DEBOUNCE_MS = 500;
+const COMMENT_DEBOUNCE_MS = 250;
+
+function commentsKey(comments) {
+  return JSON.stringify(
+    (comments || []).map((comment) => ({
+      id: comment.id,
+      text: comment.text,
+      resolved: comment.resolved,
+    })),
+  );
+}
+
+export function useCollaboration(docId) {
+  const editor = useEditorStore((s) => s.editor);
+  const content = useDocumentStore((s) => s.content);
+  const title = useDocumentStore((s) => s.title);
+  const comments = useDocumentStore((s) => s.comments);
+  const trackChanges = useDocumentStore((s) => s.trackChanges);
+  const revision = useDocumentStore((s) => s.revision);
+  const setRevision = useDocumentStore((s) => s.setRevision);
+  const setCollaborators = useCollaborationStore((s) => s.setCollaborators);
+  const setConnected = useCollaborationStore((s) => s.setConnected);
+  const configureSession = useCollaborationStore((s) => s.configureSession);
+  const setLastSyncedAt = useCollaborationStore((s) => s.setLastSyncedAt);
+  const setLastRemoteEditAt = useCollaborationStore((s) => s.setLastRemoteEditAt);
+  const resetCollaboration = useCollaborationStore((s) => s.reset);
+  const toast = useUIStore((s) => s.toast);
+
+  const suppressNextContentBroadcast = useRef(null);
+  const suppressNextCommentBroadcast = useRef(null);
+  const lastSentContent = useRef('');
+  const lastSentComments = useRef('');
+  const changeTimer = useRef(null);
+  const commentTimer = useRef(null);
+
+  useEffect(() => {
+    if (!docId) {
+      resetCollaboration();
+      return undefined;
+    }
+
+    const collab = initCollab(docId);
+    configureSession({
+      sessionId: collab.sessionId,
+      userName: collab.user.name,
+      role: collab.user.role,
+    });
+
+    const offConnected = collab.on('connected', () => {
+      setConnected(true);
+      setLastSyncedAt(new Date());
+    });
+
+    const offDisconnected = collab.on('disconnected', () => {
+      setConnected(false);
+    });
+
+    const offSnapshot = collab.on('snapshot', (data) => {
+      if (!data) return;
+      const documentState = data.document || {};
+      if (typeof documentState.content === 'string') {
+        suppressNextContentBroadcast.current = documentState.content;
+        useDocumentStore.getState().applyRemoteUpdate(documentState);
+        lastSentContent.current = documentState.content;
+      }
+      if (Array.isArray(documentState.comments)) {
+        const key = commentsKey(documentState.comments);
+        suppressNextCommentBroadcast.current = key;
+        useDocumentStore.getState().replaceComments(documentState.comments);
+        lastSentComments.current = key;
+      }
+      setCollaborators(data.collaborators || []);
+      if (Number.isFinite(Number(documentState.revision))) {
+        setRevision(Number(documentState.revision));
+      }
+      setLastSyncedAt(new Date());
+    });
+
+    const offPresence = collab.on('presence', (data) => {
+      setCollaborators(data?.collaborators || []);
+    });
+
+    const offChange = collab.on('change', (data) => {
+      if (!data || data.sessionId === collab.sessionId) return;
+      const nextDocument = data.payload || {};
+      const currentRevision = Number(useDocumentStore.getState().revision || 0);
+      const incomingRevision = Number(nextDocument.revision ?? data.revision);
+      if (Number.isFinite(incomingRevision) && incomingRevision <= currentRevision) return;
+
+      if (typeof nextDocument.content === 'string') {
+        suppressNextContentBroadcast.current = nextDocument.content;
+        useDocumentStore.getState().applyRemoteUpdate(nextDocument);
+        lastSentContent.current = nextDocument.content;
+        setLastRemoteEditAt(new Date(nextDocument.updatedAt || Date.now()));
+      }
+      if (Array.isArray(nextDocument.comments)) {
+        const key = commentsKey(nextDocument.comments);
+        suppressNextCommentBroadcast.current = key;
+        useDocumentStore.getState().replaceComments(nextDocument.comments);
+        lastSentComments.current = key;
+      }
+      if (Number.isFinite(incomingRevision)) {
+        setRevision(incomingRevision);
+      }
+    });
+
+    const offComment = collab.on('comment', (data) => {
+      if (!data || data.sessionId === collab.sessionId) return;
+      if (!Array.isArray(data.payload?.comments)) return;
+
+      const currentRevision = Number(useDocumentStore.getState().revision || 0);
+      const incomingRevision = Number(data.payload?.revision ?? data.revision);
+      if (Number.isFinite(incomingRevision) && incomingRevision <= currentRevision) return;
+
+      const key = commentsKey(data.payload.comments);
+      suppressNextCommentBroadcast.current = key;
+      useDocumentStore.getState().replaceComments(data.payload.comments);
+      lastSentComments.current = key;
+      setLastRemoteEditAt(new Date());
+      if (Number.isFinite(incomingRevision)) {
+        setRevision(incomingRevision);
+      }
+    });
+
+    const offAck = collab.on('ack', ({ type, result }) => {
+      if (type !== 'change' && type !== 'comment') return;
+      const nextRevision = Number(result?.revision ?? result?.document?.revision);
+      if (Number.isFinite(nextRevision)) {
+        setRevision(nextRevision);
+      }
+      setLastSyncedAt(new Date());
+    });
+
+    const offConflict = collab.on('conflict', ({ document: latestDocument }) => {
+      if (latestDocument && typeof latestDocument === 'object') {
+        suppressNextContentBroadcast.current = latestDocument.content;
+        suppressNextCommentBroadcast.current = commentsKey(latestDocument.comments || []);
+        useDocumentStore.getState().applyRemoteUpdate(latestDocument);
+        useDocumentStore.getState().replaceComments(latestDocument.comments || []);
+        if (Number.isFinite(Number(latestDocument.revision))) {
+          setRevision(Number(latestDocument.revision));
+        }
+        lastSentContent.current = latestDocument.content || '';
+        lastSentComments.current = commentsKey(latestDocument.comments || []);
+      }
+      toast('Synced latest version after simultaneous edits', 'warning');
+    });
+
+    return () => {
+      clearTimeout(changeTimer.current);
+      clearTimeout(commentTimer.current);
+      offConnected();
+      offDisconnected();
+      offSnapshot();
+      offPresence();
+      offChange();
+      offComment();
+      offAck();
+      offConflict();
+      collab.disconnect();
+      resetCollaboration();
+    };
+  }, [docId, configureSession, resetCollaboration, setCollaborators, setConnected, setLastRemoteEditAt, setLastSyncedAt, setRevision, toast]);
+
+  useEffect(() => {
+    const collab = getCollab();
+    if (!docId || !collab) return undefined;
+    if (suppressNextContentBroadcast.current === content) {
+      suppressNextContentBroadcast.current = null;
+      return undefined;
+    }
+    if (content === lastSentContent.current) return undefined;
+
+    clearTimeout(changeTimer.current);
+    changeTimer.current = setTimeout(() => {
+      collab.broadcastChange({
+        title,
+        content,
+        comments: useDocumentStore.getState().comments,
+        trackChanges,
+        baseRevision: Number(useDocumentStore.getState().revision || 0),
+        updatedAt: new Date().toISOString(),
+      });
+      lastSentContent.current = content;
+      setLastSyncedAt(new Date());
+    }, CHANGE_DEBOUNCE_MS);
+
+    return () => clearTimeout(changeTimer.current);
+  }, [content, docId, title, trackChanges, setLastSyncedAt]);
+
+  useEffect(() => {
+    const collab = getCollab();
+    if (!docId || !collab) return undefined;
+    const currentKey = commentsKey(comments);
+    if (suppressNextCommentBroadcast.current === currentKey) {
+      suppressNextCommentBroadcast.current = null;
+      return undefined;
+    }
+    if (currentKey === lastSentComments.current) return undefined;
+
+    clearTimeout(commentTimer.current);
+    commentTimer.current = setTimeout(() => {
+      collab.broadcastComment({
+        comments: useDocumentStore.getState().comments,
+        baseRevision: Number(useDocumentStore.getState().revision || 0),
+        updatedAt: new Date().toISOString(),
+      });
+      lastSentComments.current = currentKey;
+      setLastSyncedAt(new Date());
+    }, COMMENT_DEBOUNCE_MS);
+
+    return () => clearTimeout(commentTimer.current);
+  }, [comments, docId, revision, setLastSyncedAt]);
+
+  useEffect(() => {
+    const collab = getCollab();
+    if (!docId || !collab || !editor) return undefined;
+    const emitPresence = () => {
+      const selection = editor.state.selection;
+      collab.broadcastPresence({
+        cursor: {
+          cursor: selection.head,
+          from: selection.from,
+          to: selection.to,
+          anchor: selection.anchor,
+          head: selection.head,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+    };
+    emitPresence();
+    editor.on('selectionUpdate', emitPresence);
+    return () => editor.off('selectionUpdate', emitPresence);
+  }, [docId, editor]);
+}

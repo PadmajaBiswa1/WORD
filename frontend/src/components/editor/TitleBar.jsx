@@ -1,105 +1,234 @@
-import { useState, useRef } from 'react';
-import { useDocumentStore, useUIStore } from '@/store';
-import { Button, Tooltip } from '@/components/ui';
-import { EtherXLogo } from '@/components/ui/EtherXLogo';
-import { format } from 'date-fns';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useCollaborationStore, useDocumentStore, useEditorStore, useUIStore } from '@/store';
+import { useTheme } from '@/hooks/useTheme';
 
 export function TitleBar({ onSave }) {
-  const title = useDocumentStore((s) => s.title);
-  const setTitle = useDocumentStore((s) => s.setTitle);
-  const isDirty = useDocumentStore((s) => s.isDirty);
-  const isSaving = useDocumentStore((s) => s.isSaving);
-  const lastSaved = useDocumentStore((s) => s.lastSaved);
-  const wordCount = useDocumentStore((s) => s.wordCount);
-  const readingTime = useDocumentStore((s) => s.readingTime);
-
-  const theme = useUIStore((s) => s.theme);
-  const toggleTheme = useUIStore((s) => s.toggleTheme);
+  const navigate = useNavigate();
+  const location = useLocation();
   const openDialog = useUIStore((s) => s.openDialog);
-  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
-  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const fullscreen = useUIStore((s) => s.fullscreen);
   const toggleFullscreen = useUIStore((s) => s.toggleFullscreen);
+  const toggleRibbon = useUIStore((s) => s.toggleRibbon);
+  const ribbonCollapsed = useUIStore((s) => s.ribbonCollapsed);
+  const autoSaveEnabled = useUIStore((s) => s.autoSaveEnabled);
+  const toggleAutoSave = useUIStore((s) => s.toggleAutoSave);
+  const title = useDocumentStore((s) => s.title);
+  const setTitle = useDocumentStore((s) => s.setTitle);
+  const editor = useEditorStore((s) => s.editor);
+  const collaborators = useCollaborationStore((s) => s.collaborators);
+  const collabStatus = useCollaborationStore((s) => s.status);
+  const { theme, toggleTheme } = useTheme();
+  const visibleCollaborators = collaborators.slice(0, 3);
 
-  const save = onSave;
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState('');
-  const inputRef = useRef();
+  const canUndo = Boolean(editor?.can?.().undo?.());
+  const canRedo = Boolean(editor?.can?.().redo?.());
 
-  const startEdit = () => { setDraft(title); setEditing(true); setTimeout(() => inputRef.current?.select(), 50); };
-  const commitEdit = () => { if (draft.trim()) setTitle(draft.trim()); setEditing(false); };
+  const handleUndo = () => {
+    if (!editor) return;
+    editor.chain().focus().undo().run();
+  };
+
+  const handleRedo = () => {
+    if (!editor) return;
+    editor.chain().focus().redo().run();
+  };
+
+  const handleClose = () => {
+    navigate('/home', { state: { returnTo: location.pathname } });
+  };
+
+  const onGoldHover = (e) => {
+    e.currentTarget.style.background = 'var(--bg-hover)';
+    e.currentTarget.style.borderColor = 'var(--gold)';
+  };
+  const onGoldLeave = (e) => {
+    e.currentTarget.style.background = 'transparent';
+    e.currentTarget.style.borderColor = 'transparent';
+  };
 
   return (
     <div style={{
-      height: 42, display: 'flex', alignItems: 'center', gap: 0,
+      height: 32, display: 'flex', alignItems: 'center', gap: 10,
       background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)',
-      padding: '0 12px', flexShrink: 0, userSelect: 'none',
+      padding: '0 8px', flexShrink: 0, userSelect: 'none', fontFamily: 'var(--font-ui)',
     }}>
-      {/* Logo */}
-      <div style={{ display:'flex', alignItems:'center', marginRight:16 }}>
-        <img
-          src="/assets/etherxwordlogo.png"
-          style={{ height: 60, objectFit: 'contain' }}
-        />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{
+          width: 22, height: 22, borderRadius: 2, background: 'var(--bg-elevated)', color: 'var(--gold)',
+          display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 700,
+        }}>W</div>
+        <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>AutoSave {autoSaveEnabled ? 'On' : 'Off'}</span>
+        <button
+          onClick={toggleAutoSave}
+          style={{
+            width: 30, height: 16, borderRadius: 999, border: '1px solid #c9a84c',
+            background: 'var(--bg-elevated)', cursor: 'pointer', padding: 1, position: 'relative',
+          }}
+          title="Toggle AutoSave"
+        >
+          <span style={{
+            width: 12, height: 12, borderRadius: '50%', background: 'var(--gold)', display: 'block',
+            transform: `translateX(${autoSaveEnabled ? 14 : 0}px)`, transition: 'transform 0.1s ease',
+          }} />
+        </button>
+        <button title="Save" onClick={onSave} style={quickBtn} onMouseEnter={onGoldHover} onMouseLeave={onGoldLeave}>💾</button>
+        <button title="Undo" onClick={handleUndo} disabled={!canUndo} style={{ ...quickBtn, ...(canUndo ? null : disabledBtn) }} onMouseEnter={onGoldHover} onMouseLeave={onGoldLeave}>↩</button>
+        <button title="Redo" onClick={handleRedo} disabled={!canRedo} style={{ ...quickBtn, ...(canRedo ? null : disabledBtn) }} onMouseEnter={onGoldHover} onMouseLeave={onGoldLeave}>↪</button>
       </div>
 
-      {/* Document title */}
-      <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        {editing ? (
-          <input ref={inputRef} value={draft} onChange={(e)=>setDraft(e.target.value)}
-            onBlur={commitEdit} onKeyDown={(e)=>{ if(e.key==='Enter') commitEdit(); if(e.key==='Escape') setEditing(false); }}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <div style={{
+          width: 'min(520px, 52vw)', height: 24, background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)', borderRadius: 2, display: 'flex', alignItems: 'center', padding: '0 8px', gap: 6,
+        }}>
+          <span style={{ color: 'var(--gold)', fontSize: 12 }}>✎</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Untitled Document"
             style={{
-              background:'var(--bg-elevated)', color:'var(--text-primary)',
-              border:'1px solid var(--gold)', borderRadius:'var(--radius-sm)',
-              padding:'3px 10px', fontSize:13, fontFamily:'var(--font-ui)',
-              textAlign:'center', width:280, outline:'none',
-            }} />
-        ) : (
-          <button onClick={startEdit} title="Rename document"
-            style={{
-              background:'none', border:'none', color:'var(--text-primary)',
-              fontFamily:'var(--font-ui)', fontSize:13, fontWeight:500,
-              cursor:'text', padding:'3px 8px', borderRadius:'var(--radius-sm)',
-              display:'flex', alignItems:'center', gap:6,
+              border: 'none', background: 'transparent', outline: 'none', width: '100%',
+              color: 'var(--text-primary)', fontSize: 12, fontFamily: 'var(--font-ui)',
             }}
-            onMouseEnter={(e)=>(e.currentTarget.style.background='var(--bg-hover)')}
-            onMouseLeave={(e)=>(e.currentTarget.style.background='none')}>
-            {title}
-            {isDirty && <span style={{ color:'var(--text-muted)', fontSize:11 }}>●</span>}
-          </button>
-        )}
-
-        {/* Save status */}
-        <span style={{ color:'var(--text-muted)', fontSize:11, marginLeft:8, fontFamily:'var(--font-ui)' }}>
-          {isSaving ? '⟳ Saving…' : lastSaved ? `Saved ${format(lastSaved, 'h:mm a')}` : ''}
-        </span>
+          />
+        </div>
       </div>
 
-      {/* Right controls */}
-      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-        <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font-ui)', marginRight:8 }}>
-          {wordCount} words · {readingTime} min read
-        </span>
-
-        <Tooltip text="Toggle sidebar">
-          <Button onClick={toggleSidebar} active={sidebarOpen} size="sm">⊞</Button>
-        </Tooltip>
-        <Tooltip text="Version history">
-          <Button onClick={() => openDialog('versionHistory')} size="sm">⏱</Button>
-        </Tooltip>
-        <Tooltip text="Share">
-          <Button onClick={() => openDialog('shareDoc')} size="sm">↗</Button>
-        </Tooltip>
-        <Tooltip text="Export">
-          <Button onClick={() => openDialog('exportDoc')} variant="outline" size="sm">⬇ Export</Button>
-        </Tooltip>
-        <Tooltip text={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
-          <Button onClick={toggleTheme} size="sm">{theme === 'dark' ? '☀' : '🌙'}</Button>
-        </Tooltip>
-        <Tooltip text={fullscreen ? 'Exit fullscreen (F11)' : 'Fullscreen (F11)'}>
-          <Button onClick={toggleFullscreen} size="sm">{fullscreen ? '⤡' : '⤢'}</Button>
-        </Tooltip>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button
+          onClick={toggleTheme}
+          title="Toggle theme"
+          style={outlineBtn}
+          onMouseEnter={onGoldHover}
+          onMouseLeave={onGoldLeave}
+        >
+          {theme === 'dark' ? '🌙 Dark' : '☀ Light'}
+        </button>
+        <div style={presenceWrap} title={collabStatus}>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{collabStatus}</span>
+          {visibleCollaborators.map((person, index) => (
+            <span key={person.sessionId || `${person.name}-${index}`} style={presenceBadge}>
+              {(person.name || 'G').slice(0, 2).toUpperCase()}
+            </span>
+          ))}
+          {collaborators.length > visibleCollaborators.length ? (
+            <span style={presenceCount}>+{collaborators.length - visibleCollaborators.length}</span>
+          ) : null}
+        </div>
+        <button onClick={() => openDialog('comments')} style={outlineBtn} onMouseEnter={onGoldHover} onMouseLeave={onGoldLeave}>Comments</button>
+        <button
+          style={flatTextBtn}
+          onClick={() => openDialog('restrictEditing')}
+          onMouseEnter={onGoldHover}
+          onMouseLeave={onGoldLeave}
+          title="Open editing permissions"
+        >
+          Editing ▾
+        </button>
+        <button
+          onClick={() => openDialog('shareDoc')}
+          style={shareBtn}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#d9bb67'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--gold)'; }}
+        >
+          Share
+        </button>
+        <button style={{
+          ...quickBtn, background: 'var(--gold)', color: 'var(--text-on-gold)', borderColor: 'var(--gold)', fontWeight: 700,
+        }} onMouseEnter={(e) => { e.currentTarget.style.background = '#d9bb67'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--gold)'; }}>U</button>
+        <button
+          title="Toggle ribbon"
+          onClick={toggleRibbon}
+          style={windowBtn}
+          onMouseEnter={onGoldHover}
+          onMouseLeave={onGoldLeave}
+        >
+          {ribbonCollapsed ? '▔' : '—'}
+        </button>
+        <button title="Maximize" onClick={toggleFullscreen} style={windowBtn} onMouseEnter={onGoldHover} onMouseLeave={onGoldLeave}>{fullscreen ? '❐' : '⬜'}</button>
+        <button
+          title="Back to file menu"
+          onClick={handleClose}
+          style={windowBtn}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#c42b1c'; e.currentTarget.style.color = '#fff'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+        >
+          ✕
+        </button>
       </div>
     </div>
   );
 }
+
+const quickBtn = {
+  width: 22,
+  height: 22,
+  borderRadius: 2,
+  border: '1px solid transparent',
+  background: 'transparent',
+  color: 'var(--gold)',
+  fontSize: 12,
+  cursor: 'pointer',
+  transition: 'background 0.1s, border-color 0.1s',
+};
+
+const outlineBtn = {
+  ...quickBtn,
+  width: 'auto',
+  padding: '0 8px',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border)',
+};
+
+const flatTextBtn = {
+  ...quickBtn,
+  width: 'auto',
+  padding: '0 8px',
+  color: 'var(--text-primary)',
+};
+
+const shareBtn = {
+  ...quickBtn,
+  width: 'auto',
+  padding: '0 10px',
+  background: 'var(--gold)',
+  borderColor: 'var(--gold)',
+  color: 'var(--text-on-gold)',
+  fontWeight: 600,
+};
+
+const windowBtn = {
+  ...quickBtn,
+  color: 'var(--text-primary)',
+};
+
+const disabledBtn = {
+  opacity: 0.35,
+  cursor: 'not-allowed',
+};
+
+const presenceWrap = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  padding: '0 6px',
+};
+
+const presenceBadge = {
+  width: 20,
+  height: 20,
+  borderRadius: '50%',
+  display: 'grid',
+  placeItems: 'center',
+  background: 'rgba(212, 175, 55, 0.18)',
+  border: '1px solid var(--border-gold)',
+  color: 'var(--text-gold)',
+  fontSize: 10,
+  fontWeight: 700,
+};
+
+const presenceCount = {
+  fontSize: 11,
+  color: 'var(--text-secondary)',
+  minWidth: 20,
+};

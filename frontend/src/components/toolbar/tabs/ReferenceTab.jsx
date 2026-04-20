@@ -1,0 +1,348 @@
+import { useRef, useState } from 'react';
+import { useUIStore, useEditorStore } from '@/store';
+import { Button, Tooltip } from '@/components/ui';
+import { RibbonGroup } from '../RibbonGroup';
+import { buildTocHtml, getHeadingOutline, syncHeadingIds } from '@/components/dialogs/ReferenceDialogs';
+
+const INDEX_STORE_KEY = 'etherx-reference-index-entries';
+const AUTH_STORE_KEY = 'etherx-reference-authority-entries';
+
+function selectedText(editor) {
+  if (!editor) return '';
+  const { from, to } = editor.state.selection;
+  return editor.state.doc.textBetween(from, to, ' ').trim();
+}
+
+function readEntryStore(key) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeEntryStore(key, values) {
+  window.localStorage.setItem(key, JSON.stringify(values));
+}
+
+function dedupeSorted(values = []) {
+  return [...new Set(values.map((v) => String(v || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+export function ReferenceTab() {
+  const { toast, openDialog } = useUIStore();
+  const { editor } = useEditorStore();
+  const nextFootnoteIndex = useRef(0);
+  const [notesVisible, setNotesVisible] = useState(true);
+
+  const keepSelectionOnMouseDown = (event) => {
+    event.preventDefault();
+  };
+
+  const run = (fn) => {
+    if (!editor) {
+      toast('Editor is not ready yet', 'info');
+      return;
+    }
+    fn?.();
+    editor.view?.focus();
+  };
+
+  const insertHtml = (html) => run(() => editor.chain().focus().insertContent(html).run());
+
+  const upsertListSection = (heading, values = []) => {
+    if (!editor) {
+      toast('Editor is not ready yet', 'info');
+      return false;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = editor.getHTML();
+    const safeValues = values.filter(Boolean);
+    const listHtml = safeValues.length
+      ? safeValues.map((entry) => `<li>${escapeHtml(entry)}</li>`).join('')
+      : '<li style="color:#666;">No entries found.</li>';
+    const sectionHtml = `<h2>${escapeHtml(heading)}</h2><ol>${listHtml}</ol>`;
+
+    const headings = [...wrapper.querySelectorAll('h1,h2,h3,h4,h5,h6')];
+    const targetHeading = headings.find((node) => node.textContent?.trim().toLowerCase() === heading.toLowerCase());
+    if (targetHeading) {
+      const nextSibling = targetHeading.nextElementSibling;
+      const box = document.createElement('div');
+      box.innerHTML = sectionHtml;
+      const newHeading = box.querySelector('h2');
+      const newList = box.querySelector('ol');
+      if (newHeading && newList) {
+        targetHeading.replaceWith(newHeading);
+        if (nextSibling && (nextSibling.tagName === 'OL' || nextSibling.tagName === 'UL')) nextSibling.replaceWith(newList);
+        else newHeading.insertAdjacentElement('afterend', newList);
+      }
+    } else {
+      wrapper.insertAdjacentHTML('beforeend', sectionHtml);
+    }
+
+    editor.commands.setContent(wrapper.innerHTML, false);
+    editor.view?.focus();
+    return true;
+  };
+
+  const insertCitation = () => openDialog('insertCitation');
+  const manageSources = () => openDialog('manageSources');
+  const insertBibliography = () => openDialog('bibliography');
+  const insertToc = () => openDialog('tableOfContents');
+
+  const addTextToToc = () => {
+    if (!editor) {
+      toast('Editor is not ready yet', 'info');
+      return;
+    }
+
+    const { from, to } = editor.state.selection;
+    if (from === to) {
+      toast('Select heading text first to add it to the table of contents', 'info');
+      return;
+    }
+
+    const selected = editor.state.doc.textBetween(from, to, ' ').trim();
+    if (!selected) {
+      toast('Select heading text first to add it to the table of contents', 'info');
+      return;
+    }
+
+    run(() => editor.chain().focus().setTextSelection({ from, to }).setHeading({ level: 2 }).run());
+    toast('Selected text promoted to heading for TOC', 'success');
+  };
+
+  const updateToc = () => {
+    if (!editor) {
+      toast('Editor is not ready yet', 'info');
+      return;
+    }
+
+    const currentHtml = syncHeadingIds(editor.getHTML());
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = currentHtml;
+
+    const tocContainer = document.createElement('div');
+    tocContainer.innerHTML = buildTocHtml(getHeadingOutline(editor));
+    const nextToc = tocContainer.firstElementChild;
+    if (!nextToc) {
+      toast('Unable to build table of contents', 'error');
+      return;
+    }
+
+    const headings = [...wrapper.querySelectorAll('h1,h2,h3,h4,h5,h6')];
+    const tocHeading = headings.find((node) => node.textContent?.trim().toLowerCase() === 'table of contents');
+    if (tocHeading) {
+      const nextSibling = tocHeading.nextElementSibling;
+      const tocWrap = document.createElement('div');
+      tocWrap.innerHTML = buildTocHtml(getHeadingOutline(editor));
+      const newHeading = tocWrap.querySelector('h2');
+      const newList = tocWrap.querySelector('ol,ul');
+      if (newHeading && newList) {
+        tocHeading.replaceWith(newHeading);
+        if (nextSibling && (nextSibling.tagName === 'OL' || nextSibling.tagName === 'UL')) nextSibling.replaceWith(newList);
+        else newHeading.insertAdjacentElement('afterend', newList);
+      }
+    } else {
+      wrapper.prepend(nextToc);
+    }
+
+    editor.commands.setContent(wrapper.innerHTML, false);
+    editor.view?.focus();
+    toast('Table of contents updated', 'success');
+  };
+
+  const jumpToNextFootnote = () => {
+    if (!editor) return toast('Editor is not ready yet', 'info');
+    const root = editor.view?.dom;
+    if (!root) return;
+    const notes = [...root.querySelectorAll('sup')].filter((node) => /\[(\d+|[a-zA-Z]+)\]/.test(node.textContent || ''));
+    if (!notes.length) {
+      toast('No footnotes found', 'info');
+      return;
+    }
+    const next = notes[nextFootnoteIndex.current % notes.length];
+    nextFootnoteIndex.current = (nextFootnoteIndex.current + 1) % notes.length;
+    next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Moved to next footnote', 'success');
+  };
+
+  const toggleNotesVisibility = () => {
+    if (!editor) return;
+    const root = editor.view?.dom;
+    const noteBodies = [...root.querySelectorAll('p')].filter((node) => {
+      const t = node.textContent || '';
+      return t.includes('Footnote:') || t.includes('Endnote:');
+    });
+    if (!noteBodies.length) {
+      toast('No note details found', 'info');
+      return;
+    }
+    const shouldHide = notesVisible;
+    noteBodies.forEach((note) => {
+      note.style.display = shouldHide ? 'none' : '';
+    });
+    setNotesVisible(!shouldHide);
+    toast(shouldHide ? 'Notes hidden' : 'Notes shown', 'success');
+  };
+
+  const insertCaption = () => {
+    if (!editor) return;
+    const captionText = (window.prompt('Caption text', 'Figure 1: Caption') || '').trim();
+    if (!captionText) return;
+    insertHtml(`<p>Figure: ${escapeHtml(captionText)}</p>`);
+    toast('Caption inserted', 'success');
+  };
+
+  const insertTableOfFigures = () => {
+    if (!editor) return;
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = editor.getHTML();
+    const captions = [...wrapper.querySelectorAll('p')]
+      .map((node) => node.textContent?.trim() || '')
+      .filter((text) => /^Figure\s*:/i.test(text));
+    if (!captions.length) {
+      toast('No captions found', 'info');
+      return;
+    }
+    if (upsertListSection('Table of Figures', captions)) {
+      toast('Table of figures updated', 'success');
+    }
+  };
+
+  const markIndexEntry = () => {
+    if (!editor) return;
+    const text = selectedText(editor);
+    if (!text) {
+      toast('Select text to mark as an index entry', 'info');
+      return;
+    }
+    const next = dedupeSorted([...readEntryStore(INDEX_STORE_KEY), text]);
+    writeEntryStore(INDEX_STORE_KEY, next);
+    toast('Index entry marked', 'success');
+  };
+
+  const insertIndex = () => {
+    if (!editor) return;
+    const entries = readEntryStore(INDEX_STORE_KEY);
+    if (!entries.length) {
+      toast('No marked index entries found', 'info');
+      return;
+    }
+    const unique = dedupeSorted(entries);
+    if (upsertListSection('Index', unique)) {
+      toast('Index updated', 'success');
+    }
+  };
+
+  const updateIndex = () => {
+    insertIndex();
+  };
+
+  const markCitation = () => {
+    if (!editor) return;
+    const text = selectedText(editor);
+    if (!text) {
+      toast('Select text to mark citation', 'info');
+      return;
+    }
+    const next = dedupeSorted([...readEntryStore(AUTH_STORE_KEY), text]);
+    writeEntryStore(AUTH_STORE_KEY, next);
+    toast('Citation marked', 'success');
+  };
+
+  const insertAuthorities = () => {
+    if (!editor) return;
+    const entries = readEntryStore(AUTH_STORE_KEY);
+    if (!entries.length) {
+      toast('No marked citations found', 'info');
+      return;
+    }
+    const unique = dedupeSorted(entries);
+    if (upsertListSection('Table of Authorities', unique)) {
+      toast('Table of authorities updated', 'success');
+    }
+  };
+
+  const updateAuthorities = () => {
+    insertAuthorities();
+  };
+
+  const smartLookup = () => {
+    const query = selectedText(editor);
+    if (!query) {
+      toast('Select text to look up', 'info');
+      return;
+    }
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
+    toast('Lookup opened in browser', 'success');
+  };
+
+  const openResearcher = () => {
+    const query = selectedText(editor) || 'academic writing';
+    window.open(`https://scholar.google.com/scholar?q=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
+    toast('Researcher opened', 'success');
+  };
+
+  return (
+    <>
+      <RibbonGroup label="Table of Contents">
+        <Tooltip text="Table of Contents"><Button onMouseDown={keepSelectionOnMouseDown} onClick={insertToc}>≡ Contents</Button></Tooltip>
+        <Tooltip text="Add Text"><Button onMouseDown={keepSelectionOnMouseDown} onClick={addTextToToc}>+ Add Text</Button></Tooltip>
+        <Tooltip text="Update Table"><Button onMouseDown={keepSelectionOnMouseDown} onClick={updateToc}>↻ Update</Button></Tooltip>
+      </RibbonGroup>
+
+      <RibbonGroup label="Footnotes">
+        <Tooltip text="Insert Footnote" shortcut="Alt+Ctrl+F"><Button onMouseDown={keepSelectionOnMouseDown} onClick={() => insertHtml('<p><sup>[1]</sup> Footnote: Footnote text</p>')}>¹ Footnote</Button></Tooltip>
+        <Tooltip text="Insert Endnote" shortcut="Alt+Ctrl+D"><Button onMouseDown={keepSelectionOnMouseDown} onClick={() => insertHtml('<p><sup>[a]</sup> Endnote: Endnote text</p>')}>¹ Endnote</Button></Tooltip>
+        <Tooltip text="Next Footnote"><Button onMouseDown={keepSelectionOnMouseDown} onClick={jumpToNextFootnote}>→ Next</Button></Tooltip>
+        <Tooltip text="Show Notes"><Button onMouseDown={keepSelectionOnMouseDown} onClick={toggleNotesVisibility}>👁 Show</Button></Tooltip>
+      </RibbonGroup>
+
+      <RibbonGroup label="Citations & Bibliography">
+        <Tooltip text="Insert Citation"><Button onMouseDown={keepSelectionOnMouseDown} onClick={insertCitation}>❝ Citation</Button></Tooltip>
+        <Tooltip text="Manage Sources"><Button onMouseDown={keepSelectionOnMouseDown} onClick={manageSources}>📚 Sources</Button></Tooltip>
+        <Tooltip text="Style"><Button onMouseDown={keepSelectionOnMouseDown} onClick={() => openDialog('insertCitation')}>APA Style</Button></Tooltip>
+        <Tooltip text="Bibliography"><Button onMouseDown={keepSelectionOnMouseDown} onClick={insertBibliography}>📖 Bibliography</Button></Tooltip>
+      </RibbonGroup>
+
+      <RibbonGroup label="Captions">
+        <Tooltip text="Insert Caption"><Button onMouseDown={keepSelectionOnMouseDown} onClick={insertCaption}>🏷 Caption</Button></Tooltip>
+        <Tooltip text="Insert Table of Figures"><Button onMouseDown={keepSelectionOnMouseDown} onClick={insertTableOfFigures}>≡ Figures</Button></Tooltip>
+        <Tooltip text="Update Table"><Button onMouseDown={keepSelectionOnMouseDown} onClick={insertTableOfFigures}>↻ Update</Button></Tooltip>
+        <Tooltip text="Cross-reference"><Button onMouseDown={keepSelectionOnMouseDown} onClick={() => {
+          const picked = selectedText(editor) || (window.prompt('Cross-reference label', 'Reference') || 'Reference');
+          run(() => editor.chain().insertContent(`[See: ${picked}]`).run());
+        }}>⇒ Cross-ref</Button></Tooltip>
+      </RibbonGroup>
+
+      <RibbonGroup label="Index">
+        <Tooltip text="Mark Entry"><Button onMouseDown={keepSelectionOnMouseDown} onClick={markIndexEntry}>✎ Mark Entry</Button></Tooltip>
+        <Tooltip text="Insert Index"><Button onMouseDown={keepSelectionOnMouseDown} onClick={insertIndex}>≡ Index</Button></Tooltip>
+        <Tooltip text="Update Index"><Button onMouseDown={keepSelectionOnMouseDown} onClick={updateIndex}>↻ Update</Button></Tooltip>
+      </RibbonGroup>
+
+      <RibbonGroup label="Table of Authorities">
+        <Tooltip text="Mark Citation"><Button onMouseDown={keepSelectionOnMouseDown} onClick={markCitation}>✎ Mark</Button></Tooltip>
+        <Tooltip text="Insert Table of Authorities"><Button onMouseDown={keepSelectionOnMouseDown} onClick={insertAuthorities}>≡ Authorities</Button></Tooltip>
+        <Tooltip text="Update Table"><Button onMouseDown={keepSelectionOnMouseDown} onClick={updateAuthorities}>↻ Update</Button></Tooltip>
+      </RibbonGroup>
+
+      <RibbonGroup label="Research">
+        <Tooltip text="Researcher"><Button onMouseDown={keepSelectionOnMouseDown} onClick={openResearcher}>🔬 Researcher</Button></Tooltip>
+        <Tooltip text="Smart Lookup"><Button onMouseDown={keepSelectionOnMouseDown} onClick={smartLookup}>🔍 Lookup</Button></Tooltip>
+      </RibbonGroup>
+    </>
+  );
+}

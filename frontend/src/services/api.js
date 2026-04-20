@@ -5,6 +5,25 @@ class ApiError extends Error {
 }
 
 function getToken() { return localStorage.getItem('etherx_token'); }
+export function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem('etherx_user') || 'null') || {};
+  } catch {
+    return {};
+  }
+}
+
+function getUserHeaders() {
+  const user = getStoredUser();
+  const name = user.name || user.email || 'Guest User';
+  const email = user.email || '';
+  const id = user.id || email || name.toLowerCase().replace(/\s+/g, '-');
+  return {
+    'X-EtherX-User-Id': id,
+    'X-EtherX-User-Name': name,
+    'X-EtherX-User-Email': email,
+  };
+}
 
 async function req(path, opts = {}) {
   const token = getToken();
@@ -12,6 +31,7 @@ async function req(path, opts = {}) {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...getUserHeaders(),
       ...opts.headers,
     },
     ...opts,

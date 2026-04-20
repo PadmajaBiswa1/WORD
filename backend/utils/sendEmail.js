@@ -54,4 +54,33 @@ async function sendOTPEmail(email, otp, type) {
   }
 }
 
-module.exports = { generateOTP, sendOTPEmail };
+async function sendInviteEmail({ toEmail, inviterName, documentTitle, shareUrl, role = 'viewer' }) {
+  if (!toEmail) throw new Error('Invite email is required');
+
+  const safeInviter = inviterName || 'A collaborator';
+  const safeTitle = documentTitle || 'Untitled Document';
+  const safeRole = role || 'viewer';
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"EtherxWord" <${process.env.SMTP_USER}>`,
+      to: toEmail,
+      subject: `${safeInviter} invited you to collaborate on "${safeTitle}"`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:28px;background:#0f0f0f;color:#e8e0d0;border-radius:8px">
+          <h2 style="color:#c9a84c;margin:0 0 8px 0">EtherxWord Collaboration Invite</h2>
+          <p style="margin:0 0 14px 0"><strong>${safeInviter}</strong> invited you to join <strong>${safeTitle}</strong> as <strong>${safeRole}</strong>.</p>
+          <a href="${shareUrl}" style="display:inline-block;padding:10px 16px;background:#c9a84c;color:#121212;text-decoration:none;border-radius:6px;font-weight:700">Open Document</a>
+          <p style="margin:14px 0 0 0;font-size:12px;color:#999">If the button does not work, copy this link:<br>${shareUrl}</p>
+        </div>
+      `,
+    });
+    console.log('✅ Invite email sent to', toEmail, '| MessageId:', info.messageId);
+    return info;
+  } catch (err) {
+    console.error('❌ Failed to send invite email:', err.message);
+    throw err;
+  }
+}
+
+module.exports = { generateOTP, sendOTPEmail, sendInviteEmail };

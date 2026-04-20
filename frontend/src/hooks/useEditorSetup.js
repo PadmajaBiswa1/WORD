@@ -1,5 +1,11 @@
+// ═══════════════════════════════════════════════════════════════
+//  useEditorSetup — Tiptap editor initialisation
+//  FontSize is implemented as a custom inline Extension so no
+//  extra npm package is required.
+// ═══════════════════════════════════════════════════════════════
 import { useEffect } from 'react';
 import { useEditor as useTiptap } from '@tiptap/react';
+import { Extension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
@@ -24,20 +30,124 @@ import FontFamily from '@tiptap/extension-font-family';
 import { PageBreak } from '@/components/editor/PageBreak';
 import { useEditorStore, useDocumentStore } from '@/store';
 
+const LANGUAGE_KEY = 'etherx-language';
+
+const RTL_LANGS = new Set(['ar-SA', 'he-IL', 'ur-PK', 'fa-IR']);
+
+const FONT_STACK_BY_FAMILY = {
+  'Crimson Pro': '"Crimson Pro", "Noto Serif", "Noto Sans", "Segoe UI", "Nirmala UI", "Microsoft YaHei", "Malgun Gothic", serif',
+  Calibri: 'Calibri, "Segoe UI", "Nirmala UI", "Microsoft YaHei", "Malgun Gothic", "Meiryo", sans-serif',
+  Arial: 'Arial, "Segoe UI", "Nirmala UI", "Microsoft YaHei", "Malgun Gothic", "Meiryo", sans-serif',
+  'Times New Roman': '"Times New Roman", "Noto Serif", "Noto Naskh Arabic", "Noto Sans Devanagari", serif',
+  'Nirmala UI': '"Nirmala UI", "Noto Sans Devanagari", "Segoe UI", sans-serif',
+  'Microsoft YaHei': '"Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", sans-serif',
+  'Malgun Gothic': '"Malgun Gothic", "Noto Sans CJK KR", "Segoe UI", sans-serif',
+  Meiryo: 'Meiryo, "Yu Gothic UI", "Noto Sans CJK JP", sans-serif',
+  'Noto Sans Devanagari': '"Noto Sans Devanagari", "Nirmala UI", "Segoe UI", sans-serif',
+  'Noto Naskh Arabic': '"Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif',
+};
+
+const ResizableImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: (element) => {
+          const width = element.getAttribute('width') || element.style.width || null;
+          return width ? String(width).replace('px', '') : null;
+        },
+        renderHTML: (attributes) => {
+          if (!attributes.width) return {};
+          const w = String(attributes.width).replace('px', '');
+          return { width: w };
+        },
+      },
+      height: {
+        default: null,
+        parseHTML: (element) => {
+          const height = element.getAttribute('height') || element.style.height || null;
+          return height ? String(height).replace('px', '') : null;
+        },
+        renderHTML: (attributes) => {
+          if (!attributes.height) return {};
+          const h = String(attributes.height).replace('px', '');
+          return { height: h };
+        },
+      },
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('style') || null,
+        renderHTML: (attributes) => (attributes.style ? { style: attributes.style } : {}),
+      },
+    };
+  },
+});
+
+// ── FontSize extension ────────────────────────────────────────
+// Stores font-size as a textStyle attribute so it survives
+// serialisation to/from HTML and works with setFontSize() command.
+const FontSize = Extension.create({
+  name: 'fontSize',
+
+  addGlobalAttributes() {
+    return [{
+      types: ['textStyle'],
+      attributes: {
+        fontSize: {
+          default: null,
+          parseHTML: (element) => element.style.fontSize || null,
+          renderHTML: (attributes) =>
+            attributes.fontSize ? { style: `font-size: ${attributes.fontSize}` } : {},
+        },
+      },
+    }];
+  },
+
+  addCommands() {
+    return {
+      // editor.chain().setFontSize('14pt').run()
+      setFontSize: (size) => ({ chain }) =>
+        chain().setMark('textStyle', { fontSize: size }).run(),
+
+      // editor.chain().unsetFontSize().run()
+      unsetFontSize: () => ({ chain }) =>
+        chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle().run(),
+    };
+  },
+});
+
+// ── Hook ─────────────────────────────────────────────────────
 export function useEditorSetup() {
-  const { setEditor, fontFamily, fontSize, spellCheck } = useEditorStore();
-  const { setContent, setStats } = useDocumentStore();
+  const { setEditor, fontFamily, fontSize, spellCheck, beginProgrammaticChange } = useEditorStore();
+  const { content } = useDocumentStore();
+
+  const syncToolbarFormattingState = (instance) => {
+    const attrs = instance.getAttributes('textStyle') || {};
+    const nextFamily = attrs.fontFamily || useEditorStore.getState().fontFamily;
+    const rawSize = attrs.fontSize;
+    const parsedSize = rawSize ? parseInt(String(rawSize), 10) : NaN;
+    const nextSize = Number.isFinite(parsedSize)
+      ? String(parsedSize)
+      : useEditorStore.getState().fontSize;
+
+    const state = useEditorStore.getState();
+    if (state.fontFamily !== nextFamily) state.setFontFamily(nextFamily);
+    if (state.fontSize !== nextSize) state.setFontSize(nextSize);
+  };
 
   const editor = useTiptap({
     extensions: [
-      StarterKit.configure({ history: { depth: 100 }, heading: { levels: [1,2,3,4,5,6] } }),
+      StarterKit.configure({ history: { depth: 100 }, heading: { levels: [1, 2, 3, 4, 5, 6] } }),
       Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      TextStyle,
+      TextStyle,   // required by Color, FontFamily, FontSize
       Color,
+      FontFamily,
+      FontSize,    // custom inline extension — setFontSize() command available
       Highlight.configure({ multicolor: true }),
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
-      Image.configure({ allowBase64: true }),
+      ResizableImage.configure({ allowBase64: true }),
       Table.configure({ resizable: true }),
       TableRow, TableCell, TableHeader,
       TaskList,
@@ -48,21 +158,67 @@ export function useEditorSetup() {
       Focus.configure({ className: 'has-focus', mode: 'all' }),
       Subscript,
       Superscript,
-      FontFamily,
       PageBreak,
     ],
+    content: content || '<p></p>',
     autofocus: true,
     editorProps: {
       attributes: {
         spellcheck: String(spellCheck),
-        style: `font-family: "${fontFamily}", serif; font-size: ${fontSize}pt;`,
       },
     },
     onUpdate: ({ editor }) => {
+      const { isProgrammaticChange, programmaticContent, endProgrammaticChange } = useEditorStore.getState();
       const html = editor.getHTML();
-      setContent(html);
+      if (isProgrammaticChange && (programmaticContent === null || programmaticContent === html)) {
+        endProgrammaticChange();
+        useDocumentStore.getState().applyRemoteUpdate({ content: html });
+        return;
+      }
+      if (isProgrammaticChange) endProgrammaticChange();
+      useDocumentStore.getState().setContent(html);
+      syncToolbarFormattingState(editor);
+    },
+    onSelectionUpdate: ({ editor }) => {
+      syncToolbarFormattingState(editor);
     },
   });
+
+  // Sync store changes to editor global styles and selection
+  useEffect(() => {
+    if (!editor) return;
+
+    // Apply to selection (inline mark) if active
+    if (!editor.isDestroyed && editor.state.selection.empty === false) {
+      editor.chain().focus().setFontFamily(fontFamily).setFontSize(fontSize + 'pt').run();
+    }
+
+    // Update global editor attributes
+    const stack = FONT_STACK_BY_FAMILY[fontFamily] || `"${fontFamily}", "Noto Sans", "Segoe UI", "Nirmala UI", "Microsoft YaHei", "Malgun Gothic", sans-serif`;
+    editor.view.dom.style.setProperty('font-family', stack);
+    editor.view.dom.style.setProperty('font-size', `${fontSize}pt`);
+  }, [editor, fontFamily, fontSize]);
+
+  useEffect(() => {
+    if (!editor?.view?.dom || typeof window === 'undefined') return;
+    const selectedLanguage = window.localStorage?.getItem(LANGUAGE_KEY) || 'en-US';
+    editor.view.dom.setAttribute('lang', selectedLanguage);
+    editor.view.dom.setAttribute('dir', RTL_LANGS.has(selectedLanguage) ? 'rtl' : 'ltr');
+  }, [editor]);
+
+  // Sync spellcheck
+  useEffect(() => {
+    if (!editor) return;
+    editor.view.dom.setAttribute('spellcheck', String(spellCheck));
+  }, [editor, spellCheck]);
+
+  // When document content is loaded externally (open file/doc), apply it to editor.
+  useEffect(() => {
+    if (!editor || typeof content !== 'string') return;
+    if (editor.getHTML() === content) return;
+    beginProgrammaticChange(content);
+    editor.commands.setContent(content || '<p></p>', false);
+  }, [editor, content, beginProgrammaticChange]);
 
   useEffect(() => {
     if (editor) setEditor(editor);

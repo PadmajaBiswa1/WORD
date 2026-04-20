@@ -13,7 +13,9 @@ export function InsertTableDialog() {
   const GRID = 8;
 
   const insertTable = (r = rows, c = cols) => {
-    editor?.chain().focus().insertTable({ rows: r, cols: c, withHeaderRow: header }).run();
+    const nextRows = Math.max(1, parseInt(String(r), 10) || 3);
+    const nextCols = Math.max(1, parseInt(String(c), 10) || 3);
+    editor?.chain().focus().insertTable({ rows: nextRows, cols: nextCols, withHeaderRow: header }).run();
     closeDialog('insertTable');
   };
 

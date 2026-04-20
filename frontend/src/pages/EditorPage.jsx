@@ -11,29 +11,36 @@ import { StatusBar }      from '@/components/editor/StatusBar';
 import { DialogManager }  from '@/components/dialogs/DialogManager';
 import { ToastContainer } from '@/components/ui/Toast';
 import { useAutoSave }    from '@/hooks/useAutoSave';
+import { useCollaboration } from '@/hooks/useCollaboration';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useUIStore, useDocumentStore } from '@/store';
 import { documentApi } from '@/services/api';
 
 export function EditorPage() {
-  const { id } = useParams();
+  const { id: routeId } = useParams();
   const fullscreen = useUIStore((s) => s.fullscreen);
   const reset = useDocumentStore((s) => s.reset);
-  const setTitle = useDocumentStore((s) => s.setTitle);
+  const hydrateDocument = useDocumentStore((s) => s.hydrateDocument);
+  const setId = useDocumentStore((s) => s.setId);
+  const documentId = useDocumentStore((s) => s.id);
 
   const { save } = useAutoSave();
   useKeyboardShortcuts();
+  useCollaboration(routeId && routeId !== 'new' ? routeId : documentId);
 
   // Load doc if ID provided
   useEffect(() => {
-    if (id && id !== 'new') {
-      documentApi.get(id)
-        .then((doc) => { setTitle(doc.title); /* setContent(doc.content) */ })
+    if (routeId && routeId !== 'new') {
+      setId(routeId);
+      documentApi.get(routeId)
+        .then((doc) => {
+          hydrateDocument(doc);
+        })
         .catch(() => { /* new doc — ignore */ });
     } else {
       reset();
     }
-  }, [id]);
+  }, [hydrateDocument, reset, routeId, setId]);
 
   return (
     <div style={{
