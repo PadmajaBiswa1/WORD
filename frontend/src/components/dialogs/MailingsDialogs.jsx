@@ -426,21 +426,33 @@ export function EnvelopesDialog() {
 
   const insertEnvelope = () => {
     if (!editor) {
-      toast('Editor is not ready yet', 'info');
+      toast('Editor is not ready yet', 'error');
       return;
     }
+
+    if (!recipient.trim() || !sender.trim()) {
+      toast('Recipient and sender addresses are required', 'error');
+      return;
+    }
+
+    const recipientEscaped = String(recipient).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const senderEscaped = String(sender).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
     const html = `
       <div style="border:1px solid #cfcfcf;padding:16px;margin:10px 0;min-height:140px;position:relative;background:#fff;">
         <div style="font-size:18px;font-weight:700;margin-bottom:14px;">Envelope</div>
-        <div style="font-size:15px;line-height:1.5;white-space:pre-line;">${recipient}</div>
-        <div style="position:absolute;left:16px;bottom:12px;font-size:12px;color:#666;white-space:pre-line;">From: ${sender}</div>
+        <div style="font-size:15px;line-height:1.5;white-space:pre-line;">${recipientEscaped}</div>
+        <div style="position:absolute;left:16px;bottom:12px;font-size:12px;color:#666;white-space:pre-line;">From: ${senderEscaped}</div>
       </div>
     `;
 
-    insertHtml(editor, html);
-    toast('Envelope inserted', 'success');
-    closeDialog('envelopes');
+    try {
+      insertHtml(editor, html);
+      toast('✓ Envelope inserted', 'success');
+      closeDialog('envelopes');
+    } catch (error) {
+      toast('Failed to insert envelope: ' + error?.message, 'error');
+    }
   };
 
   return (
@@ -472,25 +484,39 @@ export function LabelsDialog() {
 
   const insertLabels = () => {
     if (!editor) {
-      toast('Editor is not ready yet', 'info');
+      toast('Editor is not ready yet', 'error');
       return;
     }
 
-    const list = recipients.slice(0, rows * columns);
-    const cells = Array.from({ length: rows * columns }, (_, index) => {
-      const recipient = list[index] || {};
-      const text = [recipient.FirstName, recipient.LastName, recipient.Address, [recipient.City, recipient.State, recipient.Zip].filter(Boolean).join(' ')].filter(Boolean).join('<br />') || '&nbsp;';
-      return `<td style="border:1px solid #ccc;padding:10px;vertical-align:top;width:${100 / columns}%;height:72px;">${text}</td>`;
-    });
+    if (!recipients.length) {
+      toast('No recipients available. Add recipients first', 'error');
+      return;
+    }
 
-    const tableRows = Array.from({ length: rows }, (_, rowIndex) => {
-      const start = rowIndex * columns;
-      return `<tr>${cells.slice(start, start + columns).join('')}</tr>`;
-    }).join('');
+    if (columns < 1 || rows < 1) {
+      toast('Columns and rows must be at least 1', 'error');
+      return;
+    }
 
-    insertHtml(editor, `<table style="border-collapse:collapse;width:100%;margin:12px 0;table-layout:fixed;">${tableRows}</table>`);
-    toast('Label sheet inserted', 'success');
-    closeDialog('labels');
+    try {
+      const list = recipients.slice(0, rows * columns);
+      const cells = Array.from({ length: rows * columns }, (_, index) => {
+        const recipient = list[index] || {};
+        const text = [recipient.FirstName, recipient.LastName, recipient.Address, [recipient.City, recipient.State, recipient.Zip].filter(Boolean).join(' ')].filter(Boolean).join('<br />') || '&nbsp;';
+        return `<td style="border:1px solid #ccc;padding:10px;vertical-align:top;width:${100 / columns}%;height:72px;">${text}</td>`;
+      });
+
+      const tableRows = Array.from({ length: rows }, (_, rowIndex) => {
+        const start = rowIndex * columns;
+        return `<tr>${cells.slice(start, start + columns).join('')}</tr>`;
+      }).join('');
+
+      insertHtml(editor, `<table style="border-collapse:collapse;width:100%;margin:12px 0;table-layout:fixed;">${tableRows}</table>`);
+      toast(`✓ Label sheet inserted (${rows}x${columns})`, 'success');
+      closeDialog('labels');
+    } catch (error) {
+      toast('Failed to insert labels: ' + error?.message, 'error');
+    }
   };
 
   return (

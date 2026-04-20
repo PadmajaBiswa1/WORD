@@ -57,6 +57,10 @@ function normalizeDoc(document) {
     versions: Array.isArray(document.versions) ? document.versions : [],
     comments: Array.isArray(document.comments) ? document.comments : [],
     trackChanges: Boolean(document.trackChanges),
+    // IPFS fields
+    ipfsHash: document.ipfsHash || null,
+    ipfsGatewayUrl: document.ipfsGatewayUrl || null,
+    ipfsPinnedAt: document.ipfsPinnedAt || null,
   };
 }
 
@@ -114,6 +118,11 @@ function updateDocument(id, input = {}, options = {}) {
   if (typeof input.content === 'string') next.content = input.content;
   if (Array.isArray(input.comments)) next.comments = input.comments;
   if (typeof input.trackChanges === 'boolean') next.trackChanges = input.trackChanges;
+  
+  // Handle IPFS fields
+  if (typeof input.ipfsHash === 'string' || input.ipfsHash === null) next.ipfsHash = input.ipfsHash || null;
+  if (typeof input.ipfsGatewayUrl === 'string' || input.ipfsGatewayUrl === null) next.ipfsGatewayUrl = input.ipfsGatewayUrl || null;
+  if (typeof input.ipfsPinnedAt === 'string' || input.ipfsPinnedAt === null) next.ipfsPinnedAt = input.ipfsPinnedAt || null;
 
   const hasCollabMutation =
     typeof input.title === 'string'

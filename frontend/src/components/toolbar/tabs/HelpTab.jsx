@@ -5,10 +5,6 @@ import { RibbonGroup } from '../RibbonGroup';
 export function HelpTab() {
   const { toast, openDialog } = useUIStore();
 
-  const openUrl = (url) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
   const copyVersionInfo = async () => {
     const details = `EtherX Word\nBuild Date: ${new Date().toISOString()}\nUser Agent: ${navigator.userAgent}`;
     try {
@@ -23,26 +19,26 @@ export function HelpTab() {
   return (
     <>
       <RibbonGroup label="Help">
-        <Tooltip text="Help"><Button onClick={() => openUrl('https://support.microsoft.com/word')}>? Help</Button></Tooltip>
+        <Tooltip text="Help & Tutorials"><Button onClick={() => openDialog('help')}>? Help</Button></Tooltip>
         <Tooltip text="Keyboard Shortcuts"><Button onClick={() => openDialog('commandMap')}>⌨ Shortcuts</Button></Tooltip>
-        <Tooltip text="Contact Support"><Button onClick={() => openUrl('mailto:support@etherx.app?subject=EtherX%20Word%20Support')}>📞 Support</Button></Tooltip>
-        <Tooltip text="Feedback"><Button onClick={() => openUrl('mailto:feedback@etherx.app?subject=EtherX%20Word%20Feedback')}>💬 Feedback</Button></Tooltip>
+        <Tooltip text="Contact Support"><Button onClick={() => window.open('mailto:support@etherx.app?subject=EtherX%20Word%20Support', '_blank')}>📞 Support</Button></Tooltip>
+        <Tooltip text="Feedback"><Button onClick={() => window.open('mailto:feedback@etherx.app?subject=EtherX%20Word%20Feedback', '_blank')}>💬 Feedback</Button></Tooltip>
       </RibbonGroup>
 
       <RibbonGroup label="Show Training">
-        <Tooltip text="Show Training"><Button onClick={() => openUrl('https://www.youtube.com/results?search_query=word+tutorial')}>🎓 Training</Button></Tooltip>
-        <Tooltip text="What\'s New"><Button onClick={() => openUrl('https://learn.microsoft.com/en-us/office/updates/')}>🆕 What\'s New</Button></Tooltip>
+        <Tooltip text="Show Training"><Button onClick={() => openDialog('whatsNew')}>🎓 Training</Button></Tooltip>
+        <Tooltip text="What\'s New in EtherXWord"><Button onClick={() => openDialog('whatsNew')}>🆕 What\'s New</Button></Tooltip>
       </RibbonGroup>
 
       <RibbonGroup label="Community">
-        <Tooltip text="Community Forums"><Button onClick={() => openUrl('https://github.com/orgs/community/discussions')}>👥 Community</Button></Tooltip>
-        <Tooltip text="Suggest a Feature"><Button onClick={() => openUrl('mailto:feedback@etherx.app?subject=Feature%20Suggestion')}>💡 Suggest</Button></Tooltip>
+        <Tooltip text="GitHub Repository"><Button onClick={() => window.open('https://github.com/search?q=EtherXW&type=repositories', '_blank')}>👥 Community</Button></Tooltip>
+        <Tooltip text="Suggest a Feature"><Button onClick={() => window.open('mailto:feedback@etherx.app?subject=Feature%20Suggestion', '_blank')}>💡 Suggest</Button></Tooltip>
       </RibbonGroup>
 
       <RibbonGroup label="About">
         <Tooltip text="About EtherX Word"><Button onClick={copyVersionInfo}>ℹ About</Button></Tooltip>
-        <Tooltip text="Privacy Policy"><Button onClick={() => openUrl('https://privacy.microsoft.com/en-us/privacystatement')}>🔒 Privacy</Button></Tooltip>
-        <Tooltip text="Check for Updates"><Button onClick={() => openUrl('https://github.com/search?q=EtherXW&type=repositories')}>↻ Updates</Button></Tooltip>
+        <Tooltip text="Privacy Policy"><Button onClick={() => window.open('https://privacy.microsoft.com/en-us/privacystatement', '_blank')}>🔒 Privacy</Button></Tooltip>
+        <Tooltip text="Check for Updates"><Button onClick={() => window.open('https://github.com/search?q=EtherXW&type=repositories', '_blank')}>↻ Updates</Button></Tooltip>
       </RibbonGroup>
     </>
   );

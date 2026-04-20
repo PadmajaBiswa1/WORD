@@ -642,7 +642,7 @@ export function ViewTab() {
     rulerVisible, toggleRuler,
     gridlinesVisible, toggleGridlines,
     toast,
-  } = useUI();
+  } = useUIStore();
   const [viewMode, setViewMode] = useState('print');
   const [focusMode, setFocusMode] = useState(false);
 

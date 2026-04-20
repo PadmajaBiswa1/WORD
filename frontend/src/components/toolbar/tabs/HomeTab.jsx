@@ -147,22 +147,63 @@ export function HomeTab() {
   };
 
   const handleFormatPainter = () => {
-    const { from } = editor.state.selection;
-    const marks = editor.state.doc.resolve(from).marks();
-    setFormatPainterMarks(marks);
+    // If already active, deactivate it
+    if (painterActive.current) {
+      painterActive.current = false;
+      setFormatPainterMarks(null);
+      toast('Format Painter cancelled', 'info');
+      return;
+    }
+    
+    // Get marks from current position or selection
+    const { from, to } = editor.state.selection;
+    
+    // Get marks from the first character of selection
+    const marksAtPos = editor.state.doc.resolve(from).marks();
+    
+    // Also try to get node attributes if it's a block
+    const $from = editor.state.doc.resolve(from);
+    const node = $from.parent;
+    const attrs = node.attrs || {};
+    
+    // Store both marks and attributes
+    const formatData = {
+      marks: marksAtPos,
+      fontSize: attrs.fontSize || null,
+      fontFamily: attrs.fontFamily || null,
+      lineHeight: attrs.lineHeight || null,
+    };
+    
+    setFormatPainterMarks(formatData);
     painterActive.current = true;
-    toast('Format Painter active', 'info');
+    
+    const marksInfo = marksAtPos.length > 0 ? `${marksAtPos.map(m => m.type.name).join(', ')}` : 'text';
+    toast(`Format Painter active (${marksInfo})`, 'info');
 
     const applyOnce = () => {
       if (!painterActive.current) return;
       painterActive.current = false;
+      
       const sel = editor.state.selection;
-      if (sel.from !== sel.to && marks.length > 0) {
-        const chain = editor.chain().focus();
-        marks.forEach((mark) => chain.setMark(mark.type.name, mark.attrs));
-        chain.run();
+      if (sel.from === sel.to) {
+        toast('Select text to apply format', 'warning');
+        setFormatPainterMarks(null);
+        editor.off('selectionUpdate', applyOnce);
+        return;
       }
+      
+      const chain = editor.chain().focus();
+      
+      // Apply marks
+      if (formatData.marks && formatData.marks.length > 0) {
+        formatData.marks.forEach((mark) => {
+          chain.setMark(mark.type.name, mark.attrs);
+        });
+      }
+      
+      chain.run();
       setFormatPainterMarks(null);
+      toast('Format applied', 'success');
       editor.off('selectionUpdate', applyOnce);
     };
 
@@ -307,7 +348,7 @@ export function HomeTab() {
             </Tooltip>
             <Tooltip text="Format Painter">
               <Button
-                style={{ ...toolBtn, width: 84, justifyContent: 'flex-start', padding: '0 6px', color: formatPainterMarks ? 'var(--text-gold)' : 'var(--text-primary)' }}
+                style={{ ...toolBtn, width: 110, justifyContent: 'flex-start', padding: '0 6px', color: formatPainterMarks ? 'var(--text-gold)' : 'var(--text-primary)' }}
                 active={!!formatPainterMarks}
                 onClick={handleFormatPainter}
               >
@@ -381,7 +422,7 @@ export function HomeTab() {
           <Tooltip text="Bullet List"><Button style={toolBtn} active={editor.isActive('bulletList')} onClick={() => run(() => editor.chain().toggleBulletList().run())}>•≡</Button></Tooltip>
           <Tooltip text="Ordered List"><Button style={toolBtn} active={editor.isActive('orderedList')} onClick={() => run(() => editor.chain().toggleOrderedList().run())}>1≡</Button></Tooltip>
           <Tooltip text="Task List"><Button style={toolBtn} active={editor.isActive('taskList')} onClick={() => run(() => editor.chain().toggleTaskList().run())}>☑</Button></Tooltip>
-          <Tooltip text="Blockquote"><Button style={toolBtn} active={editor.isActive('blockquote')} onClick={() => run(() => editor.chain().toggleBlockquote().run())}>"</Button></Tooltip>
+          <Tooltip text="Blockquote" shortcut="Ctrl+Shift+B"><Button style={toolBtn} active={editor.isActive('blockquote')} onClick={() => run(() => editor.chain().toggleBlockquote().run())}>"</Button></Tooltip>
           <Tooltip text="Increase Indent"><Button style={toolBtn} onClick={indent}>→</Button></Tooltip>
           <Tooltip text="Decrease Indent"><Button style={toolBtn} onClick={outdent}>←</Button></Tooltip>
           <Tooltip text="Line Spacing"><Button style={toolBtn} onClick={cycleLineSpacing}>↕</Button></Tooltip>

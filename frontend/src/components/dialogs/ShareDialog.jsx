@@ -109,6 +109,14 @@ export function ShareDialog() {
   const inviteUser = async () => {
     const inviteEmail = email.trim().toLowerCase();
     if (!inviteEmail) return;
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteEmail)) {
+      toast('Please enter a valid email address', 'error');
+      return;
+    }
+
     setWorking(true);
     try {
       const docId = await ensureShareableDocument();
@@ -121,16 +129,29 @@ export function ShareDialog() {
         await loadInvitedCollaborators(docId);
       }
 
+      // Provide detailed feedback based on response
       if (response?.inviteEmailSent) {
-        toast(`Invitation email sent to ${sharedEmail}`, 'success');
+        toast(`✓ Invitation email sent to ${sharedEmail}`, 'success');
       } else if (response?.inviteEmailError) {
-        toast(`Added ${sharedEmail} as collaborator, but email failed: ${response.inviteEmailError}`, 'warning');
+        // Email failed but collaborator was added
+        const errorMsg = response.inviteEmailError;
+        if (errorMsg.includes('SMTP') || errorMsg.includes('credential')) {
+          toast(`${sharedEmail} added as collaborator. Email setup needed to send invitation.`, 'warning');
+        } else if (errorMsg.includes('timeout')) {
+          toast(`${sharedEmail} added, but email sending timed out. They can use the share link instead.`, 'warning');
+        } else {
+          toast(`${sharedEmail} added as collaborator. Email: ${errorMsg}`, 'warning');
+        }
+      } else if (response?.share) {
+        // Collaborator added successfully (email status unclear)
+        toast(`✓ ${sharedEmail} added as collaborator`, 'success');
       } else {
         toast(`Invite added for ${sharedEmail}`, 'success');
       }
       setEmail('');
-    } catch {
-      toast('Invite could not be created', 'error');
+    } catch (error) {
+      const errorMsg = error?.message || 'Unknown error';
+      toast(`Failed to invite: ${errorMsg}`, 'error');
     } finally {
       setWorking(false);
     }

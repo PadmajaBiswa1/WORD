@@ -133,7 +133,18 @@ export function WordCountDialog() {
 
 export function CommentsDialog() {
   const { closeDialog, toast } = useUIStore();
-  const { comments, resolveComment, deleteComment } = useDocumentStore();
+  const { comments, addComment, resolveComment, deleteComment } = useDocumentStore();
+  const [newComment, setNewComment] = useState('');
+
+  const handleAddComment = () => {
+    if (!newComment.trim()) {
+      toast('Comment cannot be empty', 'info');
+      return;
+    }
+    addComment({ text: newComment.trim(), author: 'You', timestamp: new Date().toISOString() });
+    setNewComment('');
+    toast('✓ Comment added', 'success');
+  };
 
   const openComment = (comment) => {
     toast(comment.text || 'Comment selected', 'info');
@@ -141,29 +152,65 @@ export function CommentsDialog() {
 
   return (
     <Modal title="Comments" onClose={() => closeDialog('comments')} width={560}>
-      {comments.length === 0 ? (
-        <div style={emptyState}>No comments yet.</div>
-      ) : (
-        <Stack gap={10}>
-          {comments.slice().reverse().map((comment) => (
-            <div key={comment.id} style={commentCard}>
-              <div>
-                <div style={{ fontFamily: 'var(--font-ui)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-                  {comment.resolved ? 'Resolved' : 'Open'} comment
-                </div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: 12, fontFamily: 'var(--font-ui)' }}>
-                  {comment.text}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <Button variant="subtle" onClick={() => openComment(comment)}>Go To</Button>
-                <Button variant="outline" onClick={() => resolveComment(comment.id)} disabled={comment.resolved}>Resolve</Button>
-                <Button variant="danger" onClick={() => deleteComment(comment.id)}>Delete</Button>
-              </div>
+      <Stack gap={14}>
+        <div>
+          <Label>Add new comment</Label>
+          <textarea
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Write your comment here..."
+            rows={3}
+            style={{
+              width: '100%',
+              padding: '8px 10px',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              fontFamily: 'var(--font-ui)',
+              fontSize: '13px',
+              background: 'var(--bg-elevated)',
+              color: 'var(--text-primary)',
+              resize: 'vertical',
+              boxSizing: 'border-box',
+            }}
+          />
+          <Button
+            variant="primary"
+            onClick={handleAddComment}
+            style={{ marginTop: 8 }}
+          >
+            Add Comment
+          </Button>
+        </div>
+
+        {comments.length === 0 ? (
+          <div style={emptyState}>No comments yet.</div>
+        ) : (
+          <>
+            <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text-muted)' }}>
+              {comments.length} comment{comments.length !== 1 ? 's' : ''}
             </div>
-          ))}
-        </Stack>
-      )}
+            <Stack gap={10}>
+              {comments.slice().reverse().map((comment) => (
+                <div key={comment.id} style={commentCard}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-ui)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                      {comment.resolved ? 'Resolved' : 'Open'} comment
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: 12, fontFamily: 'var(--font-ui)' }}>
+                      {comment.text}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <Button variant="subtle" onClick={() => openComment(comment)}>Go To</Button>
+                    <Button variant="outline" onClick={() => resolveComment(comment.id)} disabled={comment.resolved}>Resolve</Button>
+                    <Button variant="danger" onClick={() => deleteComment(comment.id)}>Delete</Button>
+                  </div>
+                </div>
+              ))}
+            </Stack>
+          </>
+        )}
+      </Stack>
     </Modal>
   );
 }

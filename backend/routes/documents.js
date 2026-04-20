@@ -11,6 +11,7 @@ const {
   updateDocument,
 } = require('../lib/documentStore');
 const { sendInviteEmail } = require('../utils/sendEmail');
+const ipfsService = require('../utils/ipfsService');
 const {
   broadcast,
   broadcastPresence,
@@ -85,7 +86,7 @@ router.post('/:id/share', async (req, res) => {
   if (share?.email) {
     try {
       const inviter = requestUser(req);
-      await sendInviteEmail({
+      const result = await sendInviteEmail({
         toEmail: share.email,
         inviterName: inviter?.name || 'A collaborator',
         documentTitle: updatedDocument?.title || document.title,
@@ -93,18 +94,22 @@ router.post('/:id/share', async (req, res) => {
         role: share.role || 'viewer',
       });
       inviteEmailSent = true;
+      console.log(`✅ Share notification email sent to ${share.email}`);
     } catch (error) {
       inviteEmailError = error?.message || 'Invite email could not be sent';
+      console.error(`⚠️  Email failed but collaborator added for ${share.email}:`, inviteEmailError);
     }
   }
 
-  res.json({
+  const response = {
     share,
     shareUrl,
     sharedWith: Array.isArray(updatedDocument?.sharedWith) ? updatedDocument.sharedWith : [],
     inviteEmailSent,
     inviteEmailError,
-  });
+  };
+
+  res.json(response);
 });
 
 router.get('/:id/collaboration/stream', (req, res) => {
@@ -236,6 +241,177 @@ router.post('/:id/collaboration/publish', (req, res) => {
 
   broadcast(req.params.id, type, { sessionId, user, payload }, { excludeSessionId: sessionId });
   res.json({ ok: true });
+});
+
+// Test email endpoint - verify SMTP is working
+router.post('/test/send-email', async (req, res) => {
+  const { testEmail } = req.body || {};
+  if (!testEmail) {
+    return res.status(400).json({ message: 'testEmail is required' });
+  }
+
+  const testUrl = `${req.protocol}://${req.get('host')}/test/sample`;
+  try {
+    await sendInviteEmail({
+      toEmail: testEmail,
+      inviterName: 'EtherX Word Test',
+      documentTitle: 'Test Document',
+      shareUrl: testUrl,
+      role: 'viewer',
+    });
+    res.json({
+      ok: true,
+      message: `Test email sent to ${testEmail}`,
+      testEmail,
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to send test email',
+      error: error?.message || 'Unknown error',
+      details: {
+        smtpUser: process.env.SMTP_USER ? '✓ Set' : '✗ Missing',
+        smtpPass: process.env.SMTP_PASS ? '✓ Set' : '✗ Missing',
+        smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
+        smtpPort: process.env.SMTP_PORT || 465,
+      },
+    });
+  }
+});
+
+// IPFS — Pin document to IPFS via Pinata
+router.post('/:id/pin', async (req, res) => {
+  const document = getDocument(req.params.id);
+  if (!document) return res.status(404).json({ message: 'Document not found' });
+
+  try {
+    const user = requestUser(req);
+    const pinResult = await ipfsService.pinDocument({
+      id: document.id,
+      title: document.title,
+      content: document.content,
+      author: user?.name || 'Anonymous',
+      createdAt: document.createdAt,
+    });
+
+    // Store IPFS hash in document metadata
+    const updated = updateDocument(req.params.id, {
+      ipfsHash: pinResult.ipfsHash,
+      ipfsGatewayUrl: pinResult.gatewayUrl,
+      ipfsPinnedAt: pinResult.timestamp,
+    });
+
+    res.json({
+      ok: true,
+      ipfsHash: pinResult.ipfsHash,
+      gatewayUrl: pinResult.gatewayUrl,
+      gatewayDirectUrl: `${pinResult.gatewayUrl}?download=true`,
+      timestamp: pinResult.timestamp,
+      size: pinResult.size,
+      message: `Document pinned to IPFS: ${pinResult.ipfsHash}`,
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to pin document to IPFS',
+      error: error?.message || 'Unknown error',
+    });
+  }
+});
+
+// IPFS — Unpin document from IPFS
+router.post('/:id/unpin', async (req, res) => {
+  const document = getDocument(req.params.id);
+  if (!document) return res.status(404).json({ message: 'Document not found' });
+
+  if (!document.ipfsHash) {
+    return res.status(400).json({ message: 'Document is not pinned to IPFS' });
+  }
+
+  try {
+    const success = await ipfsService.unpinDocument(document.ipfsHash);
+
+    if (success) {
+      // Remove IPFS metadata from document
+      updateDocument(req.params.id, {
+        ipfsHash: null,
+        ipfsGatewayUrl: null,
+        ipfsPinnedAt: null,
+      });
+
+      res.json({
+        ok: true,
+        message: `Document unpinned from IPFS: ${document.ipfsHash}`,
+      });
+    } else {
+      res.status(500).json({
+        ok: false,
+        message: 'Failed to unpin document',
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to unpin document from IPFS',
+      error: error?.message || 'Unknown error',
+    });
+  }
+});
+
+// IPFS — Get document IPFS info
+router.get('/:id/ipfs-info', async (req, res) => {
+  const document = getDocument(req.params.id);
+  if (!document) return res.status(404).json({ message: 'Document not found' });
+
+  if (!document.ipfsHash) {
+    return res.status(404).json({
+      message: 'Document is not pinned to IPFS',
+      ipfsEnabled: process.env.IPFS_ENABLED === 'true',
+    });
+  }
+
+  res.json({
+    ok: true,
+    ipfsHash: document.ipfsHash,
+    gatewayUrl: document.ipfsGatewayUrl,
+    gatewayDirectUrl: `${document.ipfsGatewayUrl}?download=true`,
+    pinnedAt: document.ipfsPinnedAt,
+    isValid: ipfsService.isValidIPFSHash(document.ipfsHash),
+  });
+});
+
+// IPFS — Test connection and status
+router.get('/test/ipfs-status', async (req, res) => {
+  const enabled = process.env.IPFS_ENABLED === 'true';
+  const hasCredentials = !!process.env.PINATA_JWT;
+
+  if (!enabled) {
+    return res.json({
+      ok: false,
+      enabled: false,
+      message: 'IPFS integration is disabled',
+    });
+  }
+
+  try {
+    const connected = await ipfsService.verifyConnection();
+    res.json({
+      ok: connected,
+      enabled: true,
+      connected,
+      message: connected ? 'IPFS service is ready' : 'IPFS connection failed',
+      hasCredentials,
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      enabled: true,
+      connected: false,
+      message: 'Failed to verify IPFS connection',
+      error: error?.message,
+      hasCredentials,
+    });
+  }
 });
 
 module.exports = router;

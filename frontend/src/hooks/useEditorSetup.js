@@ -27,6 +27,7 @@ import Focus from '@tiptap/extension-focus';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import FontFamily from '@tiptap/extension-font-family';
+import Blockquote from '@tiptap/extension-blockquote';
 import { PageBreak } from '@/components/editor/PageBreak';
 import { useEditorStore, useDocumentStore } from '@/store';
 
@@ -138,9 +139,18 @@ export function useEditorSetup() {
 
   const editor = useTiptap({
     extensions: [
-      StarterKit.configure({ history: { depth: 100 }, heading: { levels: [1, 2, 3, 4, 5, 6] } }),
+      StarterKit.configure({
+        history: { depth: 100 },
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
+        blockquote: false, // Disable from StarterKit, we'll use custom config
+      }),
+      Blockquote.configure({
+        HTMLAttributes: {
+          class: 'etherx-blockquote',
+        },
+      }),
       Underline,
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote'] }),
       TextStyle,   // required by Color, FontFamily, FontSize
       Color,
       FontFamily,

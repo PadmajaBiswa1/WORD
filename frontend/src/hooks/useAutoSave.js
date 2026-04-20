@@ -16,12 +16,26 @@ export function useAutoSave() {
     const store = useDocumentStore.getState();
     if (!store) return;
     const { id, title, content: c, comments, trackChanges, isDirty: dirty, setSaving, setLastSaved } = store;
-    if (!dirty) return;
+    
+    if (!id) {
+      console.warn('⚠️ Cannot save: no document ID');
+      return;
+    }
+    
+    if (!dirty) {
+      console.debug('✓ Document already saved');
+      return;
+    }
+    
     setSaving(true);
     try {
-      if (id) await documentApi.save(id, { title, content: c, comments, trackChanges });
+      console.log(`💾 Saving document ${id}: "${title}" (${c?.length || 0} chars)`);
+      await documentApi.save(id, { title, content: c, comments, trackChanges });
+      console.log(`✅ Document ${id} saved successfully`);
       setLastSaved();
-    } catch {
+      toast('Document saved', 'success');
+    } catch (err) {
+      console.error(`❌ Save failed for ${id}:`, err);
       toast('Auto-save failed', 'error');
     } finally {
       setSaving(false);

@@ -66,6 +66,11 @@ export const documentApi = {
   getVersions:    (id)        => req(`/documents/${id}/versions`),
   restoreVersion: (id, vid)   => req(`/documents/${id}/versions/${vid}/restore`, { method: 'POST' }),
   share:          (id, opts)  => req(`/documents/${id}/share`, { method: 'POST', body: opts }),
+  // IPFS Operations
+  pinToIPFS:      (id)        => req(`/documents/${id}/pin`, { method: 'POST', body: {} }),
+  unpinFromIPFS:  (id)        => req(`/documents/${id}/unpin`, { method: 'POST', body: {} }),
+  getIPFSInfo:    (id)        => req(`/documents/${id}/ipfs-info`),
+  testIPFSStatus: ()          => req('/documents/test/ipfs-status'),
 };
 
 export const uploadApi = {

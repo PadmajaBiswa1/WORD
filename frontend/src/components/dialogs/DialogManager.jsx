@@ -14,6 +14,8 @@ import { HeaderFooterDialog }  from './HeaderFooterDialog';
 import { WordArtDialog }       from './WordArtDialog';
 import { EquationDialog }      from './EquationDialog';
 import { CommandMapDialog }    from './CommandMapDialog';
+import { HelpDialog }          from './HelpDialog';
+import { WhatsNewDialog }      from './WhatsNewDialog';
 import {
   WordCountDialog,
   CommentsDialog,
@@ -59,6 +61,8 @@ export function DialogManager() {
       {dialogs.wordArt        && <WordArtDialog />}
       {dialogs.equation       && <EquationDialog />}
       {dialogs.commandMap     && <CommandMapDialog />}
+      {dialogs.help           && <HelpDialog />}
+      {dialogs.whatsNew       && <WhatsNewDialog />}
       {dialogs.wordCount      && <WordCountDialog />}
       {dialogs.comments       && <CommentsDialog />}
       {dialogs.accessibility  && <AccessibilityDialog />}

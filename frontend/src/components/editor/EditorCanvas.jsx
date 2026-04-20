@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { EditorContent } from '@tiptap/react';
 import { useEditorSetup } from '@/hooks/useEditorSetup';
 import { useThumbnailGenerator } from '@/hooks/useThumbnailGenerator';
+import { useImageResizeAndDrag } from '@/hooks/useImageResizeAndDrag';
+import { HorizontalRuler } from './HorizontalRuler';
 import { useUIStore, useDocumentStore, useCollaborationStore } from '@/store';
 
 const HEADER_FOOTER_STORAGE_KEY = 'etherx-header-footer-meta';
@@ -27,7 +29,7 @@ function colorFromString(seed = '') {
 
 export function EditorCanvas() {
   const editor    = useEditorSetup();
-  const { zoom, setActivePage }  = useUIStore();
+  const { zoom, setActivePage, rulerVisible }  = useUIStore();
   const { setStats, headerFooter, setHeaderFooter } = useDocumentStore();
   const collaborators = useCollaborationStore((s) => s.collaborators);
   const sessionId = useCollaborationStore((s) => s.sessionId);
@@ -54,6 +56,9 @@ export function EditorCanvas() {
 
   // Generate and update thumbnails
   useThumbnailGenerator();
+
+  // Enable image resize and drag functionality
+  useImageResizeAndDrag(wrapRef);
   
   // Calculate scaled dimensions for responsive sizing
   const scaledDimensions = useMemo(() => ({
@@ -218,21 +223,30 @@ export function EditorCanvas() {
   }, []);
 
   return (
-    <div
-      ref={scrollRef}
-      id="editor-scroll-area"
-      style={{
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'auto',
-        background: 'var(--bg-app)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: `${scaledDimensions.scrollPaddingY}px ${scaledDimensions.scrollPaddingX}px`,
-        scrollBehavior: 'smooth',
-      }}
-    >
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+      {/* Horizontal Ruler */}
+      {rulerVisible && (
+        <div id="etherx-ruler" style={{ borderBottom: '1px solid var(--border)', display: 'flex' }}>
+          <HorizontalRuler />
+        </div>
+      )}
+
+      {/* Editor scroll area */}
+      <div
+        ref={scrollRef}
+        id="editor-scroll-area"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'auto',
+          background: 'var(--bg-app)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: `${scaledDimensions.scrollPaddingY}px ${scaledDimensions.scrollPaddingX}px`,
+          scrollBehavior: 'smooth',
+        }}
+      >
       {/* A4 page container */}
       <div
         ref={wrapRef}
@@ -432,6 +446,7 @@ export function EditorCanvas() {
             </div>
           );
         }) : null}
+      </div>
       </div>
     </div>
   );

@@ -79,12 +79,25 @@ function relativeTimeLabel(iso) {
   const diffMs = Date.now() - date.getTime();
   const hour = 3600000;
   const day = 86400000;
+  const minute = 60000;
+  
+  if (diffMs < minute) {
+    return 'Just now';
+  }
+  if (diffMs < hour) {
+    const m = Math.max(1, Math.floor(diffMs / minute));
+    return `${m} minute${m > 1 ? 's' : ''} ago`;
+  }
   if (diffMs < day) {
     const h = Math.max(1, Math.floor(diffMs / hour));
     return `${h} hour${h > 1 ? 's' : ''} ago`;
   }
   const d = Math.max(1, Math.floor(diffMs / day));
   return `${d} day${d > 1 ? 's' : ''} ago`;
+}
+
+function formatActualTime(iso) {
+  return relativeTimeLabel(iso);
 }
 
 function estimatePagesFromHtml(html) {
@@ -240,9 +253,18 @@ export function HomePage() {
   const [saveAsFormat, setSaveAsFormat] = useState('etherx');
   const [saveAsLocation, setSaveAsLocation] = useState('onedrive');
   const [saveAsBusy, setSaveAsBusy] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0); // Force re-render for time updates
 
   const returnTo = location.state?.returnTo || '/doc/new';
   const fileInputRef = useRef(null);
+
+  // Refresh time display every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRefreshTick((t) => t + 1);
+    }, 60000); // Update every 60 seconds
+    return () => clearInterval(timer);
+  }, []);
 
   const currentDocIdFromRoute = (() => {
     const p = location.state?.returnTo || '';
@@ -303,17 +325,40 @@ export function HomePage() {
 
   async function createFromTemplate(key) {
     if (key === 'blank') {
-      const { doc, next } = createLocalDoc({
-        title: 'Untitled Document',
-        content: '<p></p>',
-      });
-      setDocs(next);
-      setSelectedDocId(doc.id);
-      resetDoc();
-      setDocTitle(doc.title);
-      setDocContent(doc.content);
-      toast('Blank document created', 'success');
-      navigate('/doc/new');
+      try {
+        // Create blank document on backend so it appears in recents
+        const created = await documentApi.create({
+          title: 'Untitled Document',
+          content: '<p></p>',
+        });
+        const newId = String(created?.id || created?._id || 'new');
+        setDocs((prev) => [
+          {
+            id: newId,
+            title: 'Untitled Document',
+            content: '<p></p>',
+            updatedAt: new Date().toISOString(),
+            localOnly: false,
+          },
+          ...prev.filter((d) => d.id !== newId),
+        ]);
+        setSelectedDocId(newId);
+        toast('Blank document created', 'success');
+        navigate(`/doc/${newId}`);
+      } catch {
+        // Fallback to local if backend unavailable
+        const { doc, next } = createLocalDoc({
+          title: 'Untitled Document',
+          content: '<p></p>',
+        });
+        setDocs(next);
+        setSelectedDocId(doc.id);
+        resetDoc();
+        setDocTitle(doc.title);
+        setDocContent(doc.content);
+        toast('Blank document created locally', 'success');
+        navigate('/doc/new');
+      }
       return;
     }
 
@@ -739,7 +784,7 @@ export function HomePage() {
                         <span style={styles.recentIcon}>▣</span>
                         <span style={styles.recentTextWrap}>
                           <span style={styles.recentTitle}>{doc.title}</span>
-                          <span style={styles.recentMeta}>{relativeTimeLabel(doc.updatedAt)} • {estimatePagesFromHtml(doc.content)} pages</span>
+                          <span style={styles.recentMeta}>{formatActualTime(doc.updatedAt)} • {estimatePagesFromHtml(doc.content)} pages</span>
                         </span>
                       </button>
                       <button
@@ -773,7 +818,7 @@ export function HomePage() {
           <section style={styles.panel}>
             <h2 style={styles.panelTitle}>Document Info</h2>
             <div style={styles.panelRow}>Name: {selectedDoc?.title || '-'}</div>
-            <div style={styles.panelRow}>Last modified: {selectedDoc ? relativeTimeLabel(selectedDoc.updatedAt) : '-'}</div>
+            <div style={styles.panelRow}>Last modified: {selectedDoc ? formatActualTime(selectedDoc.updatedAt) : '-'}</div>
             <div style={styles.panelRow}>Pages: {stats.pages}</div>
           </section>
         )}
@@ -981,7 +1026,7 @@ export function HomePage() {
                 <div key={doc.id} style={styles.panelItem}>
                   <button style={styles.panelItemMain} onClick={() => setSelectedDocId(doc.id)}>
                     <span>{doc.title}</span>
-                    <span style={styles.panelItemMeta}>{relativeTimeLabel(doc.updatedAt)}</span>
+                    <span style={styles.panelItemMeta}>{formatActualTime(doc.updatedAt)}</span>
                   </button>
                   <button
                     style={styles.panelDeleteBtn}

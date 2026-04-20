@@ -23,24 +23,48 @@ export function EditorPage() {
   const hydrateDocument = useDocumentStore((s) => s.hydrateDocument);
   const setId = useDocumentStore((s) => s.setId);
   const documentId = useDocumentStore((s) => s.id);
+  const toast = useUIStore((s) => s.toast);
 
   const { save } = useAutoSave();
   useKeyboardShortcuts();
   useCollaboration(routeId && routeId !== 'new' ? routeId : documentId);
 
-  // Load doc if ID provided
+  // Load doc if ID provided, or create new doc on backend
   useEffect(() => {
     if (routeId && routeId !== 'new') {
+      console.log(`📖 Loading document: ${routeId}`);
       setId(routeId);
-      documentApi.get(routeId)
+      documentApi
+        .get(routeId)
         .then((doc) => {
+          console.log(`✅ Document loaded: "${doc?.title}" (${doc?.content?.length || 0} chars)`);
           hydrateDocument(doc);
         })
-        .catch(() => { /* new doc — ignore */ });
-    } else {
+        .catch((err) => {
+          console.error(`❌ Failed to load document ${routeId}:`, err?.message);
+        });
+    } else if (!documentId) {
+      // Only create new document if one doesn't already exist in state
+      // (prevents overwriting content user just typed)
+      console.log('📝 Creating new blank document...');
       reset();
+      documentApi
+        .create({ title: 'Untitled Document', content: '<p></p>' })
+        .then((created) => {
+          const newId = String(created?.id || created?._id || '');
+          if (newId) {
+            console.log(`✅ Document created: ${newId}`);
+            setId(newId);
+            // Don't hydrate yet — editor will load from store
+            // This prevents overwriting content user just typed
+            window.history.replaceState(null, '', `/doc/${newId}`);
+          }
+        })
+        .catch((err) => {
+          console.warn(`⚠️  Could not create document on backend:`, err?.message);
+        });
     }
-  }, [hydrateDocument, reset, routeId, setId]);
+  }, [hydrateDocument, reset, routeId, setId, documentId, toast]);
 
   return (
     <div style={{

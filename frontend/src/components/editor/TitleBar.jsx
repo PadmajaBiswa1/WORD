@@ -53,10 +53,9 @@ export function TitleBar({ onSave }) {
       padding: '0 8px', flexShrink: 0, userSelect: 'none', fontFamily: 'var(--font-ui)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{
-          width: 22, height: 22, borderRadius: 2, background: 'var(--bg-elevated)', color: 'var(--gold)',
-          display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 700,
-        }}>W</div>
+        <img src="/assets/etherxword-logo.png" alt="EtherX Word Logo" style={{
+          width: 40, height: 40, borderRadius: 2, objectFit: 'contain',
+        }} />
         <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>AutoSave {autoSaveEnabled ? 'On' : 'Off'}</span>
         <button
           onClick={toggleAutoSave}

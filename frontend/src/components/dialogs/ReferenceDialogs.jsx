@@ -277,7 +277,7 @@ export function InsertCitationDialog() {
 }
 
 export function ManageSourcesDialog() {
-  const { closeDialog, toast } = useUIStore();
+  const { closeDialog, openDialog, toast } = useUIStore();
   const [sources, setSources] = useState(() => loadSources());
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ author: '', title: '', year: '', publisher: '', url: '' });
@@ -304,8 +304,12 @@ export function ManageSourcesDialog() {
   };
 
   const saveSource = () => {
-    if (!form.author.trim() || !form.title.trim()) {
-      toast('Author and title are required', 'info');
+    if (!form.author.trim()) {
+      toast('Author is required', 'error');
+      return;
+    }
+    if (!form.title.trim()) {
+      toast('Title is required', 'error');
       return;
     }
 
@@ -323,7 +327,7 @@ export function ManageSourcesDialog() {
       : [nextSource, ...sources];
 
     persist(nextSources);
-    toast(editingId ? 'Source updated' : 'Source added', 'success');
+    toast(editingId ? '✓ Source updated' : '✓ Source added', 'success');
     resetForm();
   };
 
@@ -364,6 +368,11 @@ export function ManageSourcesDialog() {
           <Button variant="subtle" onClick={resetForm}>Clear</Button>
           <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
             <Button variant="subtle" onClick={() => closeDialog('manageSources')}>Close</Button>
+            {sources.length > 0 && (
+              <Button variant="secondary" onClick={() => { closeDialog('manageSources'); openDialog('bibliography'); }}>
+                Insert Bibliography →
+              </Button>
+            )}
             <Button variant="primary" onClick={saveSource}>{editingId ? 'Update Source' : 'Add Source'}</Button>
           </div>
         </div>
@@ -399,8 +408,12 @@ export function BibliographyDialog() {
   const [style, setStyle] = useState('apa');
   const [heading, setHeading] = useState('References');
 
+  // Reload sources every time the dialog opens (in case they were added in ManageSourcesDialog)
   useEffect(() => {
-    setSources(loadSources());
+    const reloadSources = () => setSources(loadSources());
+    // Reload after a short delay to ensure previous dialog fully closed
+    const timer = setTimeout(reloadSources, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const insertBibliography = () => {

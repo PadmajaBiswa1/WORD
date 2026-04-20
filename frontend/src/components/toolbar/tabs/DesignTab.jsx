@@ -32,7 +32,7 @@ const EFFECT_SETS = ['none', 'soft', 'strong'];
 
 const CARET = String.fromCharCode(9662);
 
-const PAGE_COLORS = ['#ffffff', '#fdfbf7', '#fff4d8', '#f2f8ff', '#f5f5f5', '#e8f5e9', '#fff1f1'];
+const PAGE_COLORS = ['#ffffff', '#fdfbf7', '#fff4d8', '#f2f8ff', '#f5f5f5', '#e8f5e9', '#fff1f1', '#1a1a1a', '#0d0d0d', '#2a2a2a'];
 const BORDER_STYLES = ['none', 'solid', 'double', 'dashed'];
 const BORDER_WIDTHS = [1, 2, 3, 4, 6];
 const BORDER_COLORS = ['#6f5320', '#c9a84c', '#8b6b1a', '#4a4a4a', '#8f3d3d', '#2f5d62'];
@@ -50,6 +50,31 @@ const THEME_COLOR_COLUMNS = [
   ['#e8f4df', '#c7e4ae', '#95cf6b', '#5fad37', '#3a7a1f'],
 ];
 
+// Detect if a color is dark (luminance < 128)
+function isDarkColor(hexColor) {
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  const luminance = (r * 299 + g * 587 + b * 114) / 1000;
+  return luminance < 128;
+}
+
+// Adjust editor text color based on page background
+function adjustTextColorForPageBackground(pageColor) {
+  const root = document.documentElement;
+  if (!root) return;
+  
+  const dark = isDarkColor(pageColor);
+  if (dark) {
+    // Use light text for dark pages
+    root.style.setProperty('--text-doc', '#e8d98a');
+  } else {
+    // Use dark text for light pages
+    root.style.setProperty('--text-doc', '#1a1a1a');
+  }
+}
+
 const STANDARD_COLORS = ['#c00000', '#ff0000', '#ffc000', '#ffff00', '#92d050', '#00b050', '#00b0f0', '#0070c0', '#002060', '#7030a0'];
 
 function getPageElement() {
@@ -65,6 +90,7 @@ function setPageColor(color) {
   if (!page) return false;
   page.dataset.pageColor = color;
   page.style.backgroundColor = color;
+  adjustTextColorForPageBackground(color);
   return true;
 }
 
@@ -73,6 +99,8 @@ function clearPageColor() {
   if (!page) return false;
   delete page.dataset.pageColor;
   page.style.backgroundColor = '';
+  // Reset to theme-based text color
+  adjustTextColorForPageBackground('#ffffff');
   return true;
 }
 
@@ -298,7 +326,9 @@ function applyThemePreset(theme) {
   applyDocFont(theme.font || 'Crimson Pro');
   applyParagraphSpacing(theme.spacing || '1.7');
   applyDocEffects(theme.effect || 'none');
-  if (theme.pageColor) setPageColor(theme.pageColor);
+  if (theme.pageColor) {
+    setPageColor(theme.pageColor);
+  }
   return true;
 }
 
@@ -335,7 +365,9 @@ function applySavedDefault() {
     applyDocFont(defaults.font);
     applyParagraphSpacing(defaults.spacing);
     applyDocEffects(defaults.effect || 'none');
-    if (defaults.pageColor) setPageColor(defaults.pageColor);
+    if (defaults.pageColor) {
+      setPageColor(defaults.pageColor);
+    }
     return true;
   } catch {
     return false;
@@ -356,11 +388,19 @@ function setThemeIndex(index) {
 }
 
 export function DesignTab() {
-  const { toast } = useUIStore();
+  const { toast, theme } = useUIStore();
   const editor = useEditorStore((s) => s.editor);
   const pageColorButtonRef = useRef(null);
   const initialPreset = useMemo(() => readPagePreset(), []);
-  const [pageColor, setPageColorState] = useState(initialPreset?.pageColor || '#fdfbf7');
+  
+  // Apply dark page color if dark mode is active and no custom page color is set
+  const getInitialPageColor = () => {
+    const preset = initialPreset?.pageColor;
+    if (preset && preset !== '#fdfbf7') return preset; // Custom color exists
+    return theme === 'dark' ? '#1a1a1a' : '#fdfbf7'; // Default based on theme
+  };
+  
+  const [pageColor, setPageColorState] = useState(getInitialPageColor());
   const [borderStyle, setBorderStyle] = useState(initialPreset?.borderStyle || 'none');
   const [borderColor, setBorderColor] = useState(initialPreset?.borderColor || '#6f5320');
   const [borderWidth, setBorderWidth] = useState(initialPreset?.borderWidth || 2);
@@ -380,13 +420,21 @@ export function DesignTab() {
     setBorderArt(page.dataset.pageBorderArt || '(none)');
   }, []);
 
+  // Auto-apply dark page color when theme changes
   useEffect(() => {
     if (!editor) return;
     const timer = setTimeout(() => {
       applySavedDefault();
+      // If no custom page color, apply theme default
+      const page = getPageElement();
+      if (page && (!page.dataset.pageColor || page.dataset.pageColor === '#fdfbf7')) {
+        const newColor = theme === 'dark' ? '#1a1a1a' : '#fdfbf7';
+        setPageColorState(newColor);
+        setPageColor(newColor);
+      }
     }, 0);
     return () => clearTimeout(timer);
-  }, [editor]);
+  }, [editor, theme]);
 
   useEffect(() => {
     const page = getPageElement();
