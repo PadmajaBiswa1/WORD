@@ -42,6 +42,7 @@ body {
   align-items: center;
   justify-content: center;
   background: #000000;
+  background-image: radial-gradient(circle at center, rgba(232, 217, 138, 0.15) 0%, rgba(212, 175, 55, 0.08) 25%, transparent 70%);
 }
 
 .splash-content {
@@ -53,10 +54,11 @@ body {
 }
 
 .splash-logo-wrap {
-  width: min(60vmin, 420px);
-  height: min(60vmin, 420px);
+  width: min(35vmin, 280px);
+  height: min(35vmin, 280px);
   display: grid;
   place-items: center;
+  position: relative;
 }
 
 .splash-logo-image {
@@ -64,17 +66,19 @@ body {
   height: 100%;
   object-fit: contain;
   animation: floatLogo 2.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.35)) drop-shadow(0 0 30px rgba(212, 175, 55, 0.15));
 }
 
 .splash-title {
   display: block;
   font-family: var(--font-ui);
-  font-size: clamp(1.05rem, 2.1vw, 1.35rem);
+  font-size: clamp(0.85rem, 1.5vw, 1.05rem);
   font-weight: 600;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: #ffffff;
+  color: #e8d98a;
   margin-top: -4px;
+  text-shadow: 0 0 8px rgba(232, 217, 138, 0.3), 0 0 16px rgba(212, 175, 55, 0.15);
 }
 
 .splash-subtitle {

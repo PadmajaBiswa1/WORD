@@ -56,6 +56,7 @@ async function sendOTPEmail(email, otp, type) {
       `,
     });
     console.log('✅ OTP email sent to', email, '| MessageId:', info.messageId);
+    return info;
   } catch (err) {
     console.error('❌ Failed to send OTP email:', err.message);
     throw err;
@@ -63,24 +64,33 @@ async function sendOTPEmail(email, otp, type) {
 }
 
 async function sendInviteEmail({ toEmail, inviterName, documentTitle, shareUrl, role = 'viewer' }) {
-  if (!toEmail) throw new Error('Invite email is required');
-
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(toEmail)) {
-    throw new Error(`Invalid email format: ${toEmail}`);
-  }
-
-  const safeInviter = inviterName || 'A collaborator';
-  const safeTitle = documentTitle || 'Untitled Document';
-  const safeRole = role || 'viewer';
-
+  let inviteAttemptId = `invite-${Date.now()}`;
   try {
+    console.log(`[${inviteAttemptId}] 📬 Starting email invite process...`);
+    
+    if (!toEmail) throw new Error('Invite email is required');
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(toEmail)) {
+      throw new Error(`Invalid email format: ${toEmail}`);
+    }
+
+    const safeInviter = inviterName || 'A collaborator';
+    const safeTitle = documentTitle || 'Untitled Document';
+    const safeRole = role || 'viewer';
+
+    console.log(`[${inviteAttemptId}] 📬 Preparing to send invite email to: ${toEmail}`);
+    console.log(`[${inviteAttemptId}]    Inviter: ${safeInviter}, Role: ${safeRole}, Document: ${safeTitle}`);
+
     // Ensure transporter credentials exist
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
       throw new Error('SMTP credentials not configured in environment variables (SMTP_USER, SMTP_PASS)');
     }
+    console.log(`[${inviteAttemptId}] ✓ SMTP credentials verified`);
 
+    console.log(`[${inviteAttemptId}] 📨 Building email content and calling nodemailer...`);
+    
     const info = await transporter.sendMail({
       from: `"EtherxWord" <${process.env.SMTP_USER}>`,
       to: toEmail,
@@ -97,27 +107,41 @@ async function sendInviteEmail({ toEmail, inviterName, documentTitle, shareUrl, 
       `,
       replyTo: process.env.SMTP_USER,
     });
-
-    console.log(`✅ Invite email sent to ${toEmail} | MessageId: ${info.messageId}`);
-    return { messageId: info.messageId, response: info.response };
+    
+    console.log(`[${inviteAttemptId}] ✓ Nodemailer returned - email dispatch successful`);
+    console.log(`[${inviteAttemptId}] ✅ Email sent successfully! MessageId: ${info?.messageId}`);
+    
+    const result = { messageId: info?.messageId, response: info?.response };
+    console.log(`[${inviteAttemptId}] ✓ Returning result:`, result);
+    return result;
 
   } catch (err) {
     const errorMsg = err?.message || 'Unknown error';
-    console.error(`❌ Failed to send invite email to ${toEmail}:`, errorMsg);
+    const errorCode = err?.code || 'UNKNOWN';
     
-    // Provide detailed error context for common issues
-    if (errorMsg.includes('Credential')) {
-      console.error('   Issue: Gmail credentials not set correctly');
-      console.error('   Fix: Use Gmail App Password (not your regular password)');
-      console.error('   Setup: https://support.google.com/accounts/answer/185833');
-    } else if (errorMsg.includes('ECONNREFUSED')) {
-      console.error('   Issue: Cannot connect to SMTP server');
-      console.error('   Fix: Check SMTP_HOST and SMTP_PORT in .env');
-    } else if (errorMsg.includes('timeout')) {
-      console.error('   Issue: SMTP connection timeout');
-      console.error('   Fix: Check network connectivity and SMTP server status');
+    console.error(`[${inviteAttemptId}] ❌ ERROR in sendInviteEmail:`, errorMsg);
+    console.error(`[${inviteAttemptId}] ❌ Error code: ${errorCode}`);
+    
+    try {
+      console.error(`[${inviteAttemptId}] ❌ Error object keys:`, Object.keys(err || {}));
+    } catch (keyErr) {
+      console.error(`[${inviteAttemptId}] ❌ Could not get error keys`);
     }
     
+    // Provide detailed error context for common issues
+    if (errorMsg.includes('Credential') || errorCode === 'INVALID_LOGIN') {
+      console.error(`[${inviteAttemptId}]    → Gmail credentials not set correctly`);
+      console.error(`[${inviteAttemptId}]    → Fix: Use Gmail App Password (not your regular password)`);
+      console.error(`[${inviteAttemptId}]    → Setup: https://support.google.com/accounts/answer/185833`);
+    } else if (errorMsg.includes('ECONNREFUSED') || errorCode === 'ECONNREFUSED') {
+      console.error(`[${inviteAttemptId}]    → Cannot connect to SMTP server`);
+      console.error(`[${inviteAttemptId}]    → Fix: Check SMTP_HOST and SMTP_PORT in .env`);
+    } else if (errorMsg.includes('timeout') || errorCode === 'ETIMEDOUT') {
+      console.error(`[${inviteAttemptId}]    → SMTP connection timeout`);
+      console.error(`[${inviteAttemptId}]    → Fix: Check network connectivity and SMTP server status`);
+    }
+    
+    console.error(`[${inviteAttemptId}] ❌ Throwing error to caller...`);
     throw err;
   }
 }

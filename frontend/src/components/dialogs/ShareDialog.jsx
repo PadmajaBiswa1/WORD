@@ -77,7 +77,8 @@ export function ShareDialog() {
   }, [collaborators, invitedCollaborators]);
 
   const ensureShareableDocument = async () => {
-    if (id) return id;
+    if (id) return id; // Already have an ID, document is shareable
+    
     setWorking(true);
     try {
       const created = await documentApi.create({ title, content });
@@ -86,29 +87,42 @@ export function ShareDialog() {
       setId(newId);
       if (created?.updatedAt) setLastSaved(created.updatedAt);
       await loadInvitedCollaborators(newId);
-      navigate(`/doc/${newId}`, { replace: true });
+      // Update URL without navigation
+      window.history.replaceState(null, '', `/doc/${newId}`);
       return newId;
+    } catch (error) {
+      console.error('Failed to create shareable document:', error);
+      throw error;
     } finally {
       setWorking(false);
     }
   };
 
   const copyLink = async () => {
+    if (working || copied) return; // Prevent multiple simultaneous clicks
     try {
+      setCopied(false); // Reset state first
       const docId = await ensureShareableDocument();
       const nextUrl = `${window.location.origin}/doc/${docId}`;
       await navigator.clipboard.writeText(nextUrl);
       setCopied(true);
+      toast('Share link copied to clipboard', 'success');
+      
+      // Reset "copied" state after 2 seconds for re-click
       setTimeout(() => setCopied(false), 2000);
-      toast('Share link copied', 'success');
-    } catch {
+    } catch (err) {
+      setCopied(false);
       toast('Unable to prepare a shared document right now', 'error');
+      console.error('Copy link error:', err);
     }
   };
 
   const inviteUser = async () => {
     const inviteEmail = email.trim().toLowerCase();
-    if (!inviteEmail) return;
+    if (!inviteEmail) {
+      toast('Please enter an email address', 'warning');
+      return;
+    }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -117,14 +131,26 @@ export function ShareDialog() {
       return;
     }
 
+    if (working) {
+      toast('Please wait, processing previous invite...', 'info');
+      return;
+    }
+
     setWorking(true);
     try {
+      console.log(`📧 Starting invite process for: ${inviteEmail}`);
       const docId = await ensureShareableDocument();
+      console.log(`📄 Document ID: ${docId}`);
+      
       const response = await documentApi.share(docId, { email: inviteEmail, role });
+      console.log(`📧 Share response:`, response);
+      
       const sharedEmail = response?.share?.email || inviteEmail;
 
+      // Update invited collaborators list
       if (Array.isArray(response?.sharedWith)) {
         setInvitedCollaborators(response.sharedWith);
+        console.log(`✅ Collaborators updated:`, response.sharedWith);
       } else {
         await loadInvitedCollaborators(docId);
       }
@@ -132,26 +158,35 @@ export function ShareDialog() {
       // Provide detailed feedback based on response
       if (response?.inviteEmailSent) {
         toast(`✓ Invitation email sent to ${sharedEmail}`, 'success');
+        console.log(`✅ Email invitation sent successfully`);
       } else if (response?.inviteEmailError) {
-        // Email failed but collaborator was added
+        // Email service issue but collaborator was added
         const errorMsg = response.inviteEmailError;
+        console.warn(`⚠️ Email failed: ${errorMsg}`);
+        
         if (errorMsg.includes('SMTP') || errorMsg.includes('credential')) {
-          toast(`${sharedEmail} added as collaborator. Email setup needed to send invitation.`, 'warning');
+          toast(`${sharedEmail} added as collaborator. Email service config needed.`, 'warning');
         } else if (errorMsg.includes('timeout')) {
-          toast(`${sharedEmail} added, but email sending timed out. They can use the share link instead.`, 'warning');
+          toast(`${sharedEmail} added. Email sending timed out - try resending invite.`, 'warning');
         } else {
-          toast(`${sharedEmail} added as collaborator. Email: ${errorMsg}`, 'warning');
+          toast(`${sharedEmail} added as collaborator. Note: ${errorMsg}`, 'warning');
         }
       } else if (response?.share) {
-        // Collaborator added successfully (email status unclear)
+        // Collaborator added (email status unclear from response)
         toast(`✓ ${sharedEmail} added as collaborator`, 'success');
+        console.log(`✅ Collaborator added`);
       } else {
-        toast(`Invite added for ${sharedEmail}`, 'success');
+        toast(`✓ ${sharedEmail} has been invited`, 'success');
+        console.log(`✅ Invitation created`);
       }
+      
+      // Clear email field after successful invite
       setEmail('');
+      console.log(`✅ Email field cleared, ready for next invite`);
     } catch (error) {
       const errorMsg = error?.message || 'Unknown error';
-      toast(`Failed to invite: ${errorMsg}`, 'error');
+      console.error(`❌ Invite failed: ${errorMsg}`, error);
+      toast(`Invite failed: ${errorMsg}`, 'error');
     } finally {
       setWorking(false);
     }
@@ -181,9 +216,17 @@ export function ShareDialog() {
               fontFamily:'var(--font-ui)', fontSize:12, color:'var(--text-secondary)',
               overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
             }}>{shareUrl}</div>
-            <Button variant={copied ? 'primary' : 'outline'} onClick={copyLink} disabled={working}>
-              {copied ? '✓ Copied' : '⎘ Copy'}
+            <Button 
+              variant={copied ? 'primary' : 'outline'} 
+              onClick={copyLink} 
+              disabled={working}
+              title="Copy share link to clipboard"
+            >
+              {copied ? '✓ Copied!' : '📋 Copy Link'}
             </Button>
+          </div>
+          <div style={{ marginTop: 6, fontFamily:'var(--font-ui)', fontSize: 11, color:'var(--text-muted)' }}>
+            📌 Share this link with anyone to start collaborating instantly - no sign-up required
           </div>
         </div>
 

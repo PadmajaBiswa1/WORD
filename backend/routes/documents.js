@@ -70,46 +70,105 @@ router.post('/:id/versions/:vid/restore', (req, res) => {
 });
 
 router.post('/:id/share', async (req, res) => {
-  const document = getDocument(req.params.id);
-  if (!document) return res.status(404).json({ message: 'Document not found' });
+  let shareRequestId = `share-${Date.now()}`;
+  
+  try {
+    console.log(`[${shareRequestId}] 📤 Share request received for document: ${req.params.id}`);
+    
+    const document = getDocument(req.params.id);
+    if (!document) {
+      console.log(`[${shareRequestId}] ❌ Document not found`);
+      return res.status(404).json({ message: 'Document not found' });
+    }
+    console.log(`[${shareRequestId}] ✓ Document found`);
 
-  const result = shareDocument(req.params.id, req.body || {});
-  if (!result) return res.status(404).json({ message: 'Document not found' });
+    const shareResult = shareDocument(req.params.id, req.body || {});
+    if (!shareResult) {
+      console.log(`[${shareRequestId}] ❌ Share document function failed`);
+      return res.status(404).json({ message: 'Document not found' });
+    }
+    console.log(`[${shareRequestId}] ✓ Document marked as shared`);
 
-  const { share, document: updatedDocument } = result;
-  const origin = req.get('origin') || process.env.FRONTEND_URL || 'http://localhost:3000';
-  const shareUrl = `${origin.replace(/\/$/, '')}/doc/${req.params.id}`;
+    const { share, document: updatedDocument } = shareResult;
+    const origin = req.get('origin') || process.env.FRONTEND_URL || 'http://localhost:3000';
+    const shareUrl = `${origin.replace(/\/$/, '')}/doc/${req.params.id}`;
 
-  let inviteEmailSent = false;
-  let inviteEmailError = null;
+    let inviteEmailSent = false;
+    let inviteEmailError = null;
 
-  if (share?.email) {
+    if (share?.email) {
+      try {
+        const inviter = requestUser(req);
+        console.log(`[${shareRequestId}] 📧 Email provided in share request: ${share.email}`);
+        console.log(`[${shareRequestId}] 📧 Calling sendInviteEmail function...`);
+        
+        const emailResult = await sendInviteEmail({
+          toEmail: share.email,
+          inviterName: inviter?.name || 'A collaborator',
+          documentTitle: updatedDocument?.title || document.title,
+          shareUrl,
+          role: share.role || 'viewer',
+        });
+        
+        inviteEmailSent = true;
+        console.log(`[${shareRequestId}] ✅ sendInviteEmail completed successfully`);
+        console.log(`[${shareRequestId}] ✅ Email result:`, emailResult);
+      } catch (emailError) {
+        try {
+          inviteEmailError = emailError?.message || 'Invite email could not be sent';
+          console.error(`[${shareRequestId}] ⚠️ Email service error for ${share.email}`);
+          console.error(`[${shareRequestId}] ⚠️ Error message: ${inviteEmailError}`);
+          // Safe logging - don't log the full error object to avoid serialization issues
+          console.error(`[${shareRequestId}] ⚠️ Error occurred`);
+        } catch (logError) {
+          console.error(`[${shareRequestId}] ⚠️ Error occurred (logging failed)`);
+          inviteEmailError = 'Invite email could not be sent';
+        }
+      }
+    } else {
+      console.log(`[${shareRequestId}] ℹ️ No email address provided in share request`);
+    }
+
+    const response = {
+      share,
+      shareUrl,
+      sharedWith: Array.isArray(updatedDocument?.sharedWith) ? updatedDocument.sharedWith : [],
+      inviteEmailSent,
+      inviteEmailError,
+    };
+
+    console.log(`[${shareRequestId}] ✓ Sending response with status 200`);
+    res.json(response);
+    console.log(`[${shareRequestId}] ✅ Share request completed successfully`);
+    
+  } catch (mainError) {
     try {
-      const inviter = requestUser(req);
-      const result = await sendInviteEmail({
-        toEmail: share.email,
-        inviterName: inviter?.name || 'A collaborator',
-        documentTitle: updatedDocument?.title || document.title,
-        shareUrl,
-        role: share.role || 'viewer',
+      const errorMsg = mainError?.message || 'Unknown error';
+      const errorStack = mainError?.stack || '';
+      console.error(`[${shareRequestId}] ❌ UNEXPECTED ERROR in share route: ${errorMsg}`);
+      console.error(`[${shareRequestId}] ❌ Stack: ${typeof errorStack === 'string' ? errorStack.substring(0, 500) : 'unknown'}`);
+    } catch (logError) {
+      console.error(`[${shareRequestId}] ❌ Error in share route (logging failed)`);
+    }
+    
+    try {
+      // Send error response
+      res.status(500).json({
+        message: 'Error processing share request',
+        error: mainError?.message || 'Unknown error',
+        requestId: shareRequestId
       });
-      inviteEmailSent = true;
-      console.log(`✅ Share notification email sent to ${share.email}`);
-    } catch (error) {
-      inviteEmailError = error?.message || 'Invite email could not be sent';
-      console.error(`⚠️  Email failed but collaborator added for ${share.email}:`, inviteEmailError);
+    } catch (responseError) {
+      console.error(`[${shareRequestId}] ❌ Failed to send error response:`, responseError?.message);
+      // If response sending fails, try a minimal response
+      try {
+        res.status(500).json({ error: 'Internal server error' });
+      } catch (finalError) {
+        // Last resort - if all else fails, just close the connection
+        res.end('Internal server error');
+      }
     }
   }
-
-  const response = {
-    share,
-    shareUrl,
-    sharedWith: Array.isArray(updatedDocument?.sharedWith) ? updatedDocument.sharedWith : [],
-    inviteEmailSent,
-    inviteEmailError,
-  };
-
-  res.json(response);
 });
 
 router.get('/:id/collaboration/stream', (req, res) => {

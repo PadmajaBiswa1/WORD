@@ -55,11 +55,291 @@ const SAVE_AS_FAVORITES = [
 function templateContent(key) {
   const map = {
     blank: '<p></p>',
-    business: '<h1>Business Document</h1><p>Prepared for: Client Name</p><h2>Executive Summary</h2><p>Summary text...</p>',
-    letter: '<p>Date</p><p>Recipient Name</p><p>Subject: Letter</p><p>Dear ...</p><p>Sincerely,</p>',
-    resume: '<h1>Full Name</h1><p>Email | Phone | Location</p><h2>Experience</h2><p>Role details...</p><h2>Education</h2><p>Degree details...</p>',
-    proposal: '<h1>Project Proposal</h1><h2>Objective</h2><p>Objective details...</p><h2>Scope</h2><p>Scope details...</p>',
-    invoice: '<h1>Invoice</h1><p>Invoice #INV-001</p><table><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Total</th></tr></thead><tbody><tr><td>Service</td><td>1</td><td>100</td><td>100</td></tr></tbody></table>',
+    business: `
+<h2 style="font-size: 18px; color: #d4af37; margin: 20px 0 10px 0;">Acme Corporation</h2>
+<p style="color: #666; margin: 0 0 20px 0;"><strong>Strategic Business Report • Q2 2026</strong></p>
+
+<div style="border-bottom: 2px solid #d4af37; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between;">
+  <div>
+    <p style="margin: 5px 0; font-size: 13px;"><strong>PREPARED BY</strong></p>
+    <p style="margin: 5px 0; font-size: 13px; color: #d4af37;">Your Name • Your Title</p>
+  </div>
+  <div>
+    <p style="margin: 5px 0; font-size: 13px;"><strong>SUBMITTED TO</strong></p>
+    <p style="margin: 5px 0; font-size: 13px; color: #d4af37;">Client • Department Name</p>
+  </div>
+  <div>
+    <p style="margin: 5px 0; font-size: 13px;"><strong>STATUS</strong></p>
+    <p style="margin: 5px 0; font-size: 13px; color: #d4af37;">Draft • For Review</p>
+  </div>
+</div>
+
+<h3 style="font-size: 14px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;">EXECUTIVE SUMMARY</h3>
+<p>Provide a concise overview of the report's purpose, key findings, and strategic recommendations. This section is intended for senior stakeholders who may not read the full document.</p>
+
+<div style="display: flex; gap: 30px; margin: 20px 0;">
+  <div style="flex: 1;">
+    <h4 style="font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;">BACKGROUND & CONTEXT</h4>
+    <p>Describe the context and background for this report. What problem, opportunity, or question prompted it? What data sources or research methods were used?</p>
+  </div>
+  <div style="flex: 1;">
+    <h4 style="font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;">OBJECTIVES</h4>
+    <ul style="margin: 0; padding-left: 20px;">
+      <li>Primary objective: [state here]</li>
+      <li>Secondary objective: [state here]</li>
+      <li>Success metric: [how results will be measured]</li>
+      <li>Timeline: [expected completion]</li>
+    </ul>
+  </div>
+</div>
+
+<h3 style="font-size: 14px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;">KEY FINDINGS & ANALYSIS</h3>
+<p>Present your core findings here. Support each finding with data, observations, or evidence. Use numbered points for clarity if needed. Address any risks or limitations discovered during analysis.</p>
+
+<h3 style="font-size: 14px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;">RECOMMENDATIONS</h3>
+<ol style="margin: 0; padding-left: 20px;">
+  <li><strong>[First recommendation]</strong> – rationale and expected impact</li>
+  <li><strong>[Second recommendation]</strong> – rationale and expected impact</li>
+  <li><strong>[Third recommendation]</strong> – rationale and expected impact</li>
+</ol>
+
+<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; display: flex; justify-content: space-between;">
+  <p style="margin: 0; font-size: 12px;"><strong>Signature:</strong> Prepared by ___________________________</p>
+  <p style="margin: 0; font-size: 12px;"><strong>Signature:</strong> Approved by ___________________________</p>
+</div>
+    `,
+    letter: `
+<p style="margin: 0 0 20px 0;"><strong>Your Full Name</strong></p>
+<p style="margin: 0; color: #d4af37;">123 Your Address, City, State ZIP</p>
+<p style="margin: 0; color: #d4af37;">your@email.com • (555) 000-0000</p>
+
+<p style="margin: 30px 0 0 0; font-weight: bold;">Recipient Full Name</p>
+<p style="margin: 5px 0; color: #d4af37;">Title / Position</p>
+<p style="margin: 5px 0; color: #d4af37;">Organization or Company</p>
+<p style="margin: 5px 0 20px 0; color: #d4af37;">123 Recipient Address, City, State ZIP</p>
+
+<p style="margin: 20px 0 0 0;"><strong>RE: SUBJECT OF THIS LETTER</strong></p>
+
+<p style="margin: 20px 0;">Dear [Recipient's Name],</p>
+
+<p style="margin: 15px 0; text-align: justify;">Opening paragraph: Introduce yourself and clearly state the purpose of your letter. Be direct and professional. The reader should immediately understand why you are writing.</p>
+
+<p style="margin: 15px 0; text-align: justify;">Body paragraph: Provide context, supporting details, or evidence for your main point. Be specific and factual. Avoid unnecessary filler. If making a request, be explicit about what you need.</p>
+
+<p style="margin: 15px 0; text-align: justify;">Additional paragraph (if needed): Continue with supplementary information, address potential objections, or provide a timeline if applicable.</p>
+
+<p style="margin: 15px 0; text-align: justify;">Closing paragraph: Thank the recipient for their time and consideration. Restate your call to action – what you expect them to do and by when. Provide your contact details for follow-up.</p>
+
+<p style="margin: 25px 0 5px 0;">Sincerely,</p>
+
+<p style="margin: 35px 0 0 0;">___________________________</p>
+<p style="margin: 0;"><strong>Your Full Name</strong></p>
+<p style="margin: 0; font-size: 13px;">Title / Role • Organization</p>
+    `,
+    resume: `
+<h1 style="margin: 0 0 10px 0;">Your Full Name</h1>
+<p style="margin: 0; font-size: 14px; color: #d4af37;"><strong>Senior Software Engineer • Full-Stack Developer</strong></p>
+<p style="margin: 5px 0; font-size: 13px;">your@email.com • (555) 000-0000 • City, State • linkedin.com/in/yourname</p>
+
+<h3 style="font-size: 14px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 8px; margin: 20px 0 10px 0;">PROFESSIONAL SUMMARY</h3>
+<p style="margin: 0; text-align: justify;">Results-driven professional with [X] years of experience delivering [key outcomes] across [industries/domains]. Known for [core strength 1], [core strength 2], and [core strength 3]. Seeking to leverage expertise at a forward-thinking organization.</p>
+
+<h3 style="font-size: 14px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 8px; margin: 20px 0 10px 0;">WORK EXPERIENCE</h3>
+
+<p style="margin: 10px 0 5px 0;"><strong>Senior Job Title</strong> <span style="float: right;">Jan 2023 – Present</span></p>
+<p style="margin: 0 0 10px 0; font-size: 13px; color: #666;">Company Name • City, State</p>
+<ul style="margin: 0 0 10px 0; padding-left: 20px;">
+  <li>Achieved [specific result] by [specific action], resulting in [measurable outcome]</li>
+  <li>Led a team of [N] to deliver [project] on time and [X]% under budget</li>
+  <li>Improved [metric] by [X]% through [initiative or method]</li>
+</ul>
+
+<p style="margin: 10px 0 5px 0;"><strong>Previous Job Title</strong> <span style="float: right;">Mar 2020 – Dec 2022</span></p>
+<p style="margin: 0 0 10px 0; font-size: 13px; color: #666;">Previous Company • City, State</p>
+<ul style="margin: 0 0 10px 0; padding-left: 20px;">
+  <li>Key achievement with quantified result</li>
+  <li>Key responsibility or contribution</li>
+  <li>Collaboration or leadership highlight</li>
+</ul>
+
+<h3 style="font-size: 14px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 8px; margin: 20px 0 10px 0;">EDUCATION</h3>
+<p style="margin: 10px 0 0 0;"><strong>Degree • Major</strong> <span style="float: right;">2016 – 2020</span></p>
+<p style="margin: 0; font-size: 13px; color: #666;">University Name • GPA 3.9/4.0 • Dean's List</p>
+
+<div style="display: flex; gap: 30px; margin: 20px 0;">
+  <div style="flex: 1;">
+    <h4 style="font-size: 13px; font-weight: bold; border-bottom: 2px solid #666; padding-bottom: 5px; margin: 0 0 10px 0;">SKILLS</h4>
+    <p style="margin: 5px 0; font-size: 13px;"><strong>Technical:</strong> Skill 1 • Skill 2 • Skill 3</p>
+    <p style="margin: 5px 0; font-size: 13px;"><strong>Tools & Platforms:</strong> Tool 1 • Tool 2 • Platform 1 • Platform 2</p>
+    <p style="margin: 5px 0; font-size: 13px;"><strong>Soft Skills:</strong> Leadership • Communication • Problem-solving • Strategic thinking</p>
+  </div>
+  <div style="flex: 1;">
+    <h4 style="font-size: 13px; font-weight: bold; border-bottom: 2px solid #666; padding-bottom: 5px; margin: 0 0 10px 0;">CERTIFICATIONS</h4>
+    <ul style="margin: 0; padding-left: 20px; font-size: 13px;">
+      <li>Certification Name (2024)</li>
+      <li>Certification Name (2023)</li>
+      <li>Certification Name (2022)</li>
+    </ul>
+  </div>
+</div>
+
+<h3 style="font-size: 14px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 8px; margin: 20px 0 10px 0;">LANGUAGES</h3>
+<p style="margin: 5px 0; font-size: 13px;">English – Native</p>
+<p style="margin: 5px 0; font-size: 13px;">Language 2 – Fluent</p>
+<p style="margin: 5px 0; font-size: 13px;">Language 3 – Basic</p>
+    `,
+    proposal: `
+<p style="font-size: 12px; color: #666; font-weight: bold; margin: 0 0 5px 0;">PROJECT PROPOSAL</p>
+<h1 style="margin: 0 0 20px 0; color: #333;">Write Your Compelling Proposal Title Here</h1>
+
+<div style="display: flex; justify-content: space-between; border-bottom: 2px solid #d4af37; padding-bottom: 15px; margin-bottom: 20px;">
+  <div>
+    <p style="margin: 0; font-size: 13px; color: #666;"><strong>PREPARED BY</strong></p>
+    <p style="margin: 5px 0 0 0; font-size: 13px; color: #d4af37;">Your Name • Your Company</p>
+  </div>
+  <div>
+    <p style="margin: 0; font-size: 13px; color: #666;"><strong>SUBMITTED TO</strong></p>
+    <p style="margin: 5px 0 0 0; font-size: 13px; color: #d4af37;">Client Name – Organization</p>
+  </div>
+  <div>
+    <p style="margin: 0; font-size: 13px; color: #666;"><strong>DATE</strong></p>
+    <p style="margin: 5px 0 0 0; font-size: 13px; color: #d4af37;">April 22, 2026</p>
+  </div>
+</div>
+
+<h3 style="font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;">OVERVIEW</h3>
+<p>Summarize the entire proposal in 3–5 sentences. What are you proposing, why does it matter, who benefits, and what's the expected outcome? Write this last but place it first.</p>
+
+<div style="display: flex; gap: 30px; margin: 20px 0;">
+  <div style="flex: 1;">
+    <h4 style="font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;">PROBLEM STATEMENT</h4>
+    <p>Clearly define the problem or gap this proposal addresses. Use data or evidence to establish urgency and relevance. The more specific, the stronger your proposal.</p>
+  </div>
+  <div style="flex: 1;">
+    <h4 style="font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;">PROPOSED SOLUTION</h4>
+    <p>Describe your solution in plain terms. How does it directly address the problem? What makes this approach effective, unique, or better than alternatives?</p>
+  </div>
+</div>
+
+<h3 style="font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;">SCOPE OF WORK</h3>
+<ul style="margin: 0 0 10px 0; padding-left: 20px;">
+  <li>Deliverable 1: [Description] – due [date]</li>
+  <li>Deliverable 2: [Description] – due [date]</li>
+  <li>Deliverable 3: [Description] – due [date]</li>
+  <li>Out of scope: [explicitly list exclusions]</li>
+</ul>
+
+<div style="display: flex; gap: 30px; margin: 20px 0;">
+  <div style="flex: 1;">
+    <h4 style="font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;">TIMELINE</h4>
+    <p style="margin: 5px 0;"><strong>Phase 1 – Discovery</strong> [Dates]</p>
+    <p style="margin: 5px 0;"><strong>Phase 2 – Execution</strong> [Dates]</p>
+    <p style="margin: 5px 0;"><strong>Phase 3 – Delivery</strong> [Dates]</p>
+    <p style="margin: 5px 0;"><strong>Final Review:</strong> [Date]</p>
+  </div>
+  <div style="flex: 1;">
+    <h4 style="font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;">BUDGET</h4>
+    <p style="margin: 5px 0;"><strong>Estimated total:</strong> $[amount]</p>
+    <p style="margin: 5px 0;"><strong>Labor:</strong> $[amount]</p>
+    <p style="margin: 5px 0;"><strong>Materials/Tools:</strong> $[amount]</p>
+    <p style="margin: 5px 0;"><strong>Payment:</strong> 50% upfront - 50% on delivery</p>
+  </div>
+</div>
+
+<h3 style="font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;">WHY US</h3>
+<p>Highlight your team's relevant experience, past successes, and unique qualifications. Include 1–2 specific examples of similar work delivered successfully.</p>
+    `,
+    invoice: `
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;">
+  <div>
+    <h1 style="margin: 0; font-size: 32px; font-weight: bold;">INVOICE</h1>
+    <p style="margin: 5px 0; font-size: 14px; color: #d4af37;"><strong>#INV-2026-001</strong></p>
+  </div>
+  <div style="text-align: right;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: bold;">Your Business Name</h2>
+    <p style="margin: 5px 0; font-size: 13px;">123 Your Street, City, State ZIP</p>
+    <p style="margin: 5px 0; font-size: 13px;">billing@business.com • (555) 000-0000</p>
+  </div>
+</div>
+
+<div style="display: flex; gap: 40px; margin-bottom: 30px;">
+  <div style="flex: 1;">
+    <p style="margin: 0; font-size: 12px; font-weight: bold; color: #666;">BILL TO</p>
+    <p style="margin: 5px 0 0 0; font-size: 13px;"><strong>Client Full Name</strong></p>
+    <p style="margin: 5px 0; font-size: 13px;">Client Company Inc.</p>
+    <p style="margin: 5px 0; font-size: 13px;">456 Client Street, City, State ZIP</p>
+    <p style="margin: 5px 0; font-size: 13px;">client@company.com</p>
+  </div>
+  <div>
+    <p style="margin: 5px 0; font-size: 13px;"><strong>Invoice No.</strong> <span style="float: right; color: #d4af37;">INV-2026-001</span></p>
+    <p style="margin: 5px 0; font-size: 13px;"><strong>Invoice Date</strong> <span style="float: right; color: #d4af37;">April 22, 2026</span></p>
+    <p style="margin: 5px 0; font-size: 13px;"><strong>Due Date</strong> <span style="float: right; color: #d4af37;">May 22, 2026</span></p>
+    <p style="margin: 5px 0; font-size: 13px;"><strong>Status</strong> <span style="float: right; color: #d4af37; font-weight: bold;">UNPAID</span></p>
+  </div>
+</div>
+
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+  <thead>
+    <tr style="border-bottom: 2px solid #333;">
+      <th style="text-align: left; padding: 8px; font-size: 12px; color: #666; font-weight: bold;">DESCRIPTION</th>
+      <th style="text-align: center; padding: 8px; font-size: 12px; color: #666; font-weight: bold;">QTY</th>
+      <th style="text-align: right; padding: 8px; font-size: 12px; color: #666; font-weight: bold;">UNIT PRICE</th>
+      <th style="text-align: right; padding: 8px; font-size: 12px; color: #666; font-weight: bold;">AMOUNT</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom: 1px solid #ddd;">
+      <td style="padding: 10px; font-size: 13px;">Service or Product Name</td>
+      <td style="text-align: center; padding: 10px; font-size: 13px;">1</td>
+      <td style="text-align: right; padding: 10px; font-size: 13px;">$1,200.00</td>
+      <td style="text-align: right; padding: 10px; font-size: 13px;">$1,200.00</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #ddd;">
+      <td style="padding: 10px; font-size: 13px;">Consulting Hours (Design)</td>
+      <td style="text-align: center; padding: 10px; font-size: 13px;">4</td>
+      <td style="text-align: right; padding: 10px; font-size: 13px;">$150.00</td>
+      <td style="text-align: right; padding: 10px; font-size: 13px;">$600.00</td>
+    </tr>
+    <tr>
+      <td style="padding: 10px; font-size: 13px;">Additional Service Item</td>
+      <td style="text-align: center; padding: 10px; font-size: 13px;">1</td>
+      <td style="text-align: right; padding: 10px; font-size: 13px;">$350.00</td>
+      <td style="text-align: right; padding: 10px; font-size: 13px;">$350.00</td>
+    </tr>
+  </tbody>
+</table>
+
+<div style="display: flex; justify-content: flex-end; margin: 20px 0;"></div>
+
+<div style="display: flex; justify-content: flex-end; gap: 30px; margin: 30px 0; font-size: 13px;">
+  <div style="width: 200px;">
+    <div style="border-bottom: 1px solid #ddd; padding: 8px 0; text-align: right;">
+      <p style="margin: 0;"><strong>Subtotal</strong> <span style="float: right;">$2,150.00</span></p>
+    </div>
+    <div style="border-bottom: 1px solid #ddd; padding: 8px 0; text-align: right;">
+      <p style="margin: 0;"><strong>Tax (GST 18%)</strong> <span style="float: right;">$387.00</span></p>
+    </div>
+    <div style="padding: 8px 0; text-align: right; font-size: 14px;">
+      <p style="margin: 0; font-weight: bold; color: #d4af37;"><strong>Total Due</strong> <span style="float: right;">$2,537.00</span></p>
+    </div>
+  </div>
+</div>
+
+<div style="display: flex; gap: 40px; margin: 40px 0; padding-top: 20px; border-top: 1px solid #ccc;">
+  <div style="flex: 1;">
+    <p style="margin: 0 0 5px 0; font-size: 12px; font-weight: bold; color: #666;">PAYMENT INSTRUCTIONS</p>
+    <p style="margin: 3px 0; font-size: 12px;">Bank Transfer: Your Bank Name</p>
+    <p style="margin: 3px 0; font-size: 12px;">Account Name: Your Business Name</p>
+    <p style="margin: 3px 0; font-size: 12px;">Account No.: XXXX-XXXX-XXXX</p>
+    <p style="margin: 3px 0; font-size: 12px;">IFSC / Routing: XXXXXXXX</p>
+    <p style="margin: 3px 0; font-size: 12px;">Or pay via: razorpay.com/your-link</p>
+  </div>
+  <div style="flex: 1;">
+    <p style="margin: 0 0 5px 0; font-size: 12px; font-weight: bold; color: #666;">TERMS & NOTES</p>
+    <p style="margin: 3px 0; font-size: 12px;">Payment due within 30 days of invoice date. Late payments are subject to a 1.5% monthly interest charge. Thank you for your business — we appreciate the partnership!</p>
+  </div>
+</div>
+    `,
   };
   return map[key] || '<p></p>';
 }
