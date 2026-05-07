@@ -5,6 +5,11 @@ import { useCollaborationStore } from '@/store';
 import { Modal, Button, Input, Label, Stack } from '@/components/ui';
 import { documentApi } from '@/services/api';
 
+function getCollaboratorColor(index) {
+  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+  return colors[index % colors.length];
+}
+
 export function ShareDialog() {
   const navigate = useNavigate();
   const { closeDialog, toast } = useUIStore();
@@ -18,8 +23,8 @@ export function ShareDialog() {
 
   const activeDocId = id || 'new';
   const shareUrl = activeDocId === 'new'
-    ? `${window.location.origin}/doc/new`
-    : `${window.location.origin}/doc/${activeDocId}`;
+    ? `${window.location.origin}/shared/new`
+    : `${window.location.origin}/shared/${activeDocId}`;
 
   const loadInvitedCollaborators = async (docId) => {
     if (!docId) {
@@ -195,15 +200,39 @@ export function ShareDialog() {
   return (
     <Modal title="Share Document" onClose={() => closeDialog('shareDoc')} width={480}>
       <Stack gap={20}>
-        <div style={{ padding:'12px 14px', background:'var(--bg-elevated)', borderRadius:'var(--radius-md)', border:'1px solid var(--border)' }}>
-          <div style={{ fontFamily:'var(--font-ui)', fontSize:12, fontWeight:700, color:'var(--text-primary)' }}>
-            {connected ? 'Live collaboration is active' : 'Share this document to start live collaboration'}
+        <div style={{ padding:'14px 16px', background:'rgba(201, 168, 76, 0.1)', borderRadius:'var(--radius-md)', border:'1px solid var(--border-gold)' }}>
+          <div style={{ fontFamily:'var(--font-ui)', fontSize:12, fontWeight:700, color:'var(--text-gold)', marginBottom: 4 }}>
+            ⚡ Real-Time Collaboration
           </div>
-          <div style={{ marginTop:6, fontFamily:'var(--font-ui)', fontSize:12, color:'var(--text-secondary)' }}>
-            {collaborators.length > 0
-              ? `${collaborators.length} collaborator${collaborators.length === 1 ? '' : 's'} currently in this document.`
-              : 'No collaborators are connected yet.'}
+          <div style={{ fontFamily:'var(--font-ui)', fontSize:11, color:'var(--text-primary)', marginBottom: 8 }}>
+            {connected 
+              ? `Live collaboration is active. ${collaborators.length} ${collaborators.length === 1 ? 'person is' : 'people are'} editing. Both users see changes instantly.`
+              : 'Share this document to start live collaboration. Collaborators will see all edits in real-time.'}
           </div>
+          {collaborators.length > 0 && (
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {collaborators.map((person, index) => (
+                <div
+                  key={person.sessionId || `${person.name}-${index}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '4px 8px',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  <span style={{ width: 16, height: 16, borderRadius: '50%', background: getCollaboratorColor(index), display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 700, color: '#fff' }}>
+                    {(person.name || 'G').slice(0, 1).toUpperCase()}
+                  </span>
+                  {person.name}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Link share */}
@@ -226,7 +255,7 @@ export function ShareDialog() {
             </Button>
           </div>
           <div style={{ marginTop: 6, fontFamily:'var(--font-ui)', fontSize: 11, color:'var(--text-muted)' }}>
-            📌 Share this link with anyone to start collaborating instantly - no sign-up required
+            📌 Share this link with anyone to start collaborating instantly - no sign-up required. Changes are synchronized in real-time.
           </div>
         </div>
 

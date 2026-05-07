@@ -5,6 +5,17 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documents');
 
+// Global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise);
+  console.error('❌ Reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  console.error('❌ Stack:', error.stack);
+});
+
 const app = express();
 
 connectDB();

@@ -2,6 +2,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useCollaborationStore, useDocumentStore, useEditorStore, useUIStore } from '@/store';
 import { useTheme } from '@/hooks/useTheme';
 
+function getCollaboratorColor(index) {
+  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+  return colors[index % colors.length];
+}
+
 export function TitleBar({ onSave }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,15 +108,27 @@ export function TitleBar({ onSave }) {
         >
           {theme === 'dark' ? '🌙 Dark' : '☀ Light'}
         </button>
-        <div style={presenceWrap} title={collabStatus}>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{collabStatus}</span>
+        <div style={presenceWrap} title={`${collabStatus} - ${collaborators.length} collaborator(s)`}>
+          <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 500 }}>
+            {collaborators.length > 0 ? `${collaborators.length} editing` : 'Ready to collaborate'}
+          </span>
           {visibleCollaborators.map((person, index) => (
-            <span key={person.sessionId || `${person.name}-${index}`} style={presenceBadge}>
+            <span 
+              key={person.sessionId || `${person.name}-${index}`} 
+              style={{
+                ...presenceBadge,
+                backgroundColor: getCollaboratorColor(index),
+                boxShadow: person.status === 'active' ? '0 0 8px rgba(201, 168, 76, 0.6)' : 'none',
+              }}
+              title={`${person.name} - ${person.status || 'active'}`}
+            >
               {(person.name || 'G').slice(0, 2).toUpperCase()}
             </span>
           ))}
           {collaborators.length > visibleCollaborators.length ? (
-            <span style={presenceCount}>+{collaborators.length - visibleCollaborators.length}</span>
+            <span style={{...presenceCount, cursor: 'pointer'}} title={`+${collaborators.length - visibleCollaborators.length} more`}>
+              +{collaborators.length - visibleCollaborators.length}
+            </span>
           ) : null}
         </div>
         <button onClick={() => openDialog('comments')} style={outlineBtn} onMouseEnter={onGoldHover} onMouseLeave={onGoldLeave}>Comments</button>

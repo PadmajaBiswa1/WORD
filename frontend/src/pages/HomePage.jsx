@@ -1,11 +1,57 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import mammoth from 'mammoth';
 import { documentApi, exportApi } from '@/services/api';
 import { buildDocxBlob, buildHtmlDocument, exportToDocx, exportToHtml, exportToPdf } from '@/services/export';
 import { useTheme } from '@/hooks/useTheme';
 import { useUIStore, useDocumentStore } from '@/store';
 
 const LOCAL_FILE_DOCS_KEY = 'etherx_file_docs';
+
+// SVG Icon Components
+function getSaveAsIcon(location) {
+  const iconStyle = { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  
+  const icons = {
+    recent: <svg {...iconStyle}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
+    cloud: <svg {...iconStyle}><path d="M3 11a4 4 0 0 1 4-4h1a4 4 0 0 1 7.753-1.1A4.5 4.5 0 1 1 21 11H3z" /></svg>,
+    share: <svg {...iconStyle}><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>,
+    copyLink: <svg {...iconStyle}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>,
+    thisPc: <svg {...iconStyle}><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>,
+    browse: <svg {...iconStyle}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>,
+  };
+  
+  return icons[location] || icons.cloud;
+}
+
+function getSaveAsLargeIcon(location) {
+  const iconStyle = { width: 40, height: 40, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round', opacity: 0.8 };
+  
+  const icons = {
+    recent: <svg {...iconStyle}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
+    cloud: <svg {...iconStyle}><path d="M3 11a4 4 0 0 1 4-4h1a4 4 0 0 1 7.753-1.1A4.5 4.5 0 1 1 21 11H3z" /></svg>,
+    share: <svg {...iconStyle}><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>,
+    copyLink: <svg {...iconStyle}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>,
+    thisPc: <svg {...iconStyle}><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>,
+    browse: <svg {...iconStyle}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>,
+  };
+  
+  return icons[location] || icons.cloud;
+}
+
+const SaveIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8, display: 'inline' }}>
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+    <polyline points="17 21 17 13 7 13 7 21" />
+    <polyline points="7 3 7 8 15 8" />
+  </svg>
+);
+
+const LoadingIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8, display: 'inline', animation: 'spin 1s linear infinite' }}>
+    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 2.2" />
+  </svg>
+);
 
 const MENU_ITEMS = [
   { key: 'home', label: 'Home', icon: '⌂' },
@@ -39,12 +85,11 @@ const SAVE_AS_FORMATS = [
 
 const SAVE_AS_LOCATIONS = [
   { key: 'recent', label: 'Recent', icon: '◷', area: 'leftTop' },
-  { key: 'onedrive', label: 'OneDrive - Personal', icon: '☁', area: 'personal' },
-  { key: 'share', label: 'Share', icon: '⇪', area: 'share' },
+  { key: 'cloud', label: 'EtherX Cloud', icon: '☁', area: 'personal' },
+  { key: 'share', label: 'Share Document', icon: '⇪', area: 'share' },
   { key: 'copyLink', label: 'Copy Link', icon: '⎘', area: 'share' },
   { key: 'thisPc', label: 'This PC', icon: '🖥', area: 'other' },
-  { key: 'addPlace', label: 'Add a Place', icon: '＋', area: 'other' },
-  { key: 'browse', label: 'Browse', icon: '📁', area: 'other' },
+  { key: 'browse', label: 'Browse Folder', icon: '📁', area: 'other' },
 ];
 
 const SAVE_AS_FAVORITES = [
@@ -531,7 +576,7 @@ export function HomePage() {
   const [search, setSearch] = useState('');
   const [saveAsName, setSaveAsName] = useState('');
   const [saveAsFormat, setSaveAsFormat] = useState('etherx');
-  const [saveAsLocation, setSaveAsLocation] = useState('onedrive');
+  const [saveAsLocation, setSaveAsLocation] = useState('cloud');
   const [saveAsBusy, setSaveAsBusy] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0); // Force re-render for time updates
 
@@ -561,7 +606,9 @@ export function HomePage() {
         const list = Array.isArray(data) ? data : data.documents || data.items || [];
         const locals = readLocalDocs();
         if (!alive) return;
-        const normalized = [...locals, ...list.map((d, i) => ({
+        // Filter out unsaved documents (Untitled Document with default empty content)
+        const filtered = list.filter((d) => !(d.title === 'Untitled Document' && (d.content === '<p></p>' || d.content === '' || !d.content)));
+        const normalized = [...locals, ...filtered.map((d, i) => ({
           id: String(d.id || d._id || i + 1),
           title: d.title || 'Untitled Document',
           updatedAt: d.updatedAt || d.updated || new Date().toISOString(),
@@ -606,37 +653,26 @@ export function HomePage() {
   async function createFromTemplate(key) {
     if (key === 'blank') {
       try {
-        // Create blank document on backend so it appears in recents
+        // Create blank document on backend (don't show in list until saved)
         const created = await documentApi.create({
           title: 'Untitled Document',
           content: '<p></p>',
         });
         const newId = String(created?.id || created?._id || 'new');
-        setDocs((prev) => [
-          {
-            id: newId,
-            title: 'Untitled Document',
-            content: '<p></p>',
-            updatedAt: new Date().toISOString(),
-            localOnly: false,
-          },
-          ...prev.filter((d) => d.id !== newId),
-        ]);
         setSelectedDocId(newId);
-        toast('Blank document created', 'success');
+        toast('Blank document created (save to add to recent list)', 'success');
         navigate(`/doc/${newId}`);
       } catch {
         // Fallback to local if backend unavailable
-        const { doc, next } = createLocalDoc({
+        const { doc } = createLocalDoc({
           title: 'Untitled Document',
           content: '<p></p>',
         });
-        setDocs(next);
         setSelectedDocId(doc.id);
         resetDoc();
         setDocTitle(doc.title);
         setDocContent(doc.content);
-        toast('Blank document created locally', 'success');
+        toast('Blank document created (save to add to recent list)', 'success');
         navigate('/doc/new');
       }
       return;
@@ -647,27 +683,16 @@ export function HomePage() {
     try {
       const created = await documentApi.create({ title, content });
       const newId = String(created?.id || created?._id || created?.document?.id || created?.document?._id || 'new');
-      setDocs((prev) => [
-        {
-          id: newId,
-          title,
-          content,
-          updatedAt: new Date().toISOString(),
-          localOnly: false,
-        },
-        ...prev.filter((d) => d.id !== newId),
-      ]);
       setSelectedDocId(newId);
-      toast(`${key} template created`, 'success');
+      toast(`${key} template created (save to add to recent list)`, 'success');
       navigate(`/doc/${newId}`);
     } catch {
-      const { doc, next } = createLocalDoc({ title, content });
-      setDocs(next);
+      const { doc } = createLocalDoc({ title, content });
       setSelectedDocId(doc.id);
       resetDoc();
       setDocTitle(doc.title);
       setDocContent(doc.content);
-      toast('Template created locally', 'success');
+      toast('Template created (save to add to recent list)', 'success');
       navigate('/doc/new');
     }
   }
@@ -740,7 +765,15 @@ export function HomePage() {
       }
       try {
         await documentApi.save(selectedDoc.id, { title: selectedDoc.title, content: selectedDoc.content || '' });
-        toast('Document saved', 'success');
+        // Add to docs list after successful save
+        setDocs((prev) => {
+          const exists = prev.some((d) => d.id === selectedDoc.id);
+          if (exists) {
+            return prev.map((d) => d.id === selectedDoc.id ? { ...selectedDoc, updatedAt: new Date().toISOString() } : d);
+          }
+          return [{ ...selectedDoc, updatedAt: new Date().toISOString() }, ...prev];
+        });
+        toast('Document saved and added to recent list', 'success');
       } catch {
         const localDoc = { ...selectedDoc, id: `local-${Date.now()}`, updatedAt: new Date().toISOString(), localOnly: true };
         const next = upsertLocalDoc(localDoc);
@@ -913,7 +946,7 @@ export function HomePage() {
         return;
       }
 
-      const wantsLocalFile = saveAsLocation === 'thisPc' || saveAsLocation === 'browse' || saveAsLocation === 'addPlace';
+      const wantsLocalFile = saveAsLocation === 'thisPc' || saveAsLocation === 'browse';
 
       if (wantsLocalFile) {
         const pickerResult = await saveWithFilePicker(finalName, saveAsFormat, selectedDoc.content || '<p></p>');
@@ -958,27 +991,91 @@ export function HomePage() {
   async function handleUploadOpen(event) {
     const file = event.target.files?.[0];
     if (!file) return;
+    
+    const fileName = file.name.replace(/\.[^/.]+$/, '');
+    let content = '';
+    
     try {
-      const text = await file.text();
-      const created = await documentApi.create({
-        title: file.name.replace(/\.[^/.]+$/, ''),
-        content: `<pre>${escapeHtml(text.slice(0, 50000))}</pre>`,
-      });
-      const newId = String(created?.id || created?._id || created?.document?.id || created?.document?._id || 'new');
-      toast('File opened as a new document', 'success');
-      navigate(`/doc/${newId}`);
-    } catch {
-      const { doc, next } = createLocalDoc({
-        title: file.name.replace(/\.[^/.]+$/, ''),
-        content: `<pre>${escapeHtml(text.slice(0, 50000))}</pre>`,
-      });
-      setDocs(next);
-      setSelectedDocId(doc.id);
-      resetDoc();
-      setDocTitle(doc.title);
-      setDocContent(doc.content);
-      toast('Opened file locally', 'warning');
-      navigate('/doc/new');
+      // Handle .docx files
+      if (file.name.toLowerCase().endsWith('.docx')) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const result = await mammoth.convertToHtml({ arrayBuffer });
+          let html = result.value || '';
+          
+          // Clean up the HTML to remove any corrupted elements
+          html = html.replace(/<[^>]*>/g, (tag) => {
+            // Keep only safe formatting tags
+            if (/^<\/?(?:p|div|span|strong|em|u|h[1-6]|ul|ol|li|br|blockquote)(?:\s|>|$)/i.test(tag)) {
+              return tag;
+            }
+            return '';
+          });
+          
+          // Convert Word page breaks to visible Tiptap page break format
+          // Replace double line breaks with page breaks
+          html = html.replace(/<br\s*\/?>\s*<br\s*\/?>/gi, '<div data-page-break="true" style="height:36px;display:block;margin:24px 0;background:linear-gradient(to bottom,rgba(100,100,100,0.15) 0%,rgba(150,150,150,0.25) 50%,rgba(100,100,100,0.15) 100%);border-top:1px solid rgba(200,200,200,0.4);border-bottom:1px solid rgba(200,200,200,0.4);box-shadow:inset 0 1px 2px rgba(0,0,0,0.1),inset 0 -1px 2px rgba(0,0,0,0.1);"></div>');
+          
+          // Split paragraphs and insert page breaks for long documents
+          const paragraphs = html.split(/<\/p>/i);
+          if (paragraphs.length > 12) {
+            let newHtml = '';
+            let paraCount = 0;
+            
+            for (let i = 0; i < paragraphs.length; i++) {
+              newHtml += paragraphs[i];
+              if (i < paragraphs.length - 1) newHtml += '</p>';
+              paraCount++;
+              
+              // Insert visible page break every 12 paragraphs
+              if (paraCount >= 12 && i < paragraphs.length - 1) {
+                newHtml += '<div data-page-break="true" style="height:36px;display:block;margin:24px 0;background:linear-gradient(to bottom,rgba(100,100,100,0.15) 0%,rgba(150,150,150,0.25) 50%,rgba(100,100,100,0.15) 100%);border-top:1px solid rgba(200,200,200,0.4);border-bottom:1px solid rgba(200,200,200,0.4);box-shadow:inset 0 1px 2px rgba(0,0,0,0.1),inset 0 -1px 2px rgba(0,0,0,0.1);"></div>';
+                paraCount = 0;
+              }
+            }
+            html = newHtml;
+          }
+          
+          // Ensure we have valid HTML structure
+          if (!html.trim()) {
+            content = '<p>Document opened but appears to be empty or in an unsupported format.</p>';
+          } else {
+            // Wrap in proper structure with consistent formatting
+            content = `<div>${html}</div>`;
+          }
+        } catch (mammothErr) {
+          console.warn('Mammoth parsing failed:', mammothErr);
+          content = '<p>Unable to parse Word document. Please try a different file or contact support.</p>';
+        }
+      } else {
+        // Handle text files (.txt, .md, etc.)
+        const text = await file.text();
+        content = `<p>${escapeHtml(text.slice(0, 50000)).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
+      }
+      
+      try {
+        const created = await documentApi.create({
+          title: fileName,
+          content,
+        });
+        const newId = String(created?.id || created?._id || created?.document?.id || created?.document?._id || 'new');
+        toast('File opened as a new document (save to add to recent list)', 'success');
+        navigate(`/doc/${newId}`);
+      } catch {
+        const { doc } = createLocalDoc({
+          title: fileName,
+          content,
+        });
+        setSelectedDocId(doc.id);
+        resetDoc();
+        setDocTitle(doc.title);
+        setDocContent(doc.content);
+        toast('Opened file locally (save to add to recent list)', 'warning');
+        navigate('/doc/new');
+      }
+    } catch (err) {
+      toast(`Failed to open file: ${err?.message || 'Unknown error'}`, 'error');
+      console.error('File open error:', err);
     } finally {
       event.target.value = '';
     }
@@ -997,7 +1094,14 @@ export function HomePage() {
     : { words: 0, chars: 0, pages: 0 };
 
   return (
-    <div style={styles.page}>
+    <>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+      <div style={styles.page}>
       <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleUploadOpen} />
 
       <aside style={styles.sidebar}>
@@ -1135,142 +1239,153 @@ export function HomePage() {
 
         {activeMenu === 'saveAs' && (
           <section style={styles.saveAsShell}>
-            <h2 style={styles.saveAsTitle}>Save As</h2>
-            <div style={styles.saveAsLayout}>
-              <aside style={styles.saveAsLeft}>
-                <div style={styles.saveAsBlock}>
+            <div style={styles.saveAsContainer}>
+              <div style={styles.saveAsHeader}>
+                <h2 style={styles.saveAsTitle}>Save As</h2>
+                <p style={styles.saveAsSubtitle}>Choose where to save your document and select the format</p>
+              </div>
+
+              <div style={styles.saveAsMainContent}>
+                {/* Quick Access Sidebar */}
+                <aside style={styles.saveAsQuickAccess}>
+                  <div style={styles.saveAsQuickAccessTitle}>QUICK ACCESS</div>
                   {SAVE_AS_LOCATIONS.filter((item) => item.area === 'leftTop').map((item) => (
                     <button
                       key={item.key}
                       style={{
-                        ...styles.saveAsItem,
-                        ...(saveAsLocation === item.key ? styles.saveAsItemActive : null),
+                        ...styles.saveAsQuickItem,
+                        ...(saveAsLocation === item.key ? styles.saveAsQuickItemActive : null),
                       }}
                       onClick={() => setSaveAsLocation(item.key)}
                     >
-                      <span style={styles.saveAsIcon}>{item.icon}</span>
-                      <span>{item.label}</span>
+                      <span style={styles.saveAsQuickIcon}>{getSaveAsIcon(item.key)}</span>
+                      <span style={styles.saveAsQuickLabel}>{item.label}</span>
                     </button>
                   ))}
-                </div>
 
-                <div style={styles.saveAsSectionTitle}>Personal</div>
-                <div style={styles.saveAsBlock}>
-                  {SAVE_AS_LOCATIONS.filter((item) => item.area === 'personal').map((item) => (
+                  <div style={{ ...styles.saveAsQuickAccessTitle, marginTop: 16 }}>LOCATIONS</div>
+                  {SAVE_AS_LOCATIONS.filter((item) => item.area === 'personal' || item.area === 'other').map((item) => (
                     <button
                       key={item.key}
                       style={{
-                        ...styles.saveAsItem,
-                        ...(saveAsLocation === item.key ? styles.saveAsItemActive : null),
+                        ...styles.saveAsQuickItem,
+                        ...(saveAsLocation === item.key ? styles.saveAsQuickItemActive : null),
                       }}
                       onClick={() => setSaveAsLocation(item.key)}
                     >
-                      <span style={styles.saveAsIcon}>{item.icon}</span>
-                      <span>{item.label}</span>
+                      <span style={styles.saveAsQuickIcon}>{getSaveAsIcon(item.key)}</span>
+                      <span style={styles.saveAsQuickLabel}>{item.label}</span>
                     </button>
                   ))}
-                </div>
 
-                <div style={styles.saveAsSectionTitle}>Share Options</div>
-                <div style={styles.saveAsBlock}>
+                  <div style={{ ...styles.saveAsQuickAccessTitle, marginTop: 16 }}>SHARING</div>
                   {SAVE_AS_LOCATIONS.filter((item) => item.area === 'share').map((item) => (
                     <button
                       key={item.key}
                       style={{
-                        ...styles.saveAsItem,
-                        ...(saveAsLocation === item.key ? styles.saveAsItemActive : null),
+                        ...styles.saveAsQuickItem,
+                        ...(saveAsLocation === item.key ? styles.saveAsQuickItemActive : null),
                       }}
                       onClick={() => setSaveAsLocation(item.key)}
                     >
-                      <span style={styles.saveAsIcon}>{item.icon}</span>
-                      <span>{item.label}</span>
+                      <span style={styles.saveAsQuickIcon}>{getSaveAsIcon(item.key)}</span>
+                      <span style={styles.saveAsQuickLabel}>{item.label}</span>
                     </button>
                   ))}
-                </div>
+                </aside>
 
-                <div style={styles.saveAsSectionTitle}>Other locations</div>
-                <div style={styles.saveAsBlock}>
-                  {SAVE_AS_LOCATIONS.filter((item) => item.area === 'other').map((item) => (
+                {/* Main Content Area */}
+                <div style={styles.saveAsFormArea}>
+                  {/* Current Location Card */}
+                  <div style={{
+                    ...styles.saveAsLocationCard,
+                    ...(saveAsLocation === 'cloud' ? { border: '2px solid #d4af37', borderRadius: 10 } : null),
+                  }}>
+                    <div style={styles.saveAsLocationIcon}>{getSaveAsLargeIcon(saveAsLocation)}</div>
+                    <div>
+                      <div style={styles.saveAsLocationName}>
+                        {SAVE_AS_LOCATIONS.find((l) => l.key === saveAsLocation)?.label || 'Select a location'}
+                      </div>
+                      <div style={styles.saveAsLocationPath}>
+                        {saveAsLocation === 'thisPc' && 'Download to your computer'}
+                        {saveAsLocation === 'cloud' && 'Secure cloud storage - accessible from anywhere'}
+                        {saveAsLocation === 'browse' && 'Choose a specific folder on your computer'}
+                        {saveAsLocation === 'share' && 'Create shareable collaboration link'}
+                        {saveAsLocation === 'copyLink' && 'Generate a link to share this document'}
+                        {saveAsLocation === 'recent' && 'Recently used locations'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info Banner */}
+                  {saveAsLocation === 'cloud' && (
+                    <div style={styles.saveAsInfoBanner}>
+                      <span style={styles.saveAsInfoIcon}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg></span>
+                      <div>
+                        <div style={styles.saveAsInfoTitle}>EtherX Cloud Storage</div>
+                        <div style={styles.saveAsInfoText}>Your document will be saved to your EtherX cloud account and can be accessed from any device. This is separate from Microsoft OneDrive.</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Form Fields */}
+                  <div style={styles.saveAsFormSection}>
+                    <div style={styles.saveAsFormGroup}>
+                      <label style={styles.saveAsLabel}>File name</label>
+                      <input
+                        value={saveAsName}
+                        onChange={(e) => setSaveAsName(e.target.value)}
+                        placeholder="Enter file name"
+                        style={styles.saveAsInputLarge}
+                        onKeyPress={(e) => e.key === 'Enter' && performSaveAs()}
+                      />
+                      <div style={styles.saveAsInputHint}>
+                        Keep your filename descriptive and relevant
+                      </div>
+                    </div>
+
+                    <div style={styles.saveAsFormGroup}>
+                      <label style={styles.saveAsLabel}>Save as type</label>
+                      <select
+                        value={saveAsFormat}
+                        onChange={(e) => setSaveAsFormat(e.target.value)}
+                        style={styles.saveAsSelectLarge}
+                      >
+                        {SAVE_AS_FORMATS.map((fmt) => (
+                          <option key={fmt.key} value={fmt.key}>{fmt.label}</option>
+                        ))}
+                      </select>
+                      <div style={styles.saveAsInputHint}>
+                        {saveAsFormat === 'etherx' && 'Native EtherX format - recommended for editing'}
+                        {saveAsFormat === 'docx' && 'Microsoft Word format - compatible with Word'}
+                        {saveAsFormat === 'html' && 'Web format - for viewing in browsers'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={styles.saveAsActionBar}>
                     <button
-                      key={item.key}
                       style={{
-                        ...styles.saveAsItem,
-                        ...(saveAsLocation === item.key ? styles.saveAsItemActive : null),
+                        ...styles.saveAsCancelBtn,
+                        ...(saveAsBusy ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
                       }}
-                      onClick={() => setSaveAsLocation(item.key)}
+                      onClick={() => setActiveMenu('home')}
+                      disabled={saveAsBusy}
                     >
-                      <span style={styles.saveAsIcon}>{item.icon}</span>
-                      <span>{item.label}</span>
+                      Cancel
                     </button>
-                  ))}
-                </div>
-              </aside>
-
-              <div style={styles.saveAsRight}>
-                <div style={styles.saveAsRightHeading}>Favorites</div>
-                <p style={styles.saveAsMuted}>
-                  Favorite folders you want to easily find later. Click the star icon that appears when you hover over a folder.
-                </p>
-
-                <div style={{ ...styles.saveAsRightHeading, marginTop: 18 }}>Older</div>
-                <div style={styles.saveAsFavoritesList}>
-                  {SAVE_AS_FAVORITES.map((fav) => (
                     <button
-                      key={fav.key}
                       style={{
-                        ...styles.saveAsFavoriteRow,
-                        ...(saveAsLocation === fav.key ? styles.saveAsItemActive : null),
+                        ...styles.saveAsSubmitBtn,
+                        ...(saveAsBusy ? { opacity: 0.7, cursor: 'not-allowed' } : {}),
                       }}
-                      onClick={() => setSaveAsLocation(fav.key)}
+                      onClick={performSaveAs}
+                      disabled={saveAsBusy}
                     >
-                      <span style={styles.saveAsFavoriteFolder}>▢</span>
-                      <span style={styles.saveAsFavoriteMain}>
-                        <span style={styles.saveAsFavoriteTitle}>{fav.label}</span>
-                        <span style={styles.saveAsFavoritePath}>{fav.path}</span>
-                      </span>
-                      {fav.updatedAt ? <span style={styles.saveAsFavoriteTime}>{fav.updatedAt}</span> : null}
+                      {saveAsBusy ? <><LoadingIcon />Saving…</> : <><SaveIcon />Save As</>}
                     </button>
-                  ))}
-                </div>
-
-                <div style={styles.saveAsFormRow}>
-                  <label style={styles.saveAsFieldLabel}>File name</label>
-                  <input
-                    value={saveAsName}
-                    onChange={(e) => setSaveAsName(e.target.value)}
-                    placeholder="Copy of Untitled Document"
-                    style={styles.saveAsInput}
-                  />
-                </div>
-
-                <div style={styles.saveAsFormRow}>
-                  <label style={styles.saveAsFieldLabel}>Save as type</label>
-                  <select
-                    value={saveAsFormat}
-                    onChange={(e) => setSaveAsFormat(e.target.value)}
-                    style={styles.saveAsSelect}
-                  >
-                    {SAVE_AS_FORMATS.map((fmt) => (
-                      <option key={fmt.key} value={fmt.key}>{fmt.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={styles.saveAsActionRow}>
-                  <button
-                    style={styles.secondaryActionBtn}
-                    onClick={() => setActiveMenu('home')}
-                    disabled={saveAsBusy}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    style={{ ...styles.primaryActionBtn, marginBottom: 0 }}
-                    onClick={performSaveAs}
-                    disabled={saveAsBusy}
-                  >
-                    {saveAsBusy ? 'Saving…' : 'Save As'}
-                  </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1304,7 +1419,7 @@ export function HomePage() {
             <div style={styles.panelList}>
               {docs.filter((d) => d.title.toLowerCase().includes(search.toLowerCase())).slice(0, 8).map((doc) => (
                 <div key={doc.id} style={styles.panelItem}>
-                  <button style={styles.panelItemMain} onClick={() => setSelectedDocId(doc.id)}>
+                  <button style={styles.panelItemMain} onClick={() => openDoc(doc)}>
                     <span>{doc.title}</span>
                     <span style={styles.panelItemMeta}>{formatActualTime(doc.updatedAt)}</span>
                   </button>
@@ -1327,6 +1442,7 @@ export function HomePage() {
         )}
       </main>
     </div>
+    </>
   );
 }
 
@@ -1853,6 +1969,215 @@ const styles = {
     display: 'flex',
     gap: 10,
     justifyContent: 'flex-end',
+  },
+  saveAsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+  },
+  saveAsHeader: {
+    paddingBottom: 20,
+    borderBottom: '1px solid var(--border)',
+  },
+  saveAsSubtitle: {
+    margin: '8px 0 0 0',
+    color: 'var(--text-muted)',
+    fontSize: 14,
+  },
+  saveAsMainContent: {
+    display: 'grid',
+    gridTemplateColumns: '200px 1fr',
+    gap: 24,
+    marginTop: 20,
+    flex: 1,
+    minHeight: 0,
+  },
+  saveAsQuickAccess: {
+    display: 'flex',
+    flexDirection: 'column',
+    paddingRight: 16,
+    borderRight: '1px solid var(--border)',
+    overflowY: 'auto',
+    maxHeight: '600px',
+  },
+  saveAsQuickAccessTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: 'var(--text-muted)',
+    letterSpacing: '0.1em',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  saveAsQuickItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 10px',
+    marginBottom: 6,
+    border: '1px solid transparent',
+    borderRadius: 6,
+    background: 'transparent',
+    color: 'var(--text-primary)',
+    cursor: 'pointer',
+    fontSize: 13,
+    textAlign: 'left',
+    transition: 'all 0.2s ease',
+  },
+  saveAsQuickItemActive: {
+    background: 'var(--bg-hover)',
+    borderColor: 'var(--border-gold)',
+    color: 'var(--text-gold)',
+    fontWeight: 600,
+  },
+  saveAsQuickIcon: {
+    fontSize: 16,
+    width: 24,
+    height: 24,
+    textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'currentColor',
+  },
+  saveAsQuickLabel: {
+    flex: 1,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  saveAsFormArea: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 20,
+  },
+  saveAsLocationCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+    padding: 16,
+    background: 'var(--bg-surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 10,
+  },
+  saveAsLocationIcon: {
+    fontSize: 32,
+    opacity: 0.8,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    color: 'var(--text-secondary)',
+    flexShrink: 0,
+  },
+  saveAsLocationName: {
+    fontSize: 16,
+    fontWeight: 600,
+    color: 'var(--text-primary)',
+    marginBottom: 4,
+  },
+  saveAsLocationPath: {
+    fontSize: 12,
+    color: 'var(--text-muted)',
+  },
+  saveAsInfoBanner: {
+    display: 'flex',
+    gap: 12,
+    padding: 14,
+    background: 'var(--bg-surface)',
+    border: '1px solid #d4af37',
+    borderRadius: 8,
+    color: 'var(--text-primary)',
+  },
+  saveAsInfoIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 20,
+    height: 20,
+    flexShrink: 0,
+    color: 'var(--text-primary)',
+  },
+  saveAsInfoTitle: {
+    fontSize: 13,
+    fontWeight: 600,
+    marginBottom: 4,
+    color: 'var(--text-primary)',
+  },
+  saveAsInfoText: {
+    fontSize: 12,
+    color: 'var(--text-muted)',
+    lineHeight: 1.4,
+  },
+  saveAsFormSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
+  },
+  saveAsFormGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  saveAsLabel: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: 'var(--text-primary)',
+  },
+  saveAsInputLarge: {
+    width: '100%',
+    border: '1px solid var(--border)',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    borderRadius: 6,
+    padding: '12px 14px',
+    fontSize: 15,
+    boxSizing: 'border-box',
+  },
+  saveAsSelectLarge: {
+    width: '100%',
+    border: '1px solid var(--border)',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    borderRadius: 6,
+    padding: '12px 14px',
+    fontSize: 15,
+    boxSizing: 'border-box',
+  },
+  saveAsInputHint: {
+    fontSize: 12,
+    color: 'var(--text-muted)',
+    marginTop: 4,
+  },
+  saveAsActionBar: {
+    display: 'flex',
+    gap: 12,
+    justifyContent: 'flex-end',
+    paddingTop: 16,
+    borderTop: '1px solid var(--border)',
+    marginTop: 'auto',
+  },
+  saveAsCancelBtn: {
+    padding: '10px 24px',
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 500,
+    transition: 'all 0.2s ease',
+  },
+  saveAsSubmitBtn: {
+    padding: '10px 32px',
+    border: '1px solid var(--border-gold)',
+    borderRadius: 6,
+    background: 'var(--bg-hover)',
+    color: 'var(--text-gold)',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 600,
+    transition: 'all 0.2s ease',
   },
   empty: {
     color: 'var(--text-muted)',

@@ -30,6 +30,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/home"          element={<RequireAuth><HomePage /></RequireAuth>} />
         <Route path="/doc/:id"       element={<RequireAuth><EditorPage /></RequireAuth>} />
+        <Route path="/shared/:id"    element={<EditorPage isShared={true} />} />
         <Route path="*"              element={<Navigate to="/signin" replace />} />
       </Routes>
     </BrowserRouter>

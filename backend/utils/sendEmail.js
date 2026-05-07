@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 
+// Create a shared transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT) || 465,
@@ -12,6 +13,8 @@ const transporter = nodemailer.createTransport({
     rejectUnauthorized: false,
     minVersion: 'TLSv1.2'
   },
+  connectionTimeout: 10000,
+  socketTimeout: 10000,
   logger: false,
   debug: false,
 });
@@ -35,12 +38,35 @@ function generateOTP() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+// Helper function to send mail with better error handling
+async function sendMailWithTimeout(mailOptions, timeoutMs = 30000) {
+  try {
+    console.log('[sendMail] Starting email send...');
+    console.log('[sendMail] To:', mailOptions.to);
+    console.log('[sendMail] Subject:', mailOptions.subject.substring(0, 50) + '...');
+    
+    // Send directly without Promise.race - nodemailer handles timeouts internally
+    const info = await transporter.sendMail(mailOptions);
+    
+    console.log('[sendMail] ✅ Email sent successfully!');
+    console.log('[sendMail] MessageId:', info?.messageId);
+    console.log('[sendMail] Response:', info?.response?.substring(0, 100));
+    
+    return info;
+  } catch (err) {
+    console.error('[sendMail] ❌ Error in sendMailWithTimeout:', err.message);
+    console.error('[sendMail] Error code:', err.code);
+    console.error('[sendMail] Error response:', err.response?.substring(0, 100));
+    throw err;
+  }
+}
+
 async function sendOTPEmail(email, otp, type) {
   const subject = type === 'verify' ? 'Verify your EtherxWord account' : 'Reset your EtherxWord password';
   const action  = type === 'verify' ? 'verify your account' : 'reset your password';
 
   try {
-    const info = await transporter.sendMail({
+    const mailOptions = {
       from: `"EtherxWord" <${process.env.SMTP_USER}>`,
       to: email,
       subject,
@@ -54,7 +80,9 @@ async function sendOTPEmail(email, otp, type) {
           <p style="font-size:12px;color:#888">If you didn't request this, you can safely ignore this email.</p>
         </div>
       `,
-    });
+    };
+    
+    const info = await sendMailWithTimeout(mailOptions, 30000);
     console.log('✅ OTP email sent to', email, '| MessageId:', info.messageId);
     return info;
   } catch (err) {
@@ -91,29 +119,50 @@ async function sendInviteEmail({ toEmail, inviterName, documentTitle, shareUrl, 
 
     console.log(`[${inviteAttemptId}] 📨 Building email content and calling nodemailer...`);
     
-    const info = await transporter.sendMail({
-      from: `"EtherxWord" <${process.env.SMTP_USER}>`,
-      to: toEmail,
-      subject: `${safeInviter} invited you to collaborate on "${safeTitle}"`,
-      html: `
-        <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:28px;background:#0f0f0f;color:#e8e0d0;border-radius:8px">
-          <h2 style="color:#c9a84c;margin:0 0 8px 0">EtherxWord Collaboration Invite</h2>
-          <p style="margin:0 0 14px 0"><strong>${safeInviter}</strong> invited you to join <strong>${safeTitle}</strong> as <strong>${safeRole}</strong>.</p>
-          <a href="${shareUrl}" style="display:inline-block;padding:10px 16px;background:#c9a84c;color:#121212;text-decoration:none;border-radius:6px;font-weight:700;text-align:center">Open Document</a>
-          <p style="margin:14px 0 0 0;font-size:12px;color:#999">If the button does not work, copy this link:<br><code style="background:#1a1a1a;padding:4px 8px;border-radius:4px;word-break:break-all">${shareUrl}</code></p>
-          <hr style="border:none;border-top:1px solid #333;margin:20px 0">
-          <p style="font-size:11px;color:#666;margin:0">This is an automated message from EtherxWord. Do not reply directly to this email.</p>
-        </div>
-      `,
-      replyTo: process.env.SMTP_USER,
-    });
-    
-    console.log(`[${inviteAttemptId}] ✓ Nodemailer returned - email dispatch successful`);
-    console.log(`[${inviteAttemptId}] ✅ Email sent successfully! MessageId: ${info?.messageId}`);
-    
-    const result = { messageId: info?.messageId, response: info?.response };
-    console.log(`[${inviteAttemptId}] ✓ Returning result:`, result);
-    return result;
+    try {
+      console.log(`[${inviteAttemptId}] 📨 Email message being constructed...`);
+      console.log(`[${inviteAttemptId}]    To: ${toEmail}`);
+      console.log(`[${inviteAttemptId}]    From: "EtherxWord" <${process.env.SMTP_USER}>`);
+      console.log(`[${inviteAttemptId}]    Subject: ${safeInviter} invited you to collaborate on "${safeTitle}"`);
+      
+      const mailOptions = {
+        from: `"EtherxWord" <${process.env.SMTP_USER}>`,
+        to: toEmail,
+        subject: `${safeInviter} invited you to collaborate on "${safeTitle}"`,
+        html: `
+          <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:28px;background:#0f0f0f;color:#e8e0d0;border-radius:8px">
+            <h2 style="color:#c9a84c;margin:0 0 8px 0">EtherxWord Collaboration Invite</h2>
+            <p style="margin:0 0 14px 0"><strong>${safeInviter}</strong> invited you to join <strong>${safeTitle}</strong> as <strong>${safeRole}</strong>.</p>
+            <a href="${shareUrl}" style="display:inline-block;padding:10px 16px;background:#c9a84c;color:#121212;text-decoration:none;border-radius:6px;font-weight:700;text-align:center">Open Document</a>
+            <p style="margin:14px 0 0 0;font-size:12px;color:#999">If the button does not work, copy this link:<br><code style="background:#1a1a1a;padding:4px 8px;border-radius:4px;word-break:break-all">${shareUrl}</code></p>
+            <hr style="border:none;border-top:1px solid #333;margin:20px 0">
+            <p style="font-size:11px;color:#666;margin:0">This is an automated message from EtherxWord. Do not reply directly to this email.</p>
+          </div>
+        `,
+        replyTo: process.env.SMTP_USER,
+      };
+      
+      console.log(`[${inviteAttemptId}] 📨 Calling sendMailWithTimeout (fresh transporter)...`);
+      const info = await sendMailWithTimeout(mailOptions, 30000);
+      
+      console.log(`[${inviteAttemptId}] ✓ Transporter returned - email dispatch successful`);
+      console.log(`[${inviteAttemptId}] ✅ Email sent successfully! MessageId: ${info?.messageId}`);
+      
+      const result = { messageId: info?.messageId, response: info?.response };
+      console.log(`[${inviteAttemptId}] ✓ Returning result:`, result);
+      return result;
+    } catch (sendMailError) {
+      const errorMsg = sendMailError?.message || 'Unknown error in sendMail';
+      const errorCode = sendMailError?.code || 'UNKNOWN';
+      console.error(`[${inviteAttemptId}] ❌ Error in sendMail():`, errorMsg);
+      console.error(`[${inviteAttemptId}] ❌ Error code: ${errorCode}`);
+      console.error(`[${inviteAttemptId}] ❌ Error details:`, {
+        name: sendMailError?.name,
+        message: errorMsg,
+        code: errorCode,
+      });
+      throw sendMailError;
+    }
 
   } catch (err) {
     const errorMsg = err?.message || 'Unknown error';

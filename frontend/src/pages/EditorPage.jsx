@@ -16,7 +16,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useUIStore, useDocumentStore } from '@/store';
 import { documentApi } from '@/services/api';
 
-export function EditorPage() {
+export function EditorPage({ isShared = false }) {
   const { id: routeId } = useParams();
   const fullscreen = useUIStore((s) => s.fullscreen);
   const reset = useDocumentStore((s) => s.reset);
@@ -27,25 +27,35 @@ export function EditorPage() {
 
   const { save } = useAutoSave();
   useKeyboardShortcuts();
-  useCollaboration(routeId && routeId !== 'new' ? routeId : documentId);
+  
+  // For shared documents, always use routeId; for owned, use stored documentId
+  const activeDocId = isShared ? routeId : (routeId && routeId !== 'new' ? routeId : documentId);
+  useCollaboration(activeDocId && activeDocId !== 'new' ? activeDocId : null);
 
   // Load doc if ID provided, or create new doc on backend
   useEffect(() => {
-    if (routeId && routeId !== 'new') {
-      console.log(`📖 Loading document: ${routeId}`);
-      setId(routeId);
+    const docIdToLoad = isShared ? routeId : (routeId && routeId !== 'new' ? routeId : documentId);
+    
+    if (docIdToLoad && docIdToLoad !== 'new') {
+      console.log(`📖 Loading document: ${docIdToLoad} (${isShared ? 'shared' : 'owned'})`);
+      setId(docIdToLoad);
       documentApi
-        .get(routeId)
+        .get(docIdToLoad)
         .then((doc) => {
           console.log(`✅ Document loaded: "${doc?.title}" (${doc?.content?.length || 0} chars)`);
           hydrateDocument(doc);
+          if (isShared) {
+            toast('✨ Joined document for real-time collaboration', 'success');
+          }
         })
         .catch((err) => {
-          console.error(`❌ Failed to load document ${routeId}:`, err?.message);
+          console.error(`❌ Failed to load document ${docIdToLoad}:`, err?.message);
+          if (isShared) {
+            toast('Failed to load shared document', 'error');
+          }
         });
-    } else if (!documentId) {
-      // Only create new document if one doesn't already exist in state
-      // (prevents overwriting content user just typed)
+    } else if (!isShared && !documentId) {
+      // Only create new document for authenticated users
       console.log('📝 Creating new blank document...');
       reset();
       documentApi
@@ -55,8 +65,6 @@ export function EditorPage() {
           if (newId) {
             console.log(`✅ Document created: ${newId}`);
             setId(newId);
-            // Don't hydrate yet — editor will load from store
-            // This prevents overwriting content user just typed
             window.history.replaceState(null, '', `/doc/${newId}`);
           }
         })
@@ -64,7 +72,7 @@ export function EditorPage() {
           console.warn(`⚠️  Could not create document on backend:`, err?.message);
         });
     }
-  }, [hydrateDocument, reset, routeId, setId, documentId, toast]);
+  }, [hydrateDocument, reset, routeId, setId, documentId, toast, isShared]);
 
   return (
     <div style={{

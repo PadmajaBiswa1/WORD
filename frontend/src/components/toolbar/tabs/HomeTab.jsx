@@ -25,9 +25,15 @@ const PARA_STYLES = [
 const TEXT_COLORS = [
   '#000000', '#333333', '#666666', '#999999', '#ffffff', '#ff4d4f',
   '#fa8c16', '#fadb14', '#52c41a', '#13c2c2', '#1677ff', '#722ed1',
+  '#ff7a45', '#ff85c0', '#f759ab', '#c41d7f', '#ad6800', '#5cdbd3',
+  '#0050b3', '#1890ff', '#b37feb', '#531dab',
 ];
 
-const HIGHLIGHT_COLORS = ['#fff200', '#c8f79a', '#8fe7ff', '#ffc4de', '#ffd591', '#d9f7be'];
+const HIGHLIGHT_COLORS = [
+  '#fff200', '#c8f79a', '#8fe7ff', '#ffc4de', '#ffd591', '#d9f7be',
+  '#fff7e6', '#ffec8f', '#ffe58f', '#ffbb96', '#ffa940', '#ff9c6e',
+  '#ffd666', '#bae637', '#95de64', '#69c0ff', '#85a5ff', '#d48806',
+];
 
 export function HomeTab() {
   const {
@@ -155,30 +161,31 @@ export function HomeTab() {
       return;
     }
     
-    // Get marks from current position or selection
     const { from, to } = editor.state.selection;
+    if (from === to) {
+      toast('Select text to copy format from', 'warning');
+      return;
+    }
     
-    // Get marks from the first character of selection
-    const marksAtPos = editor.state.doc.resolve(from).marks();
-    
-    // Also try to get node attributes if it's a block
+    // Get all marks from the first character of selection
     const $from = editor.state.doc.resolve(from);
-    const node = $from.parent;
-    const attrs = node.attrs || {};
+    const marksAtPos = $from.marks();
     
-    // Store both marks and attributes
+    // Get node attributes
+    const node = $from.parent;
+    const nodeAttrs = { ...node.attrs };
+    
+    // Store format data
     const formatData = {
-      marks: marksAtPos,
-      fontSize: attrs.fontSize || null,
-      fontFamily: attrs.fontFamily || null,
-      lineHeight: attrs.lineHeight || null,
+      marks: marksAtPos.map(m => ({ type: m.type.name, attrs: m.attrs })),
+      nodeAttrs: nodeAttrs,
     };
     
     setFormatPainterMarks(formatData);
     painterActive.current = true;
     
-    const marksInfo = marksAtPos.length > 0 ? `${marksAtPos.map(m => m.type.name).join(', ')}` : 'text';
-    toast(`Format Painter active (${marksInfo})`, 'info');
+    const marksInfo = marksAtPos.length > 0 ? marksAtPos.map(m => m.type.name).join(', ') : 'base';
+    toast(`Format Painter active: ${marksInfo}`, 'info');
 
     const applyOnce = () => {
       if (!painterActive.current) return;
@@ -186,24 +193,32 @@ export function HomeTab() {
       
       const sel = editor.state.selection;
       if (sel.from === sel.to) {
-        toast('Select text to apply format', 'warning');
+        toast('Select text to apply format to', 'warning');
         setFormatPainterMarks(null);
         editor.off('selectionUpdate', applyOnce);
         return;
       }
       
-      const chain = editor.chain().focus();
-      
-      // Apply marks
-      if (formatData.marks && formatData.marks.length > 0) {
-        formatData.marks.forEach((mark) => {
-          chain.setMark(mark.type.name, mark.attrs);
-        });
+      try {
+        const chain = editor.chain().focus();
+        
+        // Remove existing marks first
+        chain.unsetAllMarks();
+        
+        // Apply captured marks
+        if (formatData.marks && formatData.marks.length > 0) {
+          formatData.marks.forEach(({ type, attrs }) => {
+            chain.setMark(type, attrs);
+          });
+        }
+        
+        chain.run();
+        setFormatPainterMarks(null);
+        toast('Format applied successfully', 'success');
+      } catch (err) {
+        console.error('Format Painter error:', err);
+        toast('Error applying format', 'error');
       }
-      
-      chain.run();
-      setFormatPainterMarks(null);
-      toast('Format applied', 'success');
       editor.off('selectionUpdate', applyOnce);
     };
 
@@ -250,8 +265,11 @@ export function HomeTab() {
     if (editor.isActive('listItem')) {
       run(() => editor.chain().sinkListItem('listItem').run());
     } else {
-      const node = editor.state.selection.$from.node();
-      const cur = parseInt((node.attrs.style || '').match(/margin-left:\s*(\d+)px/)?.[1] || '0', 10);
+      // Get the paragraph attributes properly
+      const paraAttrs = editor.getAttributes('paragraph');
+      const styleStr = paraAttrs.style || '';
+      const match = styleStr.match(/margin-left:\s*(\d+)px/);
+      const cur = parseInt(match ? match[1] : '0', 10);
       updateParagraphStyle({ 'margin-left': `${cur + 40}px` });
     }
   };
@@ -260,9 +278,13 @@ export function HomeTab() {
     if (editor.isActive('listItem')) {
       run(() => editor.chain().liftListItem('listItem').run());
     } else {
-      const node = editor.state.selection.$from.node();
-      const cur = parseInt((node.attrs.style || '').match(/margin-left:\s*(\d+)px/)?.[1] || '0', 10);
-      updateParagraphStyle({ 'margin-left': cur > 0 ? `${Math.max(0, cur - 40)}px` : null });
+      // Get the paragraph attributes properly
+      const paraAttrs = editor.getAttributes('paragraph');
+      const styleStr = paraAttrs.style || '';
+      const match = styleStr.match(/margin-left:\s*(\d+)px/);
+      const cur = parseInt(match ? match[1] : '0', 10);
+      const newMargin = cur > 0 ? Math.max(0, cur - 40) : 0;
+      updateParagraphStyle({ 'margin-left': newMargin > 0 ? `${newMargin}px` : null });
     }
   };
 
@@ -437,18 +459,21 @@ export function HomeTab() {
               key={s.value}
               onClick={() => applyStyle(s.value)}
               style={{
-                width: s.value === 'title' ? 90 : 76,
+                width: 80,
                 height: 62,
                 border: `1px solid ${activeStyle() === s.value ? 'var(--border-gold)' : 'var(--border)'}`,
                 borderRadius: 2,
                 background: activeStyle() === s.value ? 'var(--bg-hover)' : 'var(--bg-elevated)',
                 cursor: 'pointer',
-                padding: '4px 6px',
-                textAlign: 'left',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
                 fontFamily: 'var(--font-ui)',
                 color: activeStyle() === s.value ? 'var(--text-gold)' : 'var(--text-primary)',
-                fontSize: s.value === 'title' ? 18 : s.value === 'h1' ? 14 : s.value === 'h2' ? 12 : 11,
-                fontWeight: s.value.startsWith('h') || s.value === 'title' ? 700 : 400,
+                fontSize: 12,
+                fontWeight: s.value.startsWith('h') || s.value === 'title' ? 600 : 400,
               }}
             >
               {s.label}
@@ -467,8 +492,8 @@ export function HomeTab() {
         </div>
       </RibbonGroup>
 
-      <RibbonGroup label="Add-ins">
-        <Tooltip text="Add-ins">
+      <RibbonGroup label="Tools">
+        <Tooltip text="Get Help">
           <Button
             style={{
               width: 72,
@@ -479,10 +504,10 @@ export function HomeTab() {
               border: '1px solid var(--border)',
               fontSize: 11,
             }}
-            onClick={() => window.open('https://appsource.microsoft.com/en-us/marketplace/apps?product=office%3Bword', '_blank', 'noopener,noreferrer')}
+            onClick={() => openDialog('help')}
           >
-            <span style={{ fontSize: 18 }}>▦</span>
-            <span>Add-ins</span>
+            <span style={{ fontSize: 18 }}>❓</span>
+            <span>Help</span>
           </Button>
         </Tooltip>
       </RibbonGroup>
@@ -502,7 +527,7 @@ export function HomeTab() {
                 borderRadius: 4,
                 padding: 6,
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: 'repeat(4, 1fr)',
                 gap: 4,
                 minWidth: 70,
                 boxShadow: 'var(--shadow-md)',
@@ -535,7 +560,7 @@ export function HomeTab() {
                 borderRadius: 4,
                 padding: 6,
                 display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
+                gridTemplateColumns: 'repeat(5, 1fr)',
                 gap: 4,
                 minWidth: 92,
                 boxShadow: 'var(--shadow-md)',

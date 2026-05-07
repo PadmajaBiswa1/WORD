@@ -91,55 +91,58 @@ router.post('/:id/share', async (req, res) => {
 
     const { share, document: updatedDocument } = shareResult;
     const origin = req.get('origin') || process.env.FRONTEND_URL || 'http://localhost:3000';
-    const shareUrl = `${origin.replace(/\/$/, '')}/doc/${req.params.id}`;
+    const shareUrl = `${origin.replace(/\/$/, '')}/shared/${req.params.id}`;
+    
+    // Capture inviter info BEFORE async task
+    const inviter = requestUser(req);
 
-    let inviteEmailSent = false;
-    let inviteEmailError = null;
-
-    if (share?.email) {
-      try {
-        const inviter = requestUser(req);
-        console.log(`[${shareRequestId}] 📧 Email provided in share request: ${share.email}`);
-        console.log(`[${shareRequestId}] 📧 Calling sendInviteEmail function...`);
-        
-        const emailResult = await sendInviteEmail({
-          toEmail: share.email,
-          inviterName: inviter?.name || 'A collaborator',
-          documentTitle: updatedDocument?.title || document.title,
-          shareUrl,
-          role: share.role || 'viewer',
-        });
-        
-        inviteEmailSent = true;
-        console.log(`[${shareRequestId}] ✅ sendInviteEmail completed successfully`);
-        console.log(`[${shareRequestId}] ✅ Email result:`, emailResult);
-      } catch (emailError) {
-        try {
-          inviteEmailError = emailError?.message || 'Invite email could not be sent';
-          console.error(`[${shareRequestId}] ⚠️ Email service error for ${share.email}`);
-          console.error(`[${shareRequestId}] ⚠️ Error message: ${inviteEmailError}`);
-          // Safe logging - don't log the full error object to avoid serialization issues
-          console.error(`[${shareRequestId}] ⚠️ Error occurred`);
-        } catch (logError) {
-          console.error(`[${shareRequestId}] ⚠️ Error occurred (logging failed)`);
-          inviteEmailError = 'Invite email could not be sent';
-        }
-      }
-    } else {
-      console.log(`[${shareRequestId}] ℹ️ No email address provided in share request`);
-    }
-
+    // Build response immediately
     const response = {
       share,
       shareUrl,
       sharedWith: Array.isArray(updatedDocument?.sharedWith) ? updatedDocument.sharedWith : [],
-      inviteEmailSent,
-      inviteEmailError,
+      inviteEmailSent: !!share?.email,
+      inviteEmailError: null,
     };
 
+    // Send response immediately - don't wait for email
     console.log(`[${shareRequestId}] ✓ Sending response with status 200`);
     res.json(response);
-    console.log(`[${shareRequestId}] ✅ Share request completed successfully`);
+    console.log(`[${shareRequestId}] ✅ Response sent to client`);
+
+    // Handle email sending asynchronously in background (don't await)
+    if (share?.email) {
+      console.log(`[${shareRequestId}] 📧 Scheduling async email send for ${share.email}`);
+      
+      // Use setImmediate to send email after response is sent
+      setImmediate(async () => {
+        const asyncId = `async-${shareRequestId}`;
+        try {
+          console.log(`[${asyncId}] 📧 [ASYNC] Starting email send...`);
+          console.log(`[${asyncId}] 📧 [ASYNC] To: ${share.email}`);
+          console.log(`[${asyncId}] 📧 [ASYNC] Document: ${updatedDocument?.title || document.title}`);
+          console.log(`[${asyncId}] 📧 [ASYNC] URL: ${shareUrl}`);
+          console.log(`[${asyncId}] 📧 [ASYNC] Inviter: ${inviter?.name || 'A collaborator'}`);
+          
+          const emailResult = await sendInviteEmail({
+            toEmail: share.email,
+            inviterName: inviter?.name || 'A collaborator',
+            documentTitle: updatedDocument?.title || document.title,
+            shareUrl,
+            role: share.role || 'viewer',
+          });
+          
+          console.log(`[${asyncId}] ✅ [ASYNC] Email sent successfully to ${share.email}`);
+          console.log(`[${asyncId}] ✅ [ASYNC] MessageId:`, emailResult?.messageId);
+        } catch (emailError) {
+          console.error(`[${asyncId}] ❌ [ASYNC] Email service error for ${share.email}`);
+          console.error(`[${asyncId}] ❌ [ASYNC] Error name:`, emailError?.name);
+          console.error(`[${asyncId}] ❌ [ASYNC] Error message:`, emailError?.message || 'Unknown error');
+          console.error(`[${asyncId}] ❌ [ASYNC] Error code:`, emailError?.code);
+          console.error(`[${asyncId}] ❌ [ASYNC] Stack:`, emailError?.stack?.substring(0, 200));
+        }
+      });
+    }
     
   } catch (mainError) {
     try {
@@ -309,19 +312,21 @@ router.post('/test/send-email', async (req, res) => {
     return res.status(400).json({ message: 'testEmail is required' });
   }
 
-  const testUrl = `${req.protocol}://${req.get('host')}/test/sample`;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const testDocUrl = `${frontendUrl.replace(/\/$/, '')}/shared/test-demo`;
   try {
     await sendInviteEmail({
       toEmail: testEmail,
       inviterName: 'EtherX Word Test',
-      documentTitle: 'Test Document',
-      shareUrl: testUrl,
+      documentTitle: 'Welcome to EtherX Word - Test Document',
+      shareUrl: testDocUrl,
       role: 'viewer',
     });
     res.json({
       ok: true,
       message: `Test email sent to ${testEmail}`,
       testEmail,
+      shareUrl: testDocUrl,
     });
   } catch (error) {
     res.status(500).json({

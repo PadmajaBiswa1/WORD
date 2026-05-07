@@ -1,12 +1,527 @@
 {
   "documents": [
     {
+      "id": "doc_08e8392b7f68",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-05-06T16:01:40.956Z",
+      "updatedAt": "2026-05-07T06:15:31.859Z",
+      "revision": 3,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_c772b6841d2a",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-05-06T15:59:54.045Z",
+      "updatedAt": "2026-05-06T15:59:54.728Z",
+      "revision": 1,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_ef6e952a5ca9",
+      "title": "Untitled Document",
+      "content": "<p>bnm,</p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p>",
+      "createdAt": "2026-05-06T15:33:32.169Z",
+      "updatedAt": "2026-05-06T15:33:54.065Z",
+      "revision": 5,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_12752deed247",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-05-06T15:32:54.348Z",
+      "updatedAt": "2026-05-06T15:32:54.946Z",
+      "revision": 1,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_db9f5591329a",
+      "title": "Untitled Document",
+      "content": "<p>cvbnm</p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p>",
+      "createdAt": "2026-05-06T15:31:45.204Z",
+      "updatedAt": "2026-05-06T15:33:17.602Z",
+      "revision": 12,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_9db9427b1662",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-05-06T15:11:40.679Z",
+      "updatedAt": "2026-05-06T15:11:41.481Z",
+      "revision": 1,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_0e96cbc2903c",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-05-04T06:41:24.246Z",
+      "updatedAt": "2026-05-04T06:41:24.804Z",
+      "revision": 1,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_bbec66b9e9ac",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-05-04T06:40:55.511Z",
+      "updatedAt": "2026-05-04T06:41:20.008Z",
+      "revision": 1,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_52bdbf87d5de",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-05-04T06:26:23.581Z",
+      "updatedAt": "2026-05-04T06:28:22.987Z",
+      "revision": 8,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [
+        {
+          "id": "share_565cf799e489",
+          "email": "biswalpadmaja411@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-05-04T06:26:32.435Z"
+        }
+      ],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_c2e61b39d5a3",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-05-04T06:12:57.471Z",
+      "updatedAt": "2026-05-04T06:18:30.091Z",
+      "revision": 2,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [
+        {
+          "id": "share_fd9793325206",
+          "email": "sunainabiswal10@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-05-04T06:13:07.077Z"
+        }
+      ],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_131633c7c8bc",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-05-04T06:00:44.399Z",
+      "updatedAt": "2026-05-04T06:12:32.861Z",
+      "revision": 2,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [
+        {
+          "id": "share_515bace641c1",
+          "email": "sunainabiswal10@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-05-04T06:06:23.929Z"
+        },
+        {
+          "id": "share_b2ce8cdb3bfa",
+          "email": "reshmabanu2328@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-05-04T06:02:32.899Z"
+        }
+      ],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_3804ae565a19",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-04-30T15:54:54.194Z",
+      "updatedAt": "2026-04-30T15:55:07.157Z",
+      "revision": 2,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_7b0e49cc6bbd",
+      "title": "rty",
+      "content": "<p>xcvbnm,</p>",
+      "createdAt": "2026-04-30T15:47:36.349Z",
+      "updatedAt": "2026-04-30T15:56:10.432Z",
+      "revision": 4,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_8548febaef2d",
+      "title": "Untitled Document",
+      "content": "<p>sdfghsdfghxcvbn</p>",
+      "createdAt": "2026-04-29T17:25:19.828Z",
+      "updatedAt": "2026-04-30T15:45:36.992Z",
+      "revision": 7,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [
+        {
+          "id": "share_300a9227c175",
+          "email": "biswalpadmaja411@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T17:26:00.999Z"
+        }
+      ],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_28c69a9d1413",
+      "title": "Untitled Document",
+      "content": "<p>sdfghj</p>",
+      "createdAt": "2026-04-29T17:16:12.831Z",
+      "updatedAt": "2026-04-29T17:18:57.784Z",
+      "revision": 2,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [
+        {
+          "id": "share_05963303ef8b",
+          "email": "biswalpadmaja411@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T17:18:57.784Z"
+        },
+        {
+          "id": "share_ae01d5ca7eb4",
+          "email": "etherxonenote@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T17:16:51.512Z"
+        }
+      ],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_3f66093f4b39",
+      "title": "Untitled Document",
+      "content": "<p>xcvbn</p>",
+      "createdAt": "2026-04-29T17:05:07.431Z",
+      "updatedAt": "2026-04-29T17:11:00.614Z",
+      "revision": 6,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [
+        {
+          "id": "share_b30b76883799",
+          "email": "biswalpadmaja411@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T17:09:11.117Z"
+        },
+        {
+          "id": "share_321723d83817",
+          "email": "etherxonenote@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T17:11:00.614Z"
+        }
+      ],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_9146ee7aa0d1",
+      "title": "Untitled Document",
+      "content": "<p>sdfg</p>",
+      "createdAt": "2026-04-29T16:40:14.807Z",
+      "updatedAt": "2026-04-29T16:58:50.573Z",
+      "revision": 12,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [
+        {
+          "id": "share_8bf0d064f2be",
+          "email": "etherxonenote@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T16:56:18.096Z"
+        },
+        {
+          "id": "share_fb4d7462e2a2",
+          "email": "biswalpadmaja411@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T16:58:50.573Z"
+        }
+      ],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_6b2b2104a4c5",
+      "title": "Test Doc",
+      "content": "Test content",
+      "createdAt": "2026-04-29T16:01:36.467Z",
+      "updatedAt": "2026-04-29T17:23:54.671Z",
+      "revision": 0,
+      "owner": {
+        "id": "guest-user",
+        "name": "Guest User",
+        "email": ""
+      },
+      "sharedWith": [
+        {
+          "id": "share_c0a2d749ee52",
+          "email": "monitor@example.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T17:14:20.041Z"
+        },
+        {
+          "id": "share_47f707e02573",
+          "email": "newuser@example.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T16:09:32.262Z"
+        },
+        {
+          "id": "share_1e5d4cfad88f",
+          "email": "debug@test.com",
+          "role": "viewer",
+          "sharedAt": "2026-04-29T16:08:17.754Z"
+        },
+        {
+          "id": "share_cc4b48ed9861",
+          "email": "collaborate@test.example.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T16:07:46.636Z"
+        },
+        {
+          "id": "share_7c2fd1585ade",
+          "email": "test.user@example.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T16:06:56.994Z"
+        },
+        {
+          "id": "share_6d61d0b19b8c",
+          "email": "testuser@example.com",
+          "role": "viewer",
+          "sharedAt": "2026-04-29T16:05:47.102Z"
+        },
+        {
+          "id": "share_c1b9f3a8286b",
+          "email": "test@example.com",
+          "role": "viewer",
+          "sharedAt": "2026-04-29T16:05:01.617Z"
+        },
+        {
+          "id": "share_1b8b62848027",
+          "email": "padmaja.biswal2025@gmail.com",
+          "role": "viewer",
+          "sharedAt": "2026-04-29T17:23:54.670Z"
+        }
+      ],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_7fd467ba300f",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-04-29T15:50:16.013Z",
+      "updatedAt": "2026-04-29T15:55:06.529Z",
+      "revision": 0,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [
+        {
+          "id": "share_bc01cf81cc6c",
+          "email": "biswalpadmaja411@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T15:55:06.527Z"
+        },
+        {
+          "id": "share_8de0ad769db5",
+          "email": "bbbbcasper540@gmail.com",
+          "role": "editor",
+          "sharedAt": "2026-04-29T15:54:26.261Z"
+        }
+      ],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
       "id": "doc_ecf328ca647f",
       "title": "Invoice 27/4/2026",
       "content": "\n<div style=\"display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;\">\n  <div>\n    <h1 style=\"margin: 0; font-size: 32px; font-weight: bold;\">INVOICE</h1>\n    <p style=\"margin: 5px 0; font-size: 14px; color: #d4af37;\"><strong>#INV-2026-001</strong></p>\n  </div>\n  <div style=\"text-align: right;\">\n    <h2 style=\"margin: 0; font-size: 16px; font-weight: bold;\">Your Business Name</h2>\n    <p style=\"margin: 5px 0; font-size: 13px;\">123 Your Street, City, State ZIP</p>\n    <p style=\"margin: 5px 0; font-size: 13px;\">billing@business.com • (555) 000-0000</p>\n  </div>\n</div>\n\n<div style=\"display: flex; gap: 40px; margin-bottom: 30px;\">\n  <div style=\"flex: 1;\">\n    <p style=\"margin: 0; font-size: 12px; font-weight: bold; color: #666;\">BILL TO</p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px;\"><strong>Client Full Name</strong></p>\n    <p style=\"margin: 5px 0; font-size: 13px;\">Client Company Inc.</p>\n    <p style=\"margin: 5px 0; font-size: 13px;\">456 Client Street, City, State ZIP</p>\n    <p style=\"margin: 5px 0; font-size: 13px;\">client@company.com</p>\n  </div>\n  <div>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Invoice No.</strong> <span style=\"float: right; color: #d4af37;\">INV-2026-001</span></p>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Invoice Date</strong> <span style=\"float: right; color: #d4af37;\">April 22, 2026</span></p>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Due Date</strong> <span style=\"float: right; color: #d4af37;\">May 22, 2026</span></p>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Status</strong> <span style=\"float: right; color: #d4af37; font-weight: bold;\">UNPAID</span></p>\n  </div>\n</div>\n\n<table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n  <thead>\n    <tr style=\"border-bottom: 2px solid #333;\">\n      <th style=\"text-align: left; padding: 8px; font-size: 12px; color: #666; font-weight: bold;\">DESCRIPTION</th>\n      <th style=\"text-align: center; padding: 8px; font-size: 12px; color: #666; font-weight: bold;\">QTY</th>\n      <th style=\"text-align: right; padding: 8px; font-size: 12px; color: #666; font-weight: bold;\">UNIT PRICE</th>\n      <th style=\"text-align: right; padding: 8px; font-size: 12px; color: #666; font-weight: bold;\">AMOUNT</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr style=\"border-bottom: 1px solid #ddd;\">\n      <td style=\"padding: 10px; font-size: 13px;\">Service or Product Name</td>\n      <td style=\"text-align: center; padding: 10px; font-size: 13px;\">1</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$1,200.00</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$1,200.00</td>\n    </tr>\n    <tr style=\"border-bottom: 1px solid #ddd;\">\n      <td style=\"padding: 10px; font-size: 13px;\">Consulting Hours (Design)</td>\n      <td style=\"text-align: center; padding: 10px; font-size: 13px;\">4</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$150.00</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$600.00</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 10px; font-size: 13px;\">Additional Service Item</td>\n      <td style=\"text-align: center; padding: 10px; font-size: 13px;\">1</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$350.00</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$350.00</td>\n    </tr>\n  </tbody>\n</table>\n\n<div style=\"display: flex; justify-content: flex-end; margin: 20px 0;\"></div>\n\n<div style=\"display: flex; justify-content: flex-end; gap: 30px; margin: 30px 0; font-size: 13px;\">\n  <div style=\"width: 200px;\">\n    <div style=\"border-bottom: 1px solid #ddd; padding: 8px 0; text-align: right;\">\n      <p style=\"margin: 0;\"><strong>Subtotal</strong> <span style=\"float: right;\">$2,150.00</span></p>\n    </div>\n    <div style=\"border-bottom: 1px solid #ddd; padding: 8px 0; text-align: right;\">\n      <p style=\"margin: 0;\"><strong>Tax (GST 18%)</strong> <span style=\"float: right;\">$387.00</span></p>\n    </div>\n    <div style=\"padding: 8px 0; text-align: right; font-size: 14px;\">\n      <p style=\"margin: 0; font-weight: bold; color: #d4af37;\"><strong>Total Due</strong> <span style=\"float: right;\">$2,537.00</span></p>\n    </div>\n  </div>\n</div>\n\n<div style=\"display: flex; gap: 40px; margin: 40px 0; padding-top: 20px; border-top: 1px solid #ccc;\">\n  <div style=\"flex: 1;\">\n    <p style=\"margin: 0 0 5px 0; font-size: 12px; font-weight: bold; color: #666;\">PAYMENT INSTRUCTIONS</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">Bank Transfer: Your Bank Name</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">Account Name: Your Business Name</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">Account No.: XXXX-XXXX-XXXX</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">IFSC / Routing: XXXXXXXX</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">Or pay via: razorpay.com/your-link</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <p style=\"margin: 0 0 5px 0; font-size: 12px; font-weight: bold; color: #666;\">TERMS & NOTES</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">Payment due within 30 days of invoice date. Late payments are subject to a 1.5% monthly interest charge. Thank you for your business — we appreciate the partnership!</p>\n  </div>\n</div>\n    ",
       "createdAt": "2026-04-27T06:06:29.050Z",
-      "updatedAt": "2026-04-27T06:20:03.197Z",
-      "revision": 1,
+      "updatedAt": "2026-04-27T06:26:24.905Z",
+      "revision": 2,
       "owner": {
         "id": "biswalpadmaja411@gmail.com",
         "name": "biswalpadmaja411",
@@ -25,8 +540,8 @@
       "title": "Proposal 27/4/2026",
       "content": "\n<p style=\"font-size: 12px; color: #666; font-weight: bold; margin: 0 0 5px 0;\">PROJECT PROPOSAL</p>\n<h1 style=\"margin: 0 0 20px 0; color: #333;\">Write Your Compelling Proposal Title Here</h1>\n\n<div style=\"display: flex; justify-content: space-between; border-bottom: 2px solid #d4af37; padding-bottom: 15px; margin-bottom: 20px;\">\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>PREPARED BY</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">Your Name • Your Company</p>\n  </div>\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>SUBMITTED TO</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">Client Name – Organization</p>\n  </div>\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>DATE</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">April 22, 2026</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">OVERVIEW</h3>\n<p>Summarize the entire proposal in 3–5 sentences. What are you proposing, why does it matter, who benefits, and what's the expected outcome? Write this last but place it first.</p>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">PROBLEM STATEMENT</h4>\n    <p>Clearly define the problem or gap this proposal addresses. Use data or evidence to establish urgency and relevance. The more specific, the stronger your proposal.</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">PROPOSED SOLUTION</h4>\n    <p>Describe your solution in plain terms. How does it directly address the problem? What makes this approach effective, unique, or better than alternatives?</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">SCOPE OF WORK</h3>\n<ul style=\"margin: 0 0 10px 0; padding-left: 20px;\">\n  <li>Deliverable 1: [Description] – due [date]</li>\n  <li>Deliverable 2: [Description] – due [date]</li>\n  <li>Deliverable 3: [Description] – due [date]</li>\n  <li>Out of scope: [explicitly list exclusions]</li>\n</ul>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">TIMELINE</h4>\n    <p style=\"margin: 5px 0;\"><strong>Phase 1 – Discovery</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Phase 2 – Execution</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Phase 3 – Delivery</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Final Review:</strong> [Date]</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">BUDGET</h4>\n    <p style=\"margin: 5px 0;\"><strong>Estimated total:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Labor:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Materials/Tools:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Payment:</strong> 50% upfront - 50% on delivery</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">WHY US</h3>\n<p>Highlight your team's relevant experience, past successes, and unique qualifications. Include 1–2 specific examples of similar work delivered successfully.</p>\n    ",
       "createdAt": "2026-04-27T06:06:22.631Z",
-      "updatedAt": "2026-04-27T06:06:22.631Z",
-      "revision": 0,
+      "updatedAt": "2026-04-30T15:45:24.723Z",
+      "revision": 1,
       "owner": {
         "id": "biswalpadmaja411@gmail.com",
         "name": "biswalpadmaja411",
