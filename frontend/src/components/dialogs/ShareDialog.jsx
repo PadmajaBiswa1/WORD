@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useUIStore, useDocumentStore } from '@/store';
 import { useCollaborationStore } from '@/store';
 import { Modal, Button, Input, Label, Stack } from '@/components/ui';
@@ -10,8 +9,11 @@ function getCollaboratorColor(index) {
   return colors[index % colors.length];
 }
 
+function buildSharedUrl(docId) {
+  return `${window.location.origin}/shared/${docId}`;
+}
+
 export function ShareDialog() {
-  const navigate = useNavigate();
   const { closeDialog, toast } = useUIStore();
   const { id, title, content, setId, setLastSaved } = useDocumentStore();
   const { collaborators, connected } = useCollaborationStore();
@@ -21,10 +23,9 @@ export function ShareDialog() {
   const [working, setWorking] = useState(false);
   const [invitedCollaborators, setInvitedCollaborators] = useState([]);
 
-  const activeDocId = id || 'new';
-  const shareUrl = activeDocId === 'new'
-    ? `${window.location.origin}/shared/new`
-    : `${window.location.origin}/shared/${activeDocId}`;
+  const shareUrl = id
+    ? buildSharedUrl(id)
+    : 'A share link will be generated when you click Copy Link.';
 
   const loadInvitedCollaborators = async (docId) => {
     if (!docId) {
@@ -84,7 +85,6 @@ export function ShareDialog() {
   const ensureShareableDocument = async () => {
     if (id) return id; // Already have an ID, document is shareable
     
-    setWorking(true);
     try {
       const created = await documentApi.create({ title, content });
       const newId = String(created?.id || created?._id || created?.document?.id || created?.document?._id || '');
@@ -98,17 +98,17 @@ export function ShareDialog() {
     } catch (error) {
       console.error('Failed to create shareable document:', error);
       throw error;
-    } finally {
-      setWorking(false);
     }
   };
 
   const copyLink = async () => {
     if (working || copied) return; // Prevent multiple simultaneous clicks
+    setWorking(true);
     try {
       setCopied(false); // Reset state first
       const docId = await ensureShareableDocument();
-      const nextUrl = `${window.location.origin}/doc/${docId}`;
+      const response = await documentApi.share(docId, { role });
+      const nextUrl = response?.shareUrl || buildSharedUrl(docId);
       await navigator.clipboard.writeText(nextUrl);
       setCopied(true);
       toast('Share link copied to clipboard', 'success');
@@ -119,6 +119,8 @@ export function ShareDialog() {
       setCopied(false);
       toast('Unable to prepare a shared document right now', 'error');
       console.error('Copy link error:', err);
+    } finally {
+      setWorking(false);
     }
   };
 
@@ -147,8 +149,35 @@ export function ShareDialog() {
       const docId = await ensureShareableDocument();
       console.log(`📄 Document ID: ${docId}`);
       
-      const response = await documentApi.share(docId, { email: inviteEmail, role });
-      console.log(`📧 Share response:`, response);
+      let response;
+      let shareError = null;
+      
+      try {
+        response = await documentApi.share(docId, { email: inviteEmail, role });
+        console.log(`📧 Share response successful:`, response);
+      } catch (err) {
+        console.error(`📧 Share request failed:`, err?.message, `(status: ${err?.status})`);
+        shareError = err;
+        
+        // Try fallback to invite endpoint if share returns 404 and invite exists
+        if (err?.status === 404 && typeof documentApi.invite === 'function') {
+          try {
+            console.log(`📧 Attempting fallback to invite endpoint...`);
+            response = await documentApi.invite(docId, { email: inviteEmail, role });
+            console.log(`📧 Invite response successful:`, response);
+            shareError = null; // Clear error since invite succeeded
+          } catch (inviteErr) {
+            console.error(`📧 Invite request also failed:`, inviteErr?.message);
+            shareError = inviteErr;
+          }
+        }
+        
+        // If no fallback or fallback failed, throw the error
+        if (shareError) throw shareError;
+      }
+      
+      if (!response) throw new Error('No response from share request');
+      console.log(`📧 Final share response:`, response);
       
       const sharedEmail = response?.share?.email || inviteEmail;
 
@@ -164,6 +193,9 @@ export function ShareDialog() {
       if (response?.inviteEmailSent) {
         toast(`✓ Invitation email sent to ${sharedEmail}`, 'success');
         console.log(`✅ Email invitation sent successfully`);
+      } else if (response?.inviteEmailQueued) {
+        toast(`${sharedEmail} added. Invitation email is being sent.`, 'success');
+        console.log(`✅ Invitation email queued`);
       } else if (response?.inviteEmailError) {
         // Email service issue but collaborator was added
         const errorMsg = response.inviteEmailError;

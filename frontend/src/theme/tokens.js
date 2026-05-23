@@ -44,10 +44,14 @@ export function applyTheme(mode = 'dark') {
     '--gold-border':   dark ? 'rgba(212,175,55,0.35)' : 'rgba(212,175,55,0.5)',
 
     // ── Shadows ───────────────────────────────────────────────────
-    '--shadow-sm':   dark ? 'none' : '0 1px 4px rgba(0,0,0,0.09)',
-    '--shadow-md':   dark ? 'none' : '0 2px 10px rgba(0,0,0,0.13)',
-    '--shadow-lg':   dark ? 'none' : '0 6px 24px rgba(0,0,0,0.12)',
-    '--shadow-page': dark ? 'none' : '0 2px 12px rgba(0,0,0,0.10)',
+    '--shadow-sm':   dark ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 4px rgba(0,0,0,0.09)',
+    '--shadow-md':   dark ? '0 2px 8px rgba(0,0,0,0.5)'  : '0 2px 10px rgba(0,0,0,0.13)',
+    '--shadow-lg':   dark ? '0 6px 20px rgba(0,0,0,0.6)' : '0 6px 24px rgba(0,0,0,0.12)',
+    // Page shadow — visible in both themes so page edges are always distinct
+    '--shadow-page': dark
+      ? '0 0 0 1px rgba(255,255,255,0.07), 0 4px 20px rgba(0,0,0,0.65)'
+      : '0 2px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06)',
+    '--page-border': dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
 
     // ── Fonts ─────────────────────────────────────────────────────
     '--font-ui': "'Segoe UI', Arial, sans-serif",

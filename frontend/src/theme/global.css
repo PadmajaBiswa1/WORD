@@ -19,6 +19,10 @@
   --transition: 140ms ease;
   --bg-hover: #1f1800;
   --border-gold: #3d3000;
+  /* Page canvas */
+  --bg-page: #1a1a1a;
+  --shadow-page: 0 0 0 1px rgba(255,255,255,0.07), 0 4px 20px rgba(0,0,0,0.65);
+  --page-border: rgba(255,255,255,0.06);
 }
 
 html, body, #root { height: 100%; width: 100%; overflow: hidden; }
@@ -400,21 +404,39 @@ body {
   display: none !important;
 }
 
+/* ── Web layout: fluid, no page boxes ───────────────────────── */
 #editor-scroll-area.etherx-view-web #document-page-0 {
-  box-shadow: none !important;
-  border-radius: 0 !important;
   max-width: 1000px;
   width: min(100%, 1000px) !important;
+  height: auto !important;
+}
+#editor-scroll-area.etherx-view-web .editor-page-bg { display: none !important; }
+#editor-scroll-area.etherx-view-web .editor-content-area {
+  position: relative !important;
   min-height: auto !important;
-  background-image: none !important;
 }
 
+/* ── Draft layout: full-width, no page boxes ────────────────── */
 #editor-scroll-area.etherx-view-draft #document-page-0 {
-  box-shadow: none !important;
-  border-radius: 0 !important;
-  background-image: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+#editor-scroll-area.etherx-view-draft .editor-page-bg { display: none !important; }
+#editor-scroll-area.etherx-view-draft .editor-content-area {
+  position: relative !important;
+  min-height: auto !important;
 }
 
+/* ── Outline: only headings visible ─────────────────────────── */
+#editor-scroll-area.etherx-view-outline #document-page-0 {
+  height: auto !important;
+}
+#editor-scroll-area.etherx-view-outline .editor-page-bg { display: none !important; }
+#editor-scroll-area.etherx-view-outline .editor-content-area {
+  position: relative !important;
+  min-height: auto !important;
+}
 #editor-scroll-area.etherx-view-outline .ProseMirror p,
 #editor-scroll-area.etherx-view-outline .ProseMirror blockquote,
 #editor-scroll-area.etherx-view-outline .ProseMirror ul,
@@ -424,7 +446,6 @@ body {
 #editor-scroll-area.etherx-view-outline .ProseMirror pre {
   display: none;
 }
-
 #editor-scroll-area.etherx-view-outline .ProseMirror h1,
 #editor-scroll-area.etherx-view-outline .ProseMirror h2,
 #editor-scroll-area.etherx-view-outline .ProseMirror h3,
@@ -435,28 +456,35 @@ body {
   margin: 0.35rem 0;
 }
 
+/* ── Read mode: comfortable reading, no page boxes ──────────── */
 #editor-scroll-area.etherx-view-read {
   background: var(--bg-page) !important;
 }
-
 #editor-scroll-area.etherx-view-read #document-page-0 {
   width: min(96%, 980px) !important;
-  box-shadow: none !important;
-  background-image: none !important;
+  height: auto !important;
 }
-
+#editor-scroll-area.etherx-view-read .editor-page-bg { display: none !important; }
+#editor-scroll-area.etherx-view-read .editor-content-area {
+  position: relative !important;
+  min-height: auto !important;
+}
 #editor-scroll-area.etherx-view-read .ProseMirror {
   font-size: 13.5pt;
   line-height: 1.9;
 }
 
+/* ── Focus mode: distraction-free, no page boxes ────────────── */
 #editor-scroll-area.etherx-focus-mode {
   background: var(--bg-page) !important;
 }
-
 #editor-scroll-area.etherx-focus-mode #document-page-0 {
-  box-shadow: none !important;
-  background-image: none !important;
+  height: auto !important;
+}
+#editor-scroll-area.etherx-focus-mode .editor-page-bg { display: none !important; }
+#editor-scroll-area.etherx-focus-mode .editor-content-area {
+  position: relative !important;
+  min-height: auto !important;
 }
 
 .ProseMirror.etherx-line-numbers p {

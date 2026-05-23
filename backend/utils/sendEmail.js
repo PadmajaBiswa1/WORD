@@ -45,8 +45,16 @@ async function sendMailWithTimeout(mailOptions, timeoutMs = 30000) {
     console.log('[sendMail] To:', mailOptions.to);
     console.log('[sendMail] Subject:', mailOptions.subject.substring(0, 50) + '...');
     
-    // Send directly without Promise.race - nodemailer handles timeouts internally
-    const info = await transporter.sendMail(mailOptions);
+    // Create a promise that rejects after timeout
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error(`Email send timeout after ${timeoutMs}ms`)), timeoutMs)
+    );
+    
+    // Race between sending and timeout
+    const info = await Promise.race([
+      transporter.sendMail(mailOptions),
+      timeoutPromise
+    ]);
     
     console.log('[sendMail] ✅ Email sent successfully!');
     console.log('[sendMail] MessageId:', info?.messageId);

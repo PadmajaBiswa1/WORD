@@ -1,4 +1,4 @@
-const BASE = '/api';
+export const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
 class ApiError extends Error {
   constructor(msg, status) { super(msg); this.status = status; this.name = 'ApiError'; }
@@ -27,7 +27,7 @@ function getUserHeaders() {
 
 async function req(path, opts = {}) {
   const token = getToken();
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -40,7 +40,15 @@ async function req(path, opts = {}) {
   if (!res.ok) {
     const text = await res.text();
     let msg = text;
-    try { msg = JSON.parse(text).message; } catch {}
+    try {
+      const parsed = JSON.parse(text);
+      msg = parsed.message || parsed.error || msg;
+    } catch {
+      msg = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || msg;
+    }
+    if (res.status === 404 && /route not found|cannot (get|post|put|delete)|not found/i.test(msg)) {
+      msg = `API route not found: ${res.url}. Make sure the EtherX backend is running on the configured API port.`;
+    }
     throw new ApiError(msg, res.status);
   }
   return res.json();
@@ -66,6 +74,7 @@ export const documentApi = {
   getVersions:    (id)        => req(`/documents/${id}/versions`),
   restoreVersion: (id, vid)   => req(`/documents/${id}/versions/${vid}/restore`, { method: 'POST' }),
   share:          (id, opts)  => req(`/documents/${id}/share`, { method: 'POST', body: opts }),
+  invite:         (id, opts)  => req(`/documents/${id}/invite`, { method: 'POST', body: opts }),
   // IPFS Operations
   pinToIPFS:      (id)        => req(`/documents/${id}/pin`, { method: 'POST', body: {} }),
   unpinFromIPFS:  (id)        => req(`/documents/${id}/unpin`, { method: 'POST', body: {} }),
@@ -76,19 +85,20 @@ export const documentApi = {
 export const uploadApi = {
   image: async (file) => {
     const fd = new FormData(); fd.append('file', file);
-    const res = await fetch(`${BASE}/upload/image`, { method: 'POST', body: fd });
+    const res = await fetch(`${API_BASE}/upload/image`, { method: 'POST', body: fd });
     if (!res.ok) throw new ApiError('Upload failed', res.status);
     return res.json();
   },
 };
 
 export const exportApi = {
-  pdf:  (id) => fetch(`${BASE}/export/${id}/pdf`).then((r) => r.blob()),
-  docx: (id) => fetch(`${BASE}/export/${id}/docx`).then((r) => r.blob()),
-  html: (id) => fetch(`${BASE}/export/${id}/html`).then((r) => r.blob()),
+  pdf:  (id) => fetch(`${API_BASE}/export/${id}/pdf`).then((r) => r.blob()),
+  docx: (id) => fetch(`${API_BASE}/export/${id}/docx`).then((r) => r.blob()),
+  html: (id) => fetch(`${API_BASE}/export/${id}/html`).then((r) => r.blob()),
 };
 
 export const templateApi = {
   list: () => req('/templates'),
   get:  (id) => req(`/templates/${id}`),
+  createDocument: (id, data = {}) => req(`/templates/${id}/documents`, { method: 'POST', body: data }),
 };

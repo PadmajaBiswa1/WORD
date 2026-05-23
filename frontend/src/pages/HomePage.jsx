@@ -436,6 +436,10 @@ function cleanBaseName(title = 'Untitled Document') {
   return base || 'Untitled Document';
 }
 
+function buildSharedUrl(docId) {
+  return `${window.location.origin}/shared/${docId}`;
+}
+
 function nextCopyName(title = 'Untitled Document') {
   const base = cleanBaseName(title);
   if (/^copy of\s+/i.test(base)) return base;
@@ -653,7 +657,7 @@ export function HomePage() {
   async function createFromTemplate(key) {
     if (key === 'blank') {
       try {
-        // Create blank document on backend (don't show in list until saved)
+        // Create blank document on backend
         const created = await documentApi.create({
           title: 'Untitled Document',
           content: '<p></p>',
@@ -679,14 +683,20 @@ export function HomePage() {
     }
 
     const title = `${key[0].toUpperCase()}${key.slice(1)} ${new Date().toLocaleDateString()}`;
-    const content = templateContent(key);
+    
     try {
-      const created = await documentApi.create({ title, content });
+      // Try to use backend template API first
+      const created = await documentApi.create({ 
+        title, 
+        content: templateContent(key)  // Use local template content as fallback data
+      });
       const newId = String(created?.id || created?._id || created?.document?.id || created?.document?._id || 'new');
       setSelectedDocId(newId);
       toast(`${key} template created (save to add to recent list)`, 'success');
       navigate(`/doc/${newId}`);
     } catch {
+      // Fallback: create locally if backend fails
+      const content = templateContent(key);
       const { doc } = createLocalDoc({ title, content });
       setSelectedDocId(doc.id);
       resetDoc();
@@ -876,12 +886,15 @@ export function HomePage() {
     try {
       const targetDoc = await ensureCloudDocForShare(selectedDoc);
       const response = await documentApi.share(targetDoc.id, { role: 'viewer' });
-      const link = response?.shareUrl || `${window.location.origin}/doc/${targetDoc.id}`;
+      const link = response?.shareUrl || buildSharedUrl(targetDoc.id);
       await navigator.clipboard.writeText(link);
       toast('Share link copied', 'success');
     } catch {
-      const link = `${window.location.origin}/doc/${selectedDoc.id}`;
-      window.prompt('Copy share link', link);
+      if (selectedDoc.localOnly) {
+        toast('Unable to create a cloud share link right now', 'error');
+        return;
+      }
+      window.prompt('Copy share link', buildSharedUrl(selectedDoc.id));
     }
   }
 
@@ -933,16 +946,17 @@ export function HomePage() {
       if (saveAsLocation === 'share') {
         const targetDoc = await ensureCloudDocForShare(selectedDoc);
         const response = await documentApi.share(targetDoc.id, { role: 'viewer' });
-        const link = response?.shareUrl || `${window.location.origin}/doc/${targetDoc.id}`;
+        const link = response?.shareUrl || buildSharedUrl(targetDoc.id);
         await navigator.clipboard.writeText(link);
         toast('Share link copied', 'success');
         return;
       }
       if (saveAsLocation === 'copyLink') {
         const targetDoc = await ensureCloudDocForShare(selectedDoc);
-        const link = `${window.location.origin}/doc/${targetDoc.id}`;
+        const response = await documentApi.share(targetDoc.id, { role: 'viewer' });
+        const link = response?.shareUrl || buildSharedUrl(targetDoc.id);
         await navigator.clipboard.writeText(link);
-        toast('Document link copied', 'success');
+        toast('Document share link copied', 'success');
         return;
       }
 

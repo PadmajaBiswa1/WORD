@@ -11,6 +11,7 @@ import { MailingsTab }  from './tabs/MailingsTab';
 import { ReviewTab }    from './tabs/ReviewTab';
 import { ViewTab }      from './tabs/ViewTab';
 import { HelpTab }      from './tabs/HelpTab';
+import { RibbonFeatureSearch } from './RibbonFeatureSearch';
 
 const TABS = [
   { id: 'file',      label: 'File'      },
@@ -56,54 +57,83 @@ export function Ribbon() {
     <div style={{ flexShrink: 0, ...ribbonVars }}>
       {/* ── Tab strip ── */}
       <div
-        className="ribbon-scroll"
         style={{
           display: 'flex',
           alignItems: 'center',
           minHeight: 30,
-          padding: '0 8px',
-          gap: 2,
           borderBottom: '1px solid var(--border)',
           background: 'var(--bg-app)',
-          overflowX: 'auto',
-          overflowY: 'hidden',
           fontFamily: 'var(--font-ui)',
+          gap: 0,
         }}
       >
-        {TABS.map((t) => {
-          const active = t.id === activeTab;
-          const isFile = t.id === 'file';
-          return (
-            <button
-              key={t.id}
-              onClick={() => onTabClick(t.id)}
-              style={{
-                background: isFile ? '#1e1400' : active ? 'var(--bg-elevated)' : 'transparent',
-                border: '1px solid transparent',
-                borderTop: active ? '2px solid var(--gold)' : '2px solid transparent',
-                borderRadius: 2,
-                color: isFile ? 'var(--gold)' : active ? 'var(--text-primary)' : 'var(--gold)',
-                fontFamily: 'var(--font-ui)',
-                fontSize: 12,
-                padding: '0 12px',
-                height: 28,
-                cursor: 'pointer',
-                transition: 'background 0.1s, border-color 0.1s',
-                outline: 'none',
-                whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={(e) => {
-                if (!active) e.currentTarget.style.background = 'var(--ribbon-hover)';
-              }}
-              onMouseLeave={(e) => {
-                if (!active) e.currentTarget.style.background = 'transparent';
-              }}
-            >
-              {t.label}
-            </button>
-          );
-        })}
+        {/* Scrollable tabs container */}
+        <div
+          className="ribbon-scroll"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            flex: 1,
+            padding: '0 8px',
+            gap: 2,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            minWidth: 0,
+          }}
+        >
+          {TABS.map((t) => {
+            const active = t.id === activeTab;
+            const isFile = t.id === 'file';
+            return (
+              <button
+                key={t.id}
+                onClick={() => onTabClick(t.id)}
+                style={{
+                  background: isFile ? '#1e1400' : active ? 'var(--bg-elevated)' : 'transparent',
+                  border: '1px solid transparent',
+                  borderTop: active ? '2px solid var(--gold)' : '2px solid transparent',
+                  borderRadius: 2,
+                  color: isFile ? 'var(--gold)' : active ? 'var(--text-primary)' : 'var(--gold)',
+                  fontFamily: 'var(--font-ui)',
+                  fontSize: 12,
+                  padding: '0 12px',
+                  height: 28,
+                  cursor: 'pointer',
+                  transition: 'background 0.1s, border-color 0.1s',
+                  outline: 'none',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  if (!active) e.currentTarget.style.background = 'var(--ribbon-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Feature search bar (Word-like) */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            height: 30,
+            paddingRight: 4,
+            borderLeft: '1px solid var(--border)',
+            background: 'var(--bg-app)',
+            flexShrink: 0,
+          }}
+        >
+          <RibbonFeatureSearch onActivateTab={(id) => setActiveTab(id)} />
+        </div>
+
       </div>
+
 
       {/* ── Ribbon content ── */}
       <div

@@ -69,7 +69,79 @@ router.post('/:id/versions/:vid/restore', (req, res) => {
   res.json(document);
 });
 
-router.post('/:id/share', async (req, res) => {
+// Test email endpoint - verify SMTP is working (MUST come before /:id routes)
+router.post('/test/send-email', async (req, res) => {
+  const { testEmail } = req.body || {};
+  if (!testEmail) {
+    return res.status(400).json({ message: 'testEmail is required' });
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const testDocUrl = `${frontendUrl.replace(/\/$/, '')}/shared/test-demo`;
+  try {
+    await sendInviteEmail({
+      toEmail: testEmail,
+      inviterName: 'EtherX Word Test',
+      documentTitle: 'Welcome to EtherX Word - Test Document',
+      shareUrl: testDocUrl,
+      role: 'viewer',
+    });
+    res.json({
+      ok: true,
+      message: `Test email sent to ${testEmail}`,
+      testEmail,
+      shareUrl: testDocUrl,
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to send test email',
+      error: error?.message || 'Unknown error',
+      details: {
+        smtpUser: process.env.SMTP_USER ? '✓ Set' : '✗ Missing',
+        smtpPass: process.env.SMTP_PASS ? '✓ Set' : '✗ Missing',
+        smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
+        smtpPort: process.env.SMTP_PORT || 465,
+      },
+    });
+  }
+});
+
+// IPFS — Test connection and status (MUST come before /:id routes)
+router.get('/test/ipfs-status', async (req, res) => {
+  const enabled = process.env.IPFS_ENABLED === 'true';
+  const hasCredentials = !!process.env.PINATA_JWT;
+
+  if (!enabled) {
+    return res.json({
+      ok: false,
+      enabled: false,
+      message: 'IPFS integration is disabled',
+    });
+  }
+
+  try {
+    const connected = await ipfsService.verifyConnection();
+    res.json({
+      ok: connected,
+      enabled: true,
+      connected,
+      message: connected ? 'IPFS service is ready' : 'IPFS connection failed',
+      hasCredentials,
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      enabled: true,
+      connected: false,
+      message: 'Failed to verify IPFS connection',
+      error: error?.message,
+      hasCredentials,
+    });
+  }
+});
+
+async function handleShareDocument(req, res) {
   let shareRequestId = `share-${Date.now()}`;
   
   try {
@@ -101,7 +173,8 @@ router.post('/:id/share', async (req, res) => {
       share,
       shareUrl,
       sharedWith: Array.isArray(updatedDocument?.sharedWith) ? updatedDocument.sharedWith : [],
-      inviteEmailSent: !!share?.email,
+      inviteEmailSent: false,
+      inviteEmailQueued: !!share?.email,
       inviteEmailError: null,
     };
 
@@ -172,10 +245,15 @@ router.post('/:id/share', async (req, res) => {
       }
     }
   }
-});
+}
+
+// Share and invite routes (must come after /test/* routes)
+router.post('/:id/share', handleShareDocument);
+router.post('/:id/invite', handleShareDocument);
 
 router.get('/:id/collaboration/stream', (req, res) => {
-  const document = getDocument(req.params.id);
+  const docId = req.params.id;
+  const document = getDocument(docId);
   if (!document) return res.status(404).json({ message: 'Document not found' });
 
   const session = {
@@ -183,6 +261,11 @@ router.get('/:id/collaboration/stream', (req, res) => {
     role: req.query.role || 'editor',
     user: requestUser(req),
   };
+
+  console.log('[COLLAB STREAM] 🔗 New stream connection');
+  console.log('[COLLAB STREAM]   Document:', docId);
+  console.log('[COLLAB STREAM]   User:', session.user.name, session.user.email);
+  console.log('[COLLAB STREAM]   SessionId:', session.sessionId);
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -193,24 +276,28 @@ router.get('/:id/collaboration/stream', (req, res) => {
   res.flushHeaders?.();
   res.write(': connected\n\n');
 
-  registerClient(req.params.id, session, res);
+  registerClient(docId, session, res);
   writeEvent(res, 'ready', {
     sessionId: session.sessionId,
-    collaborators: listCollaborators(req.params.id),
+    collaborators: listCollaborators(docId),
   });
   writeEvent(res, 'snapshot', {
     document,
-    collaborators: listCollaborators(req.params.id),
+    collaborators: listCollaborators(docId),
   });
-  broadcastPresence(req.params.id);
+  
+  console.log('[COLLAB STREAM] ✅ Ready and snapshot sent. Collaborators:', listCollaborators(docId).length);
+  
+  broadcastPresence(docId);
 
   const heartbeat = setInterval(() => {
     res.write(': heartbeat\n\n');
   }, 15000);
 
   req.on('close', () => {
+    console.log('[COLLAB STREAM] 🔌 Connection closed for:', session.sessionId);
     clearInterval(heartbeat);
-    unregisterClient(req.params.id, session.sessionId);
+    unregisterClient(docId, session.sessionId);
     res.end();
   });
 });
@@ -305,43 +392,7 @@ router.post('/:id/collaboration/publish', (req, res) => {
   res.json({ ok: true });
 });
 
-// Test email endpoint - verify SMTP is working
-router.post('/test/send-email', async (req, res) => {
-  const { testEmail } = req.body || {};
-  if (!testEmail) {
-    return res.status(400).json({ message: 'testEmail is required' });
-  }
 
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const testDocUrl = `${frontendUrl.replace(/\/$/, '')}/shared/test-demo`;
-  try {
-    await sendInviteEmail({
-      toEmail: testEmail,
-      inviterName: 'EtherX Word Test',
-      documentTitle: 'Welcome to EtherX Word - Test Document',
-      shareUrl: testDocUrl,
-      role: 'viewer',
-    });
-    res.json({
-      ok: true,
-      message: `Test email sent to ${testEmail}`,
-      testEmail,
-      shareUrl: testDocUrl,
-    });
-  } catch (error) {
-    res.status(500).json({
-      ok: false,
-      message: 'Failed to send test email',
-      error: error?.message || 'Unknown error',
-      details: {
-        smtpUser: process.env.SMTP_USER ? '✓ Set' : '✗ Missing',
-        smtpPass: process.env.SMTP_PASS ? '✓ Set' : '✗ Missing',
-        smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
-        smtpPort: process.env.SMTP_PORT || 465,
-      },
-    });
-  }
-});
 
 // IPFS — Pin document to IPFS via Pinata
 router.post('/:id/pin', async (req, res) => {
@@ -444,38 +495,6 @@ router.get('/:id/ipfs-info', async (req, res) => {
   });
 });
 
-// IPFS — Test connection and status
-router.get('/test/ipfs-status', async (req, res) => {
-  const enabled = process.env.IPFS_ENABLED === 'true';
-  const hasCredentials = !!process.env.PINATA_JWT;
 
-  if (!enabled) {
-    return res.json({
-      ok: false,
-      enabled: false,
-      message: 'IPFS integration is disabled',
-    });
-  }
-
-  try {
-    const connected = await ipfsService.verifyConnection();
-    res.json({
-      ok: connected,
-      enabled: true,
-      connected,
-      message: connected ? 'IPFS service is ready' : 'IPFS connection failed',
-      hasCredentials,
-    });
-  } catch (error) {
-    res.status(500).json({
-      ok: false,
-      enabled: true,
-      connected: false,
-      message: 'Failed to verify IPFS connection',
-      error: error?.message,
-      hasCredentials,
-    });
-  }
-});
 
 module.exports = router;

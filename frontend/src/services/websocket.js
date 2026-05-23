@@ -3,7 +3,7 @@
 //  Uses EventSource + HTTP publish so it works without extra
 //  backend WebSocket dependencies.
 // ═══════════════════════════════════════════════════════════════
-import { getStoredUser } from '@/services/api';
+import { API_BASE, getStoredUser } from '@/services/api';
 
 function randomId(prefix = 'session') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -18,7 +18,7 @@ function currentUser() {
 }
 
 async function publish(docId, body) {
-  const response = await fetch(`/api/documents/${docId}/collaboration/publish`, {
+  const response = await fetch(`${API_BASE}/documents/${encodeURIComponent(docId)}/collaboration/publish`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -62,7 +62,7 @@ export class CollabSocket {
       email: this.user.email || '',
       role: this.user.role || 'editor',
     });
-    this.source = new EventSource(`/api/documents/${this.docId}/collaboration/stream?${params.toString()}`);
+    this.source = new EventSource(`${API_BASE}/documents/${encodeURIComponent(this.docId)}/collaboration/stream?${params.toString()}`);
 
     this.source.onopen = () => {
       this.connected = true;

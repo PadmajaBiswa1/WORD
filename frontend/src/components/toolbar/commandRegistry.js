@@ -1,0 +1,101 @@
+// Centralized registry for searchable ribbon commands.
+// Tabs register commands through registerRibbonCommands().
+
+let COMMANDS = [];
+let REGISTERED = false;
+
+export function resetCommandRegistry() {
+  COMMANDS = [];
+  REGISTERED = false;
+}
+
+export function registerCommand(def) {
+  if (!def) return;
+  if (!def.id) throw new Error('Command must have an id');
+
+  // Prevent duplicates (same id).
+  if (COMMANDS.some((c) => c.id === def.id)) return;
+
+  COMMANDS.push({
+    keywords: [],
+    type: 'action',
+    tab: undefined,
+    group: undefined,
+    ...def,
+  });
+}
+
+function normalize(s = '') {
+  return String(s).toLowerCase().trim();
+}
+
+function tokenize(q) {
+  return normalize(q)
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+export function ensureRegistered(registerFns = []) {
+  if (REGISTERED) return;
+  REGISTERED = true;
+
+  // Optional: caller can pass explicit register functions.
+  registerFns.forEach((fn) => {
+    if (typeof fn === 'function') fn(registerCommand);
+  });
+}
+
+// Allow the search component to detect whether any commands exist yet.
+export function isRegistryEmpty() {
+  return COMMANDS.length === 0;
+}
+
+
+export function getRegistryStatus() {
+  return { registered: REGISTERED, count: COMMANDS.length };
+}
+
+export function getAllCommands() {
+  return COMMANDS.slice();
+}
+
+export function searchCommands(query, { limit = 12 } = {}) {
+  const q = normalize(query);
+  const tokens = tokenize(q);
+  if (!q) return getAllCommands().slice(0, limit);
+
+  const scored = COMMANDS.map((cmd) => {
+    const hay = normalize([
+      cmd.title,
+      cmd.tab,
+      cmd.group,
+      ...(cmd.keywords || []),
+    ].filter(Boolean).join(' '));
+
+    let score = 0;
+
+    if (hay.includes(q)) score += 60;
+    if (normalize(cmd.title).includes(q)) score += 60;
+    if (normalize(cmd.tab).includes(q)) score += 25;
+    if (normalize(cmd.group).includes(q)) score += 18;
+
+    // token matching
+    tokens.forEach((t) => {
+      if (!t) return;
+      if (hay.includes(t)) score += 10;
+    });
+
+    // extra: prefix boost
+    const title = normalize(cmd.title);
+    if (tokens.some((t) => title.startsWith(t))) score += 12;
+
+    return { cmd, score };
+  })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ cmd }) => cmd);
+
+  return scored;
+}
+
