@@ -1,0 +1,582 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useEditorStore, useUIStore } from '@/store';
+import { Button, Divider, Tooltip, Select } from '@/components/ui';
+
+const BORDER_STYLES = [
+  { value: 'solid', label: 'Solid' },
+  { value: 'dashed', label: 'Dashed' },
+  { value: 'dotted', label: 'Dotted' },
+  { value: 'double', label: 'Double' },
+];
+
+const WRAP_MODES = [
+  { value: 'inline', label: 'In Line' },
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
+  { value: 'topAndBottom', label: 'Top and Bottom' },
+  { value: 'behindText', label: 'Behind Text' },
+  { value: 'inFrontOfText', label: 'In Front of Text' },
+  { value: 'through', label: 'Through' },
+];
+
+const TRANSPARENCY_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(v => ({ value: String(v), label: `${v}%` }));
+
+const ROTATION_OPTIONS = [90, 180, 270, -90, -180, -270].map(v => ({ value: String(v), label: `${v}°` }));
+
+const BG_COLORS = [
+  '#000000', '#ffffff', '#ff4d4f', '#fa8c16', '#fadb14',
+  '#52c41a', '#13c2c2', '#1677ff', '#722ed1', '#ff7a45',
+];
+
+const selectedImageElement = () =>
+  document.querySelector('.ProseMirror img.ProseMirror-selectednode') ||
+  document.querySelector('.ProseMirror .ProseMirror-selectednode img');
+
+const parseCssStyle = (style = '') => {
+  const out = {};
+  style.split(';').forEach((pair) => {
+    const [k, v] = pair.split(':').map((s) => s?.trim());
+    if (k && v) out[k] = v;
+  });
+  return out;
+};
+
+const toCssStyle = (obj) => Object.entries(obj)
+  .filter(([, v]) => v !== undefined && v !== null && v !== '')
+  .map(([k, v]) => `${k}:${v}`)
+  .join(';');
+
+export function PictureFormatTab() {
+  const { editor } = useEditorStore();
+  const { toast } = useUIStore();
+  const [imgWidth, setImgWidth] = useState(240);
+  const [imgHeight, setImgHeight] = useState(180);
+  const [borderColor, setBorderColor] = useState('#000000');
+  const [borderThickness, setBorderThickness] = useState(1);
+  const [borderStyle, setBorderStyle] = useState('solid');
+  const [customRotation, setCustomRotation] = useState(0);
+  const [transparency, setTransparency] = useState(0);
+  const [wrapMode, setWrapMode] = useState('inline');
+
+  useEffect(() => {
+    if (!editor) return;
+    const updateFromSelection = () => {
+      const attrs = editor.getAttributes('image') || {};
+      const css = parseCssStyle(attrs.style || '');
+      
+      const width = parseInt(String(attrs.width || css.width || '240'), 10) || 240;
+      const height = parseInt(String(attrs.height || css.height || '180'), 10) || 180;
+      
+      setImgWidth(width);
+      setImgHeight(height);
+      setBorderColor(css.borderColor || '#000000');
+      setBorderThickness(parseInt(css.borderWidth, 10) || 1);
+      setBorderStyle(css.borderStyle || 'solid');
+      setCustomRotation(parseInt(String(attrs['data-rotate'] || css.transform?.match(/rotate\(([^)]+)\)/)?.[1] || 0), 10) || 0);
+      setTransparency(100 - (parseInt(css.opacity, 10) * 100 || 100));
+      
+      const img = selectedImageElement();
+      if (img) {
+        const wrap = img.dataset.wrap || (css.float === 'left' ? 'left' : css.float === 'right' ? 'right' : 'inline');
+        setWrapMode(wrap);
+      }
+    };
+    updateFromSelection();
+    editor.on('selectionUpdate', updateFromSelection);
+    return () => editor.off('selectionUpdate', updateFromSelection);
+  }, [editor]);
+
+  const withSelectedImage = (action) => {
+    if (!editor) {
+      toast('Editor is not ready yet', 'info');
+      return;
+    }
+    if (!editor.isActive('image')) {
+      toast('Select an image first', 'info');
+      return;
+    }
+    const attrs = editor.getAttributes('image') || {};
+    const css = parseCssStyle(attrs.style || '');
+    action(attrs, css);
+  };
+
+  const updateImageAttrs = (attrsPatch = {}, cssPatch = {}) => {
+    const attrs = editor.getAttributes('image') || {};
+    const css = parseCssStyle(attrs.style || '');
+    Object.entries(cssPatch).forEach(([k, v]) => {
+      if (v === null || v === undefined || v === '') delete css[k];
+      else css[k] = v;
+    });
+    editor.chain().focus().updateAttributes('image', {
+      ...attrsPatch,
+      style: toCssStyle(css),
+    }).run();
+  };
+
+  const cropImage = () => {
+    withSelectedImage((attrs, css) => {
+      const img = selectedImageElement();
+      if (!img) return;
+      
+      const rect = img.getBoundingClientRect();
+      const aspect = rect.width / rect.height;
+      
+      const crop = window.confirm('Crop image to square aspect ratio? This will resize proportionally.');
+      if (!crop) return;
+      
+      const minDim = Math.min(rect.width, rect.height);
+      const newWidth = Math.round(minDim);
+      const newHeight = Math.round(minDim / aspect);
+      
+      updateImageAttrs({ width: String(newWidth), height: String(newHeight) });
+      setImgWidth(newWidth);
+      setImgHeight(newHeight);
+      toast('Image cropped', 'success');
+    });
+  };
+
+  const resizeImage = (dimension, value) => {
+    withSelectedImage(() => {
+      const numValue = parseInt(value, 10) || 0;
+      const clamped = Math.max(20, Math.min(2000, numValue));
+      if (dimension === 'width') {
+        updateImageAttrs({ width: String(clamped) }, { width: `${clamped}px` });
+        setImgWidth(clamped);
+      } else {
+        updateImageAttrs({ height: String(clamped) }, { height: `${clamped}px` });
+        setImgHeight(clamped);
+      }
+      toast(`Image ${dimension}: ${clamped}px`, 'success');
+    });
+  };
+
+  const rotateLeft = () => {
+    withSelectedImage((attrs, css) => {
+      const current = parseInt(String(attrs['data-rotate'] || css.transform?.match(/rotate\(([^)]+)\)/)?.[1] || 0), 10) || 0;
+      const next = (current - 90) % 360;
+      if (next < 0) updateImageAttrs({ 'data-rotate': String(next + 360) }, { transform: `rotate(${next + 360}deg)` });
+      else updateImageAttrs({ 'data-rotate': String(next) }, { transform: `rotate(${next}deg)` });
+      setCustomRotation(next < 0 ? next + 360 : next);
+      toast('Rotated left', 'success');
+    });
+  };
+
+  const rotateRight = () => {
+    withSelectedImage((attrs, css) => {
+      const current = parseInt(String(attrs['data-rotate'] || css.transform?.match(/rotate\(([^)]+)\)/)?.[1] || 0), 10) || 0;
+      const next = (current + 90) % 360;
+      updateImageAttrs({ 'data-rotate': String(next) }, { transform: `rotate(${next}deg)` });
+      setCustomRotation(next);
+      toast('Rotated right', 'success');
+    });
+  };
+
+  const applyCustomRotation = () => {
+    withSelectedImage((attrs, css) => {
+      updateImageAttrs({ 'data-rotate': String(customRotation) }, { transform: `rotate(${customRotation}deg)` });
+      toast(`Rotation: ${customRotation}°`, 'success');
+    });
+  };
+
+  const applyTransparency = () => {
+    withSelectedImage((attrs, css) => {
+      const opacity = 1 - (transparency / 100);
+      updateImageAttrs({}, { opacity: String(opacity) });
+      toast(`Transparency: ${transparency}%`, 'success');
+    });
+  };
+
+  const addShadow = () => {
+    withSelectedImage((attrs, css) => {
+      updateImageAttrs({}, { 
+        filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.5))',
+        ...css 
+      });
+      toast('Shadow applied', 'success');
+    });
+  };
+
+  const addGlow = () => {
+    withSelectedImage((attrs, css) => {
+      updateImageAttrs({}, { 
+        filter: 'drop-shadow(0 0 8px rgba(255,255,0,0.7))',
+        ...css 
+      });
+      toast('Glow applied', 'success');
+    });
+  };
+
+  const addReflection = () => {
+    withSelectedImage((attrs, css) => {
+      const img = selectedImageElement();
+      if (!img || !img.parentNode) return;
+      
+      updateImageAttrs({}, { ...css });
+      
+      requestAnimationFrame(() => {
+        const updatedImg = selectedImageElement();
+        if (updatedImg && updatedImg.parentNode) {
+          const reflectionDiv = document.createElement('div');
+          reflectionDiv.style.cssText = `
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 30%;
+            background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.2));
+            transform: scaleY(-1);
+            -webkit-mask-image: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,1));
+            mask-image: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,1));
+            pointer-events: none;
+          `;
+          updatedImg.parentNode.appendChild(reflectionDiv);
+        }
+      });
+      toast('Reflection applied', 'success');
+    });
+  };
+
+  const applyBorder = () => {
+    withSelectedImage((attrs, css) => {
+      updateImageAttrs({}, {
+        border: `${borderThickness}px ${borderStyle} ${borderColor}`,
+        borderColor,
+        borderWidth: `${borderThickness}px`,
+        borderStyle,
+      });
+      toast('Border applied', 'success');
+    });
+  };
+
+  const alignImage = (where) => {
+    withSelectedImage((attrs, css) => {
+      const img = selectedImageElement();
+      if (!img) return;
+      
+      if (where === 'left') {
+        img.style.display = 'block';
+        img.style.marginLeft = '0';
+        img.style.marginRight = 'auto';
+      } else if (where === 'center') {
+        img.style.display = 'block';
+        img.style.marginLeft = 'auto';
+        img.style.marginRight = 'auto';
+      } else {
+        img.style.display = 'block';
+        img.style.marginLeft = 'auto';
+        img.style.marginRight = '0';
+      }
+      toast(`Aligned ${where}`, 'success');
+    });
+  };
+
+  const setWrap = (mode) => {
+    withSelectedImage((attrs, css) => {
+      if (!editor) return;
+      
+      const img = selectedImageElement();
+      if (!img) return;
+      
+      setWrapMode(mode);
+      
+      if (mode === 'inline') {
+        updateImageAttrs({ 'data-wrap': mode }, { float: null, display: 'block', margin: '12px auto' });
+      } else if (mode === 'left') {
+        updateImageAttrs({ 'data-wrap': mode }, { float: 'left', margin: '8px 16px 8px 0' });
+      } else if (mode === 'right') {
+        updateImageAttrs({ 'data-wrap': mode }, { float: 'right', margin: '8px 0 8px 16px' });
+      } else if (mode === 'topAndBottom' || mode === 'behindText') {
+        updateImageAttrs({ 'data-wrap': mode }, { display: 'block', margin: '24px auto', position: 'relative' });
+      } else if (mode === 'inFrontOfText') {
+        updateImageAttrs({ 'data-wrap': mode }, { position: 'absolute', margin: '12px auto' });
+      } else if (mode === 'through') {
+        updateImageAttrs({ 'data-wrap': mode }, { position: 'absolute', margin: '12px auto' });
+      }
+      toast(`Wrap: ${mode}`, 'success');
+    });
+  };
+
+  const bringForward = () => {
+    withSelectedImage((attrs, css) => {
+      const current = parseInt(String(css['z-index'] || attrs['data-z'] || '1'), 10) || 1;
+      const next = current + 1;
+      updateImageAttrs({ 'data-z': String(next) }, { position: 'relative', 'z-index': String(next) });
+      toast('Brought forward', 'success');
+    });
+  };
+
+  const sendBackward = () => {
+    withSelectedImage((attrs, css) => {
+      const current = parseInt(String(css['z-index'] || attrs['data-z'] || '1'), 10) || 1;
+      const next = Math.max(0, current - 1);
+      updateImageAttrs({ 'data-z': String(next) }, { position: 'relative', 'z-index': String(next) });
+      toast('Sent backward', 'success');
+    });
+  };
+
+  const resetFormatting = () => {
+    withSelectedImage((attrs) => {
+      const src = attrs.src;
+      editor.chain().focus().updateAttributes('image', {
+        src,
+        width: null,
+        height: null,
+        style: null,
+      }).run();
+
+      setImgWidth(240);
+      setImgHeight(180);
+      setBorderColor('#000000');
+      setBorderThickness(1);
+      setBorderStyle('solid');
+      setCustomRotation(0);
+      setTransparency(0);
+      setWrapMode('inline');
+
+      toast('Image formatting reset', 'success');
+    });
+  };
+
+  const sectionShell = {
+    flex: '0 0 auto',
+    minWidth: 0,
+    padding: '8px 10px 10px',
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    background: 'var(--bg-elevated)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+  };
+
+  const miniLabel = {
+    fontSize: 10,
+    color: 'var(--text-muted)',
+    fontFamily: 'var(--font-ui)',
+    textTransform: 'uppercase',
+    letterSpacing: '.08em',
+    lineHeight: 1,
+  };
+
+  const numberInputStyle = {
+    width: '100%',
+    height: 26,
+    boxSizing: 'border-box',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    padding: '0 8px',
+    fontSize: 12,
+    fontFamily: 'var(--font-ui)',
+    outline: 'none',
+  };
+
+  const toolBtn = {
+    width: 24,
+    height: 24,
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-primary)',
+    border: '1px solid var(--border)',
+    borderRadius: 2,
+    fontSize: 12,
+    padding: 0,
+  };
+
+  const controlSections = useMemo(() => [
+    {
+      title: 'Adjust',
+      width: 320,
+      content: (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Tooltip text="Crop"><Button style={toolBtn} onClick={cropImage}>✂</Button></Tooltip>
+            <Tooltip text="Reset Picture Formatting"><Button style={{ ...toolBtn, width: 80 }} onClick={resetFormatting}>Reset</Button></Tooltip>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={miniLabel}>Width</span>
+              <input
+                type="number"
+                value={imgWidth}
+                onChange={(e) => resizeImage('width', e.target.value)}
+                style={numberInputStyle}
+                min={20}
+                max={2000}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={miniLabel}>Height</span>
+              <input
+                type="number"
+                value={imgHeight}
+                onChange={(e) => resizeImage('height', e.target.value)}
+                style={numberInputStyle}
+                min={20}
+                max={2000}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, alignItems: 'end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={miniLabel}>Custom Rotate</span>
+              <input
+                type="number"
+                value={customRotation}
+                onChange={(e) => setCustomRotation(parseInt(e.target.value) || 0)}
+                style={numberInputStyle}
+                min={-360}
+                max={360}
+              />
+            </div>
+            <Button style={{ ...toolBtn, width: 30, height: 26 }} onClick={applyCustomRotation}>°</Button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Tooltip text="Rotate Left"><Button style={toolBtn} onClick={rotateLeft}>↷</Button></Tooltip>
+            <Tooltip text="Rotate Right"><Button style={toolBtn} onClick={rotateRight}>↻</Button></Tooltip>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Picture Effects',
+      width: 420,
+      content: (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Tooltip text="Shadow"><Button style={toolBtn} onClick={addShadow}>⬤</Button></Tooltip>
+            <Tooltip text="Glow"><Button style={toolBtn} onClick={addGlow}>✨</Button></Tooltip>
+            <Tooltip text="Reflection"><Button style={toolBtn} onClick={addReflection}>〰</Button></Tooltip>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={miniLabel}>Transparency</span>
+              <Select
+                value={transparency}
+                onChange={(v) => { setTransparency(v); applyTransparency(); }}
+                options={TRANSPARENCY_OPTIONS}
+                width={78}
+                title="Transparency"
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={miniLabel}>Border</span>
+            <Select
+              value={borderThickness}
+              onChange={setBorderThickness}
+              options={[1, 2, 3, 4, 5].map(v => ({ value: String(v), label: `${v}px` }))}
+              width={60}
+              title="Border thickness"
+              style={{ fontSize: 12 }}
+            />
+            <Select
+              value={borderStyle}
+              onChange={setBorderStyle}
+              options={BORDER_STYLES}
+              width={82}
+              title="Border style"
+              style={{ fontSize: 12 }}
+            />
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+              {BG_COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => { setBorderColor(c); applyBorder(); }}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    background: c,
+                    border: `1px solid ${c === '#ffffff' ? 'var(--border)' : 'transparent'}`,
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                  title={`Border color: ${c}`}
+                />
+              ))}
+            </div>
+            <Button style={{ ...toolBtn, width: 60 }} onClick={applyBorder}>Apply</Button>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Layout',
+      width: 360,
+      content: (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={miniLabel}>Align</span>
+            <Tooltip text="Align Left"><Button style={toolBtn} onClick={() => alignImage('left')}>⇤</Button></Tooltip>
+            <Tooltip text="Align Center"><Button style={toolBtn} onClick={() => alignImage('center')}>⟨⟩</Button></Tooltip>
+            <Tooltip text="Align Right"><Button style={toolBtn} onClick={() => alignImage('right')}>⇥</Button></Tooltip>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={miniLabel}>Wrap Text</span>
+            <Select
+              value={wrapMode}
+              onChange={setWrap}
+              options={WRAP_MODES}
+              width={136}
+              title="Text wrapping"
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={miniLabel}>Arrange</span>
+            <Tooltip text="Bring Forward"><Button style={toolBtn} onClick={bringForward}>↑</Button></Tooltip>
+            <Tooltip text="Send Backward"><Button style={toolBtn} onClick={sendBackward}>↓</Button></Tooltip>
+          </div>
+        </div>
+      ),
+    },
+  ], [
+    addGlow,
+    addReflection,
+    addShadow,
+    alignImage,
+    applyBorder,
+    applyCustomRotation,
+    applyTransparency,
+    borderStyle,
+    borderThickness,
+    cropImage,
+    customRotation,
+    imgHeight,
+    imgWidth,
+    resetFormatting,
+    rotateLeft,
+    rotateRight,
+    sendBackward,
+    setBorderColor,
+    setBorderStyle,
+    setBorderThickness,
+    setCustomRotation,
+    setImgHeight,
+    setImgWidth,
+    setTransparency,
+    setWrap,
+    transparency,
+    wrapMode,
+  ]);
+
+  return (
+    <>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          minWidth: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {controlSections.map((section) => (
+            <div key={section.title} style={{ ...sectionShell, width: section.width }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '.08em' }}>{section.title}</span>
+              </div>
+              {section.content}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}

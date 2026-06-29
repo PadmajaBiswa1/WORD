@@ -4,40 +4,46 @@ import { Modal, Button, Input, Label, Stack } from '@/components/ui';
 import { uploadApi } from '@/services/api';
 
 export function InsertImageDialog() {
-  const { closeDialog, toast } = useUIStore();
-  const { editor } = useEditorStore();
-  const [tab,   setTab]   = useState('upload'); // 'upload' | 'url'
-  const [url,   setUrl]   = useState('');
-  const [alt,   setAlt]   = useState('');
-  const [loading, setLoading] = useState(false);
-  const fileRef = useRef();
+   const { closeDialog, toast } = useUIStore();
+   const { editor } = useEditorStore();
+   const [tab,   setTab]   = useState('upload'); // 'upload' | 'url'
+   const [url,   setUrl]   = useState('');
+   const [alt,   setAlt]   = useState('');
+   const [loading, setLoading] = useState(false);
+   const fileRef = useRef();
 
-  const insertUrl = () => {
-    if (!url.trim()) return;
-    editor?.chain().focus().setImage({ src: url.trim(), alt, width: '360' }).run();
-    closeDialog('insertImage');
-  };
+   const insertUrl = () => {
+     if (!url.trim()) return;
+     try {
+       editor?.chain().focus().setImage({ src: url.trim(), alt, width: '360' }).run();
+       closeDialog('insertImage');
+     } catch (err) {
+       console.error('Error inserting image from URL:', err);
+       toast('Failed to insert image', 'error');
+     }
+   };
 
-  const handleFile = async (file) => {
-    if (!file) return;
-    setLoading(true);
-    try {
-      // Try server upload; fall back to base64 preview
-      let src;
-      try {
-        const res = await uploadApi.image(file);
-        src = res.url;
-      } catch {
-        src = await fileToBase64(file);
-      }
-      editor?.chain().focus().setImage({ src, alt: alt || file.name, width: '360' }).run();
-      closeDialog('insertImage');
-    } catch (err) {
-      toast('Image upload failed', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+   const handleFile = async (file) => {
+     if (!file) return;
+     setLoading(true);
+     try {
+       // Try server upload; fall back to base64 preview
+       let src;
+       try {
+         const res = await uploadApi.image(file);
+         src = res.url;
+       } catch {
+         src = await fileToBase64(file);
+       }
+       editor?.chain().focus().setImage({ src, alt: alt || file.name, width: '360' }).run();
+       closeDialog('insertImage');
+     } catch (err) {
+       console.error('Image upload/insert error:', err);
+       toast('Image upload failed', 'error');
+     } finally {
+       setLoading(false);
+     }
+   };
 
   return (
     <Modal title="Insert Image" onClose={() => closeDialog('insertImage')} width={460}>

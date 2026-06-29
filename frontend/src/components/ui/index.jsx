@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  EtherX Word — UI Primitives
 // ═══════════════════════════════════════════════════════════════
+import { createPortal } from 'react-dom';
 import { useState, useEffect, useRef } from 'react';
 import { useUIStore } from '@/store';
 
@@ -97,9 +98,18 @@ export function Tooltip({ children, text, shortcut, placement = 'top' }) {
 }
 
 /* ── Select ─────────────────────────────────────────────────── */
-export function Select({ value, onChange, options = [], width = 120, title }) {
+export function Select({ value, onChange, options = [], width = 120, title, searchable = false, searchPlaceholder }) {
   const { theme } = useUIStore();
   const isDark = theme === 'dark';
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [menuStyle, setMenuStyle] = useState({ top: 0, left: 0, width: 0, maxHeight: 320 });
+  const triggerRef = useRef(null);
+  const inputRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const widthStyle = typeof width === 'number' ? `${width}px` : width;
   
   const styles = {
     background: isDark ? '#111111' : '#ffffff',
@@ -108,6 +118,226 @@ export function Select({ value, onChange, options = [], width = 120, title }) {
     hoverBg: isDark ? '#1f1800' : '#f5efd0',
     arrowColor: '#c9a84c',
   };
+
+  const selected = options.find((option) => option.value === value) || options[0] || { value: '', label: '' };
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredOptions = options.filter((option) => {
+    if (!normalizedQuery) return true;
+    const searchHaystack = [option.label, option.value, option.searchTerms]
+      .flat()
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return searchHaystack.includes(normalizedQuery);
+  });
+
+  const updateMenuPosition = () => {
+    const triggerRect = triggerRef.current?.getBoundingClientRect();
+    if (!triggerRect) return;
+
+    const estimatedHeight = 340;
+    const spaceBelow = window.innerHeight - triggerRect.bottom - 12;
+    const spaceAbove = triggerRect.top - 12;
+    const openUp = spaceBelow < 210 && spaceAbove > spaceBelow;
+    const menuHeight = Math.min(estimatedHeight, Math.max(180, openUp ? spaceAbove : spaceBelow));
+    const top = openUp
+      ? Math.max(8, triggerRect.top - menuHeight - 4)
+      : Math.min(window.innerHeight - menuHeight - 8, triggerRect.bottom + 4);
+
+    setMenuStyle({
+      top,
+      left: Math.max(8, Math.min(triggerRect.left, window.innerWidth - triggerRect.width - 8)),
+      width: triggerRect.width,
+      maxHeight: menuHeight,
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const selectedIndex = options.findIndex((option) => option.value === value);
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    updateMenuPosition();
+
+    const onMouseDown = (event) => {
+      if (triggerRef.current?.contains(event.target)) return;
+      if (menuRef.current?.contains(event.target)) return;
+      setOpen(false);
+    };
+
+    const onResize = () => updateMenuPosition();
+
+    window.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onResize, true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+
+    return () => {
+      window.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onResize, true);
+    };
+  }, [open, options, value]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!filteredOptions.length) {
+      setActiveIndex(0);
+      return;
+    }
+    setActiveIndex((current) => Math.min(current, filteredOptions.length - 1));
+  }, [filteredOptions.length, open]);
+
+  const choose = (nextValue) => {
+    onChange(nextValue);
+    setOpen(false);
+  };
+
+  if (searchable) {
+    return (
+      <div style={{ position: 'relative', width: widthStyle, flexShrink: 0 }}>
+        <button
+          ref={triggerRef}
+          type="button"
+          title={title}
+          onClick={() => setOpen((current) => !current)}
+          style={{
+            height: 22,
+            width: '100%',
+            background: styles.background,
+            color: styles.color,
+            border: styles.border,
+            borderRadius: 2,
+            padding: '0 22px 0 6px',
+            fontSize: '12px',
+            fontFamily: selected?.style?.fontFamily || 'var(--font-ui)',
+            cursor: 'pointer',
+            outline: 'none',
+            appearance: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            textAlign: 'left',
+            backgroundImage: `linear-gradient(45deg, transparent 50%, ${styles.arrowColor} 50%), linear-gradient(135deg, ${styles.arrowColor} 50%, transparent 50%)`,
+            backgroundPosition: 'calc(100% - 12px) 9px, calc(100% - 7px) 9px',
+            backgroundSize: '5px 5px, 5px 5px',
+            backgroundRepeat: 'no-repeat',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = styles.hoverBg; e.currentTarget.style.borderColor = '#c9a84c'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = styles.background; e.currentTarget.style.borderColor = styles.border.split('solid ')[1]; }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = '#c9a84c')}
+          onBlur={(e) => (e.currentTarget.style.borderColor = styles.border.split('solid ')[1])}
+        >
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{selected?.label}</span>
+        </button>
+
+        {open && createPortal(
+          <div
+            ref={menuRef}
+            style={{
+              position: 'fixed',
+              top: menuStyle.top,
+              left: menuStyle.left,
+              width: menuStyle.width,
+              maxHeight: menuStyle.maxHeight,
+              zIndex: 4000,
+              background: styles.background,
+              border: styles.border,
+              borderRadius: 6,
+              boxShadow: '0 16px 34px rgba(0,0,0,0.32)',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ padding: 6, borderBottom: `1px solid ${isDark ? '#2a2200' : '#e5e5e5'}` }}>
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setActiveIndex(0);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    setActiveIndex((current) => Math.min(current + 1, Math.max(filteredOptions.length - 1, 0)));
+                  } else if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    setActiveIndex((current) => Math.max(current - 1, 0));
+                  } else if (event.key === 'Enter') {
+                    event.preventDefault();
+                    const next = filteredOptions[activeIndex] || filteredOptions[0];
+                    if (next) choose(next.value);
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setOpen(false);
+                  }
+                }}
+                placeholder={searchPlaceholder || `Search ${title || 'options'}...`}
+                style={{
+                  width: '100%',
+                  height: 26,
+                  boxSizing: 'border-box',
+                  background: isDark ? '#0d0d0d' : '#ffffff',
+                  color: styles.color,
+                  border: `1px solid ${isDark ? '#3d3000' : '#d0d0d0'}`,
+                  borderRadius: 4,
+                  padding: '0 8px',
+                  fontSize: 12,
+                  fontFamily: 'var(--font-ui)',
+                  outline: 'none',
+                }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = '#c9a84c')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = isDark ? '#3d3000' : '#d0d0d0')}
+              />
+            </div>
+            <div style={{ maxHeight: menuStyle.maxHeight - 40, overflowY: 'auto', padding: 4 }}>
+              {filteredOptions.length > 0 ? filteredOptions.map((option, index) => {
+                const isActive = index === activeIndex;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => choose(option.value)}
+                    style={{
+                      width: '100%',
+                      minHeight: 28,
+                      padding: '5px 8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      background: isActive ? (isDark ? '#1f1800' : '#f5efd0') : 'transparent',
+                      color: styles.color,
+                      fontFamily: option.style?.fontFamily || 'var(--font-ui)',
+                      fontSize: 12,
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.label}</span>
+                  </button>
+                );
+              }) : (
+                <div style={{ padding: '10px 8px', color: 'var(--text-muted)', fontFamily: 'var(--font-ui)', fontSize: 12 }}>
+                  No results
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
+      </div>
+    );
+  }
   
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} title={title}

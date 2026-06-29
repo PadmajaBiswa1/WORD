@@ -3,6 +3,14 @@ import { Input } from '@/components/ui';
 import { useUIStore, useEditorStore } from '@/store';
 import { ensureRegistered, searchCommands } from './commandRegistry';
 
+const makeAction = (key, { title, tab, keywords = [], run }) => ({
+  key,
+  title,
+  tab,
+  keywords,
+  run,
+});
+
 export function RibbonFeatureSearch({ compactWidth = 190, onActivateTab: onActivateTabProp }) {
   const { openDialog, toast, setActiveTab } = useUIStore();
   const onActivateTab = onActivateTabProp ?? null;

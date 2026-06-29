@@ -198,8 +198,8 @@ export function useEditorSetup() {
   useEffect(() => {
     if (!editor) return;
 
-    // Apply to selection (inline mark) if active
-    if (!editor.isDestroyed && editor.state.selection.empty === false) {
+    // Apply to the current selection or typing cursor so formatting persists for new text.
+    if (!editor.isDestroyed) {
       editor.chain().focus().setFontFamily(fontFamily).setFontSize(fontSize + 'pt').run();
     }
 

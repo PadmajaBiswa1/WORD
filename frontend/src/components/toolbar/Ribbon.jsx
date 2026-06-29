@@ -1,4 +1,4 @@
-import { useUIStore } from '@/store';
+import { useUIStore, useEditorStore } from '@/store';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import { HomeTab }      from './tabs/HomeTab';
@@ -38,6 +38,7 @@ export function Ribbon() {
   const location = useLocation();
   const { activeTab, setActiveTab } = useUIStore();
   const Content = TAB_CONTENT[activeTab] || HomeTab;
+
   const onTabClick = (id) => {
     if (id === 'file') {
       navigate('/home', { state: { returnTo: location.pathname } });

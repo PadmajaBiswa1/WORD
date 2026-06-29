@@ -3,17 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useEditorStore, useUIStore } from '@/store';
 import { Button, Divider, Tooltip, Select, ColorSwatch } from '@/components/ui';
 import { RibbonGroup } from '../RibbonGroup';
-
-const FONTS = [
-  'Calibri', 'Crimson Pro', 'Times New Roman', 'Arial', 'Garamond',
-  'Georgia', 'Helvetica', 'Verdana', 'Courier New', 'Trebuchet MS',
-  'Segoe UI', 'Nirmala UI', 'Microsoft YaHei', 'Malgun Gothic',
-  'Meiryo', 'Yu Gothic UI', 'Leelawadee UI', 'Ebrima',
-  'Noto Sans', 'Noto Sans Devanagari', 'Noto Naskh Arabic',
-].map((f) => ({ value: f, label: f }));
-
-const SIZES = ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '32', '36', '48', '72']
-  .map((s) => ({ value: s, label: s }));
+import { FONT_SIZE_OPTIONS, FontFormattingControls, useFontFormattingControls } from '../fontFormatting.jsx';
 
 const PARA_STYLES = [
   { value: 'p', label: 'Normal' },
@@ -40,12 +30,11 @@ export function HomeTab() {
     editor,
     fontFamily,
     fontSize,
-    setFontFamily,
-    setFontSize,
     formatPainterMarks,
     setFormatPainterMarks,
   } = useEditorStore();
   const { openDialog, toast } = useUIStore();
+  const { applyFontSize } = useFontFormattingControls(editor);
   const painterActive = useRef(false);
   const [showTextColors, setShowTextColors] = useState(false);
   const [showHighlightColors, setShowHighlightColors] = useState(false);
@@ -102,11 +91,6 @@ export function HomeTab() {
 
   if (!editor) return null;
 
-  const applyFontSize = (v) => {
-    setFontSize(v);
-    run(() => editor.chain().setFontSize(v + 'pt').run());
-  };
-
   const parseStyle = (style = '') => {
     const out = {};
     String(style).split(';').forEach((pair) => {
@@ -133,20 +117,20 @@ export function HomeTab() {
 
   const growFont = () => {
     const numeric = parseInt(String(fontSize), 10);
-    const fallbackIdx = SIZES.findIndex((s) => parseInt(s.value, 10) > numeric);
-    const idx = SIZES.findIndex((s) => s.value === fontSize);
+    const fallbackIdx = FONT_SIZE_OPTIONS.findIndex((s) => parseInt(s.value, 10) > numeric);
+    const idx = FONT_SIZE_OPTIONS.findIndex((s) => s.value === fontSize);
     const nextIdx = idx >= 0 ? idx + 1 : fallbackIdx;
-    if (nextIdx >= 0 && nextIdx < SIZES.length) applyFontSize(SIZES[nextIdx].value);
+    if (nextIdx >= 0 && nextIdx < FONT_SIZE_OPTIONS.length) applyFontSize(FONT_SIZE_OPTIONS[nextIdx].value);
   };
 
   const shrinkFont = () => {
     const numeric = parseInt(String(fontSize), 10);
-    const idx = SIZES.findIndex((s) => s.value === fontSize);
+    const idx = FONT_SIZE_OPTIONS.findIndex((s) => s.value === fontSize);
     if (idx > 0) {
-      applyFontSize(SIZES[idx - 1].value);
+      applyFontSize(FONT_SIZE_OPTIONS[idx - 1].value);
       return;
     }
-    const smaller = SIZES.map((s) => parseInt(s.value, 10)).filter((v) => v < numeric);
+    const smaller = FONT_SIZE_OPTIONS.map((s) => parseInt(s.value, 10)).filter((v) => v < numeric);
     if (!smaller.length) return;
     const next = Math.max(...smaller);
     applyFontSize(String(next));
@@ -384,17 +368,13 @@ export function HomeTab() {
       <RibbonGroup label="Font">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <Select
-              value={fontFamily}
-              width={138}
-              onChange={(v) => {
-                setFontFamily(v);
-                run(() => editor.chain().setFontFamily(v).run());
-              }}
-              options={FONTS}
-              title="Font Family"
+            <FontFormattingControls
+              editor={editor}
+              fontFamily={fontFamily}
+              fontSize={fontSize}
+              familyWidth={138}
+              sizeWidth={52}
             />
-            <Select value={fontSize} width={52} onChange={applyFontSize} options={SIZES} title="Font Size" />
             <Tooltip text="Grow Font (Ctrl+])"><Button style={toolBtn} onClick={growFont}>A^</Button></Tooltip>
             <Tooltip text="Shrink Font (Ctrl+[)"><Button style={toolBtn} onClick={shrinkFont}>Av</Button></Tooltip>
             <Tooltip text="Change Case"><Button style={{ ...toolBtn, width: 30 }} onClick={changeCase}>Aa</Button></Tooltip>

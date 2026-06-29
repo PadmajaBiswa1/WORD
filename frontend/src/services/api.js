@@ -87,9 +87,21 @@ export const uploadApi = {
     const fd = new FormData(); fd.append('file', file);
     const res = await fetch(`${API_BASE}/upload/image`, { method: 'POST', body: fd });
     if (!res.ok) throw new ApiError('Upload failed', res.status);
-    return res.json();
+    const data = await res.json();
+    return {
+      ...data,
+      url: resolveUploadUrl(data.url),
+    };
   },
 };
+
+function resolveUploadUrl(url) {
+  if (!url || /^(?:https?:|data:|blob:)/i.test(url)) return url;
+  if (/^https?:\/\//i.test(API_BASE) && url.startsWith('/')) {
+    return new URL(url, API_BASE.replace(/\/api\/?$/, '/')).toString();
+  }
+  return url;
+}
 
 export const exportApi = {
   pdf:  (id) => fetch(`${API_BASE}/export/${id}/pdf`).then((r) => r.blob()),

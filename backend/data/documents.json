@@ -1,11 +1,171 @@
 {
   "documents": [
     {
-      "id": "doc_db6faa13516a",
+      "id": "doc_31ebced8166d",
       "title": "Untitled Document",
-      "content": "<p>asdfgnm</p><img src=\"data:image/png;base64,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\" alt=\"Chart: My Chart\">",
-      "createdAt": "2026-05-22T16:48:10.107Z",
-      "updatedAt": "2026-05-22T17:19:44.085Z",
+      "content": "<img src=\"http://localhost:5053/uploads/1782556238793-86d2e7e3b7279.jpg\" alt=\"sky3.jpg\" width=\"360\">",
+      "createdAt": "2026-06-27T10:22:15.303Z",
+      "updatedAt": "2026-06-27T10:30:39.325Z",
+      "revision": 3,
+      "owner": {
+        "id": "user",
+        "name": "User",
+        "email": ""
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_68d7ada8e252",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-06-27T10:10:59.610Z",
+      "updatedAt": "2026-06-27T10:11:00.320Z",
+      "revision": 1,
+      "owner": {
+        "id": "user",
+        "name": "User",
+        "email": ""
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_253694bc83c6",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-06-27T09:53:28.951Z",
+      "updatedAt": "2026-06-27T10:07:26.164Z",
+      "revision": 2,
+      "owner": {
+        "id": "user",
+        "name": "User",
+        "email": ""
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_0aafa6e88eb6",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-06-27T09:22:56.768Z",
+      "updatedAt": "2026-06-27T09:30:19.137Z",
+      "revision": 2,
+      "owner": {
+        "id": "user",
+        "name": "User",
+        "email": ""
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_a00724f73a99",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-06-27T09:00:12.121Z",
+      "updatedAt": "2026-06-27T09:22:11.029Z",
+      "revision": 2,
+      "owner": {
+        "id": "user",
+        "name": "User",
+        "email": ""
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_3ebaf62c7904",
+      "title": "Untitled Document",
+      "content": "<ul><li><p style=\"text-align: right;\">atri yrdto87y saws7yui</p></li></ul>",
+      "createdAt": "2026-06-27T08:52:39.766Z",
+      "updatedAt": "2026-06-27T08:59:55.142Z",
+      "revision": 14,
+      "owner": {
+        "id": "user",
+        "name": "User",
+        "email": ""
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_b5d9c35ba1e3",
+      "title": "Untitled Document",
+      "content": "<p>srfthj duyoi iuoijtew5erku</p>",
+      "createdAt": "2026-06-27T08:46:21.186Z",
+      "updatedAt": "2026-06-27T08:46:25.965Z",
+      "revision": 2,
+      "owner": {
+        "id": "user",
+        "name": "User",
+        "email": ""
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_fb4b64cbd967",
+      "title": "Untitled Document",
+      "content": "<p></p><img src=\"https://dummyimage.com/120x80/000/fff.png\" alt=\"\" width=\"360\"><p><span style=\"font-family: Arial; font-size: 12pt;\">vbnmn</span> kjkudestyuk ftygku</p>",
+      "createdAt": "2026-06-27T08:39:09.762Z",
+      "updatedAt": "2026-06-27T09:06:45.602Z",
+      "revision": 8,
+      "owner": {
+        "id": "user",
+        "name": "User",
+        "email": ""
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_18a370799757",
+      "title": "Untitled Document",
+      "content": "<p>nnmmm jjmmmmmmmmmmmm</p>",
+      "createdAt": "2026-06-27T08:32:44.479Z",
+      "updatedAt": "2026-06-27T08:38:45.499Z",
       "revision": 6,
       "owner": {
         "id": "biswalpadmaja411@gmail.com",
@@ -21,12 +181,32 @@
       "ipfsPinnedAt": null
     },
     {
-      "id": "doc_15cf530673cc",
+      "id": "doc_aee49aad9056",
       "title": "Untitled Document",
-      "content": "<p>sdfghjkl</p><table style=\"min-width: 125px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p></p></th><th colspan=\"1\" rowspan=\"1\"><p></p></th><th colspan=\"1\" rowspan=\"1\"><p></p></th><th colspan=\"1\" rowspan=\"1\"><p></p></th><th colspan=\"1\" rowspan=\"1\"><p></p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><img src=\"blob:http://localhost:3001/b8d53629-a0dd-48ac-ac58-6e5cefaa7496\" alt=\"Hexagon\" width=\"120\"></td></tr></tbody></table>",
-      "createdAt": "2026-05-22T16:42:16.746Z",
-      "updatedAt": "2026-05-22T16:47:06.417Z",
-      "revision": 27,
+      "content": "<p>vbn<strong>m, s</strong><span style=\"font-family: &quot;Courier New&quot;; font-size: 12pt;\"><strong>nsm</strong> z</span></p>",
+      "createdAt": "2026-06-25T16:35:13.623Z",
+      "updatedAt": "2026-06-25T17:30:49.059Z",
+      "revision": 6,
+      "owner": {
+        "id": "user",
+        "name": "User",
+        "email": ""
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_1f9ba6c396bd",
+      "title": "Untitled Document",
+      "content": "<p>fwtshss<mark data-color=\"#f4c7f3\" style=\"background-color: rgb(244, 199, 243); color: inherit;\"> hshjshs</mark>j<span style=\"color: rgb(142, 68, 173);\"> <strong>jjnrgfbaa</strong></span></p><p>vbcnc</p>",
+      "createdAt": "2026-06-24T17:32:04.004Z",
+      "updatedAt": "2026-06-24T17:33:16.807Z",
+      "revision": 11,
       "owner": {
         "id": "biswalpadmaja411@gmail.com",
         "name": "biswalpadmaja411",
@@ -41,12 +221,12 @@
       "ipfsPinnedAt": null
     },
     {
-      "id": "doc_da7855a36dfe",
+      "id": "doc_eec2be708b12",
       "title": "Untitled Document",
-      "content": "<p>aaaaaa</p><table style=\"min-width: 75px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p></p></th><th colspan=\"1\" rowspan=\"1\"><p></p></th><th colspan=\"1\" rowspan=\"1\"><p></p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><img src=\"blob:http://localhost:3001/130aa9b2-b6c0-4b65-bc76-82f95bc1f791\" alt=\"Rectangle\" width=\"120\"></td></tr></tbody></table>",
-      "createdAt": "2026-05-22T16:38:05.139Z",
-      "updatedAt": "2026-05-22T16:41:33.860Z",
-      "revision": 7,
+      "content": "<p style=\"text-align: right;\">dghshs ywuwu ajaa<strong> h<em>wjwjj</em></strong></p>",
+      "createdAt": "2026-06-24T17:27:26.052Z",
+      "updatedAt": "2026-06-24T17:30:40.478Z",
+      "revision": 14,
       "owner": {
         "id": "biswalpadmaja411@gmail.com",
         "name": "biswalpadmaja411",
@@ -61,12 +241,112 @@
       "ipfsPinnedAt": null
     },
     {
-      "id": "doc_6791526f1aa7",
+      "id": "doc_82c83d34af07",
       "title": "Untitled Document",
-      "content": "<p>bbnmmmm</p>",
-      "createdAt": "2026-05-22T15:43:55.497Z",
-      "updatedAt": "2026-05-22T16:25:39.075Z",
-      "revision": 4,
+      "content": "<p></p>",
+      "createdAt": "2026-06-24T17:02:36.712Z",
+      "updatedAt": "2026-06-24T17:03:12.810Z",
+      "revision": 2,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_795bd2e7e574",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-06-24T17:00:41.204Z",
+      "updatedAt": "2026-06-24T17:00:41.778Z",
+      "revision": 1,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_cb2de7d42cb7",
+      "title": "Untitled Document",
+      "content": "<ul><li><p style=\"text-align: left;\"><span style=\"color: rgb(22, 160, 133);\">sdfg<mark data-color=\"#ffe08a\" style=\"background-color: rgb(255, 224, 138); color: inherit;\">h</mark><strong><em><s><mark data-color=\"#ffe08a\" style=\"background-color: rgb(255, 224, 138); color: inherit;\">jk f</mark></s></em></strong></span><span style=\"color: rgb(22, 160, 133); font-family: &quot;Crimson Pro&quot;; font-size: 12pt;\"><strong><em><s><mark data-color=\"#ffe08a\" style=\"background-color: rgb(255, 224, 138); color: inherit;\">gh</mark><u><mark data-color=\"#ffe08a\" style=\"background-color: rgb(255, 224, 138); color: inherit;\">jkvvvvvvvvvvv</mark></u></s></em></strong></span></p></li></ul><p style=\"text-align: right;\"><span style=\"font-family: &quot;Courier New&quot;; font-size: 12pt;\">vbbnn</span></p><p style=\"text-align: right;\"><span style=\"font-family: &quot;Courier New&quot;; font-size: 12pt;\">f</span><span style=\"font-family: &quot;Microsoft YaHei&quot;; font-size: 12pt;\">ghjkndnn</span><span style=\"font-family: &quot;Noto Sans Devanagari&quot;; font-size: 12pt;\"> fnfmfmmfm</span></p>",
+      "createdAt": "2026-06-24T16:59:30.838Z",
+      "updatedAt": "2026-06-24T17:00:37.334Z",
+      "revision": 13,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_4c8d27b73636",
+      "title": "Untitled Document",
+      "content": "<ul><li><p style=\"text-align: left;\"><span style=\"color: rgb(22, 160, 133);\">sdfg<mark data-color=\"#ffe08a\" style=\"background-color: rgb(255, 224, 138); color: inherit;\">h</mark><strong><em><s><mark data-color=\"#ffe08a\" style=\"background-color: rgb(255, 224, 138); color: inherit;\">jk f</mark></s></em></strong></span><span style=\"color: rgb(22, 160, 133); font-family: &quot;Crimson Pro&quot;; font-size: 12pt;\"><strong><em><s><mark data-color=\"#ffe08a\" style=\"background-color: rgb(255, 224, 138); color: inherit;\">gh</mark><u><mark data-color=\"#ffe08a\" style=\"background-color: rgb(255, 224, 138); color: inherit;\">jkvvvvvvvvvvv</mark></u></s></em></strong></span></p></li></ul><p style=\"text-align: right;\"><span style=\"font-family: &quot;Courier New&quot;; font-size: 12pt;\">vbbnn</span></p><p style=\"text-align: right;\"><span style=\"font-family: &quot;Courier New&quot;; font-size: 12pt;\">f</span><span style=\"font-family: &quot;Microsoft YaHei&quot;; font-size: 12pt;\">ghjkndnn</span><span style=\"font-family: &quot;Noto Sans Devanagari&quot;; font-size: 12pt;\"> fnfmfmmfm</span></p>",
+      "createdAt": "2026-06-24T16:16:02.075Z",
+      "updatedAt": "2026-06-24T16:59:28.991Z",
+      "revision": 53,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_d3e2b260c82b",
+      "title": "Invoice 24/6/2026",
+      "content": "\n<div style=\"display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;\">\n  <div>\n    <h1 style=\"margin: 0; font-size: 32px; font-weight: bold;\">INVOICE</h1>\n    <p style=\"margin: 5px 0; font-size: 14px; color: #d4af37;\"><strong>#INV-2026-001</strong></p>\n  </div>\n  <div style=\"text-align: right;\">\n    <h2 style=\"margin: 0; font-size: 16px; font-weight: bold;\">Your Business Name</h2>\n    <p style=\"margin: 5px 0; font-size: 13px;\">123 Your Street, City, State ZIP</p>\n    <p style=\"margin: 5px 0; font-size: 13px;\">billing@business.com • (555) 000-0000</p>\n  </div>\n</div>\n\n<div style=\"display: flex; gap: 40px; margin-bottom: 30px;\">\n  <div style=\"flex: 1;\">\n    <p style=\"margin: 0; font-size: 12px; font-weight: bold; color: #666;\">BILL TO</p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px;\"><strong>Client Full Name</strong></p>\n    <p style=\"margin: 5px 0; font-size: 13px;\">Client Company Inc.</p>\n    <p style=\"margin: 5px 0; font-size: 13px;\">456 Client Street, City, State ZIP</p>\n    <p style=\"margin: 5px 0; font-size: 13px;\">client@company.com</p>\n  </div>\n  <div>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Invoice No.</strong> <span style=\"float: right; color: #d4af37;\">INV-2026-001</span></p>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Invoice Date</strong> <span style=\"float: right; color: #d4af37;\">April 22, 2026</span></p>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Due Date</strong> <span style=\"float: right; color: #d4af37;\">May 22, 2026</span></p>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Status</strong> <span style=\"float: right; color: #d4af37; font-weight: bold;\">UNPAID</span></p>\n  </div>\n</div>\n\n<table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n  <thead>\n    <tr style=\"border-bottom: 2px solid #333;\">\n      <th style=\"text-align: left; padding: 8px; font-size: 12px; color: #666; font-weight: bold;\">DESCRIPTION</th>\n      <th style=\"text-align: center; padding: 8px; font-size: 12px; color: #666; font-weight: bold;\">QTY</th>\n      <th style=\"text-align: right; padding: 8px; font-size: 12px; color: #666; font-weight: bold;\">UNIT PRICE</th>\n      <th style=\"text-align: right; padding: 8px; font-size: 12px; color: #666; font-weight: bold;\">AMOUNT</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr style=\"border-bottom: 1px solid #ddd;\">\n      <td style=\"padding: 10px; font-size: 13px;\">Service or Product Name</td>\n      <td style=\"text-align: center; padding: 10px; font-size: 13px;\">1</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$1,200.00</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$1,200.00</td>\n    </tr>\n    <tr style=\"border-bottom: 1px solid #ddd;\">\n      <td style=\"padding: 10px; font-size: 13px;\">Consulting Hours (Design)</td>\n      <td style=\"text-align: center; padding: 10px; font-size: 13px;\">4</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$150.00</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$600.00</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 10px; font-size: 13px;\">Additional Service Item</td>\n      <td style=\"text-align: center; padding: 10px; font-size: 13px;\">1</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$350.00</td>\n      <td style=\"text-align: right; padding: 10px; font-size: 13px;\">$350.00</td>\n    </tr>\n  </tbody>\n</table>\n\n<div style=\"display: flex; justify-content: flex-end; margin: 20px 0;\"></div>\n\n<div style=\"display: flex; justify-content: flex-end; gap: 30px; margin: 30px 0; font-size: 13px;\">\n  <div style=\"width: 200px;\">\n    <div style=\"border-bottom: 1px solid #ddd; padding: 8px 0; text-align: right;\">\n      <p style=\"margin: 0;\"><strong>Subtotal</strong> <span style=\"float: right;\">$2,150.00</span></p>\n    </div>\n    <div style=\"border-bottom: 1px solid #ddd; padding: 8px 0; text-align: right;\">\n      <p style=\"margin: 0;\"><strong>Tax (GST 18%)</strong> <span style=\"float: right;\">$387.00</span></p>\n    </div>\n    <div style=\"padding: 8px 0; text-align: right; font-size: 14px;\">\n      <p style=\"margin: 0; font-weight: bold; color: #d4af37;\"><strong>Total Due</strong> <span style=\"float: right;\">$2,537.00</span></p>\n    </div>\n  </div>\n</div>\n\n<div style=\"display: flex; gap: 40px; margin: 40px 0; padding-top: 20px; border-top: 1px solid #ccc;\">\n  <div style=\"flex: 1;\">\n    <p style=\"margin: 0 0 5px 0; font-size: 12px; font-weight: bold; color: #666;\">PAYMENT INSTRUCTIONS</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">Bank Transfer: Your Bank Name</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">Account Name: Your Business Name</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">Account No.: XXXX-XXXX-XXXX</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">IFSC / Routing: XXXXXXXX</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">Or pay via: razorpay.com/your-link</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <p style=\"margin: 0 0 5px 0; font-size: 12px; font-weight: bold; color: #666;\">TERMS & NOTES</p>\n    <p style=\"margin: 3px 0; font-size: 12px;\">Payment due within 30 days of invoice date. Late payments are subject to a 1.5% monthly interest charge. Thank you for your business — we appreciate the partnership!</p>\n  </div>\n</div>\n    ",
+      "createdAt": "2026-06-24T16:15:54.152Z",
+      "updatedAt": "2026-06-24T16:15:54.152Z",
+      "revision": 0,
+      "owner": {
+        "id": "biswalpadmaja411@gmail.com",
+        "name": "biswalpadmaja411",
+        "email": "biswalpadmaja411@gmail.com"
+      },
+      "sharedWith": [],
+      "versions": [],
+      "comments": [],
+      "trackChanges": false,
+      "ipfsHash": null,
+      "ipfsGatewayUrl": null,
+      "ipfsPinnedAt": null
+    },
+    {
+      "id": "doc_33c694ed648c",
+      "title": "Untitled Document",
+      "content": "<p></p>",
+      "createdAt": "2026-06-24T10:36:51.585Z",
+      "updatedAt": "2026-06-24T10:37:18.093Z",
+      "revision": 8,
       "owner": {
         "id": "biswalpadmaja411@gmail.com",
         "name": "biswalpadmaja411",
@@ -87,26 +367,6 @@
       "createdAt": "2026-05-22T15:16:41.505Z",
       "updatedAt": "2026-05-22T15:16:42.154Z",
       "revision": 1,
-      "owner": {
-        "id": "biswalpadmaja411@gmail.com",
-        "name": "biswalpadmaja411",
-        "email": "biswalpadmaja411@gmail.com"
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_ad67d9f68e8f",
-      "title": "Untitled Document",
-      "content": "<p><span style=\"color: rgb(92, 219, 211);\"><mark data-color=\"#ffa940\" style=\"background-color: rgb(255, 169, 64); color: inherit;\">xDFGH</mark></span></p>",
-      "createdAt": "2026-05-22T14:30:05.450Z",
-      "updatedAt": "2026-05-22T15:16:19.958Z",
-      "revision": 13,
       "owner": {
         "id": "biswalpadmaja411@gmail.com",
         "name": "biswalpadmaja411",
@@ -181,53 +441,6 @@
       "ipfsPinnedAt": null
     },
     {
-      "id": "doc_aa5f7a32b6a7",
-      "title": "Letter 20/5/2026",
-      "content": "\n<p style=\"margin: 0 0 20px 0;\"><strong>Your Full Name</strong></p>\n<p style=\"margin: 0; color: #d4af37;\">123 Your Address, City, State ZIP</p>\n<p style=\"margin: 0; color: #d4af37;\">your@email.com • (555) 000-0000</p>\n\n<p style=\"margin: 30px 0 0 0; font-weight: bold;\">Recipient Full Name</p>\n<p style=\"margin: 5px 0; color: #d4af37;\">Title / Position</p>\n<p style=\"margin: 5px 0; color: #d4af37;\">Organization or Company</p>\n<p style=\"margin: 5px 0 20px 0; color: #d4af37;\">123 Recipient Address, City, State ZIP</p>\n\n<p style=\"margin: 20px 0 0 0;\"><strong>RE: SUBJECT OF THIS LETTER</strong></p>\n\n<p style=\"margin: 20px 0;\">Dear [Recipient's Name],</p>\n\n<p style=\"margin: 15px 0; text-align: justify;\">Opening paragraph: Introduce yourself and clearly state the purpose of your letter. Be direct and professional. The reader should immediately understand why you are writing.</p>\n\n<p style=\"margin: 15px 0; text-align: justify;\">Body paragraph: Provide context, supporting details, or evidence for your main point. Be specific and factual. Avoid unnecessary filler. If making a request, be explicit about what you need.</p>\n\n<p style=\"margin: 15px 0; text-align: justify;\">Additional paragraph (if needed): Continue with supplementary information, address potential objections, or provide a timeline if applicable.</p>\n\n<p style=\"margin: 15px 0; text-align: justify;\">Closing paragraph: Thank the recipient for their time and consideration. Restate your call to action – what you expect them to do and by when. Provide your contact details for follow-up.</p>\n\n<p style=\"margin: 25px 0 5px 0;\">Sincerely,</p>\n\n<p style=\"margin: 35px 0 0 0;\">___________________________</p>\n<p style=\"margin: 0;\"><strong>Your Full Name</strong></p>\n<p style=\"margin: 0; font-size: 13px;\">Title / Role • Organization</p>\n    ",
-      "createdAt": "2026-05-20T17:03:29.884Z",
-      "updatedAt": "2026-05-22T14:08:36.115Z",
-      "revision": 8,
-      "owner": {
-        "id": "biswalpadmaja411@gmail.com",
-        "name": "biswalpadmaja411",
-        "email": "biswalpadmaja411@gmail.com"
-      },
-      "sharedWith": [
-        {
-          "id": "share_0a07692a96a2",
-          "email": "biswalpadmaja411@gmail.com",
-          "role": "editor",
-          "sharedAt": "2026-05-20T17:07:38.734Z"
-        }
-      ],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_4faa1aab1b5b",
-      "title": "Proposal 20/5/2026",
-      "content": "\n<p style=\"font-size: 12px; color: #666; font-weight: bold; margin: 0 0 5px 0;\">PROJECT PROPOSAL</p>\n<h1 style=\"margin: 0 0 20px 0; color: #333;\">Write Your Compelling Proposal Title Here</h1>\n\n<div style=\"display: flex; justify-content: space-between; border-bottom: 2px solid #d4af37; padding-bottom: 15px; margin-bottom: 20px;\">\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>PREPARED BY</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">Your Name • Your Company</p>\n  </div>\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>SUBMITTED TO</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">Client Name – Organization</p>\n  </div>\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>DATE</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">April 22, 2026</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">OVERVIEW</h3>\n<p>Summarize the entire proposal in 3–5 sentences. What are you proposing, why does it matter, who benefits, and what's the expected outcome? Write this last but place it first.</p>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">PROBLEM STATEMENT</h4>\n    <p>Clearly define the problem or gap this proposal addresses. Use data or evidence to establish urgency and relevance. The more specific, the stronger your proposal.</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">PROPOSED SOLUTION</h4>\n    <p>Describe your solution in plain terms. How does it directly address the problem? What makes this approach effective, unique, or better than alternatives?</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">SCOPE OF WORK</h3>\n<ul style=\"margin: 0 0 10px 0; padding-left: 20px;\">\n  <li>Deliverable 1: [Description] – due [date]</li>\n  <li>Deliverable 2: [Description] – due [date]</li>\n  <li>Deliverable 3: [Description] – due [date]</li>\n  <li>Out of scope: [explicitly list exclusions]</li>\n</ul>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">TIMELINE</h4>\n    <p style=\"margin: 5px 0;\"><strong>Phase 1 – Discovery</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Phase 2 – Execution</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Phase 3 – Delivery</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Final Review:</strong> [Date]</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">BUDGET</h4>\n    <p style=\"margin: 5px 0;\"><strong>Estimated total:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Labor:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Materials/Tools:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Payment:</strong> 50% upfront - 50% on delivery</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">WHY US</h3>\n<p>Highlight your team's relevant experience, past successes, and unique qualifications. Include 1–2 specific examples of similar work delivered successfully.</p>\n    ",
-      "createdAt": "2026-05-20T16:43:10.723Z",
-      "updatedAt": "2026-05-20T16:43:10.723Z",
-      "revision": 0,
-      "owner": {
-        "id": "biswalpadmaja411@gmail.com",
-        "name": "biswalpadmaja411",
-        "email": "biswalpadmaja411@gmail.com"
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
       "id": "doc_b1001ebd669c",
       "title": "Untitled Document",
       "content": "<p></p>",
@@ -248,58 +461,12 @@
       "ipfsPinnedAt": null
     },
     {
-      "id": "doc_7ad9d1b18905",
-      "title": "Proposal 20/5/2026",
-      "content": "<p><strong>PROJECT PROPOSALnnnnn</strong></p><h1>Write Your Compelling Proposal Title Herennnnnnnnnnnnnnnnn</h1><p><strong>PREPARED BY</strong></p><p>Your Name • Your Company</p><p><strong>SUBMITTED TO</strong></p><p>Client Name – Organization</p><p><strong>DATE</strong></p><p>April 22, 2026</p><h3><strong>OVERVIEW</strong></h3><p>Summarize the entire proposal in 3–5 sentences. What are you proposing, why does it matter, who benefits, and what's the expected outcome? Write this last but place it first.</p><h4><strong>PROBLEM STATEMENT</strong></h4><p>Clearly define the problem or gap this proposal addresses. Use data or evidence to establish urgency and relevance. The more specific, the stronger your proposal.</p><h4><strong>PROPOSED SOLUTION</strong></h4><p>Describe your solution in plain terms. How does it directly address the problem? What makes this approach effective, unique, or better than alternatives?</p><h3><strong>SCOPE OF WORK</strong></h3><ul><li><p>Deliverable 1: [Description] – due [date]</p></li><li><p>Deliverable 2: [Description] – due [date]</p></li><li><p>Deliverable 3: [Description] – due [date]</p></li><li><p>Out of scope: [explicitly list exclusions]</p></li></ul><h4><strong>TIMELINE</strong></h4><p><strong>Phase 1 – Discovery</strong> [Dates]</p><p><strong>Phase 2 – Execution</strong> [Dates]</p><p><strong>Phase 3 – Delivery</strong> [Dates]</p><p><strong>Final Review:</strong> [Date]</p><h4><strong>BUDGET</strong></h4><p><strong>Estimated total:</strong> $[amount]</p><p><strong>Labor:</strong> $[amount]</p><p><strong>Materials/Tools:</strong> $[amount]</p><p><strong>Payment:</strong> 50% upfront - 50% on delivery</p><h3><strong>WHY US</strong></h3><p>Highlight your team's relevant experience, past successes, and unique qualifications. Include 1–2 specific examples of similar work delivered successfully.</p>",
-      "createdAt": "2026-05-20T16:39:07.175Z",
-      "updatedAt": "2026-05-20T16:39:56.975Z",
-      "revision": 3,
-      "owner": {
-        "id": "biswalpadmaja411@gmail.com",
-        "name": "biswalpadmaja411",
-        "email": "biswalpadmaja411@gmail.com"
-      },
-      "sharedWith": [
-        {
-          "id": "share_058494c9b322",
-          "email": "biswalpadmaja411@gmail.com",
-          "role": "editor",
-          "sharedAt": "2026-05-20T16:39:19.829Z"
-        }
-      ],
-      "versions": [
-        {
-          "id": "ver_5317effd8e43",
-          "snapshot": "<p><strong>PROJECT PROPOSAL</strong></p><h1>Write Your Compelling Proposal Title Herennnnnnnnnnnnnnnnn</h1><p><strong>PREPARED BY</strong></p><p>Your Name • Your Company</p><p><strong>SUBMITTED TO</strong></p><p>Client Name – Organization</p><p><strong>DATE</strong></p><p>April 22, 2026</p><h3><strong>OVERVIEW</strong></h3><p>Summarize the entire proposal in 3–5 sentences. What are you proposing, why does it matter, who benefits, and what's the expected outcome? Write this last but place it first.</p><h4><strong>PROBLEM STATEMENT</strong></h4><p>Clearly define the problem or gap this proposal addresses. Use data or evidence to establish urgency and relevance. The more specific, the stronger your proposal.</p><h4><strong>PROPOSED SOLUTION</strong></h4><p>Describe your solution in plain terms. How does it directly address the problem? What makes this approach effective, unique, or better than alternatives?</p><h3><strong>SCOPE OF WORK</strong></h3><ul><li><p>Deliverable 1: [Description] – due [date]</p></li><li><p>Deliverable 2: [Description] – due [date]</p></li><li><p>Deliverable 3: [Description] – due [date]</p></li><li><p>Out of scope: [explicitly list exclusions]</p></li></ul><h4><strong>TIMELINE</strong></h4><p><strong>Phase 1 – Discovery</strong> [Dates]</p><p><strong>Phase 2 – Execution</strong> [Dates]</p><p><strong>Phase 3 – Delivery</strong> [Dates]</p><p><strong>Final Review:</strong> [Date]</p><h4><strong>BUDGET</strong></h4><p><strong>Estimated total:</strong> $[amount]</p><p><strong>Labor:</strong> $[amount]</p><p><strong>Materials/Tools:</strong> $[amount]</p><p><strong>Payment:</strong> 50% upfront - 50% on delivery</p><h3><strong>WHY US</strong></h3><p>Highlight your team's relevant experience, past successes, and unique qualifications. Include 1–2 specific examples of similar work delivered successfully.</p>",
-          "savedAt": "2026-05-20T16:39:56.975Z",
-          "label": "v3"
-        },
-        {
-          "id": "ver_43104ac02ae5",
-          "snapshot": "<p><strong>PROJECT PROPOSAL</strong></p><h1>Write Your Compe nnnnlling Proposal Title Here</h1><p><strong>PREPARED BY</strong></p><p>Your Name • Your Company</p><p><strong>SUBMITTED TO</strong></p><p>Client Name – Organization</p><p><strong>DATE</strong></p><p>April 22, 2026</p><h3><strong>OVERVIEW</strong></h3><p>Summarize the entire proposal in 3–5 sentences. What are you proposing, why does it matter, who benefits, and what's the expected outcome? Write this last but place it first.</p><h4><strong>PROBLEM STATEMENT</strong></h4><p>Clearly define the problem or gap this proposal addresses. Use data or evidence to establish urgency and relevance. The more specific, the stronger your proposal.</p><h4><strong>PROPOSED SOLUTION</strong></h4><p>Describe your solution in plain terms. How does it directly address the problem? What makes this approach effective, unique, or better than alternatives?</p><h3><strong>SCOPE OF WORK</strong></h3><ul><li><p>Deliverable 1: [Description] – due [date]</p></li><li><p>Deliverable 2: [Description] – due [date]</p></li><li><p>Deliverable 3: [Description] – due [date]</p></li><li><p>Out of scope: [explicitly list exclusions]</p></li></ul><h4><strong>TIMELINE</strong></h4><p><strong>Phase 1 – Discovery</strong> [Dates]</p><p><strong>Phase 2 – Execution</strong> [Dates]</p><p><strong>Phase 3 – Delivery</strong> [Dates]</p><p><strong>Final Review:</strong> [Date]</p><h4><strong>BUDGET</strong></h4><p><strong>Estimated total:</strong> $[amount]</p><p><strong>Labor:</strong> $[amount]</p><p><strong>Materials/Tools:</strong> $[amount]</p><p><strong>Payment:</strong> 50% upfront - 50% on delivery</p><h3><strong>WHY US</strong></h3><p>Highlight your team's relevant experience, past successes, and unique qualifications. Include 1–2 specific examples of similar work delivered successfully.</p>",
-          "savedAt": "2026-05-20T16:39:52.321Z",
-          "label": "v2"
-        },
-        {
-          "id": "ver_72e1da5b0be9",
-          "snapshot": "\n<p style=\"font-size: 12px; color: #666; font-weight: bold; margin: 0 0 5px 0;\">PROJECT PROPOSAL</p>\n<h1 style=\"margin: 0 0 20px 0; color: #333;\">Write Your Compelling Proposal Title Here</h1>\n\n<div style=\"display: flex; justify-content: space-between; border-bottom: 2px solid #d4af37; padding-bottom: 15px; margin-bottom: 20px;\">\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>PREPARED BY</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">Your Name • Your Company</p>\n  </div>\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>SUBMITTED TO</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">Client Name – Organization</p>\n  </div>\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>DATE</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">April 22, 2026</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">OVERVIEW</h3>\n<p>Summarize the entire proposal in 3–5 sentences. What are you proposing, why does it matter, who benefits, and what's the expected outcome? Write this last but place it first.</p>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">PROBLEM STATEMENT</h4>\n    <p>Clearly define the problem or gap this proposal addresses. Use data or evidence to establish urgency and relevance. The more specific, the stronger your proposal.</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">PROPOSED SOLUTION</h4>\n    <p>Describe your solution in plain terms. How does it directly address the problem? What makes this approach effective, unique, or better than alternatives?</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">SCOPE OF WORK</h3>\n<ul style=\"margin: 0 0 10px 0; padding-left: 20px;\">\n  <li>Deliverable 1: [Description] – due [date]</li>\n  <li>Deliverable 2: [Description] – due [date]</li>\n  <li>Deliverable 3: [Description] – due [date]</li>\n  <li>Out of scope: [explicitly list exclusions]</li>\n</ul>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">TIMELINE</h4>\n    <p style=\"margin: 5px 0;\"><strong>Phase 1 – Discovery</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Phase 2 – Execution</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Phase 3 – Delivery</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Final Review:</strong> [Date]</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">BUDGET</h4>\n    <p style=\"margin: 5px 0;\"><strong>Estimated total:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Labor:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Materials/Tools:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Payment:</strong> 50% upfront - 50% on delivery</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">WHY US</h3>\n<p>Highlight your team's relevant experience, past successes, and unique qualifications. Include 1–2 specific examples of similar work delivered successfully.</p>\n    ",
-          "savedAt": "2026-05-20T16:39:42.899Z",
-          "label": "v1"
-        }
-      ],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
       "id": "doc_fbbffa9d7c28",
       "title": "Untitled Document",
       "content": "<p></p>",
       "createdAt": "2026-05-20T16:34:53.505Z",
-      "updatedAt": "2026-05-22T17:24:14.122Z",
-      "revision": 17,
+      "updatedAt": "2026-06-13T13:28:42.926Z",
+      "revision": 20,
       "owner": {
         "id": "test@example.com",
         "name": "test",
@@ -388,66 +555,6 @@
       "ipfsPinnedAt": null
     },
     {
-      "id": "doc_9c9c35104bf0",
-      "title": "Test",
-      "content": "Test",
-      "createdAt": "2026-05-20T16:30:25.343Z",
-      "updatedAt": "2026-05-20T16:30:25.343Z",
-      "revision": 0,
-      "owner": {
-        "id": "testuser",
-        "name": "Test User",
-        "email": "test@example.com"
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_dc859c7e127c",
-      "title": "Proposal 20/5/2026",
-      "content": "\n<p style=\"font-size: 12px; color: #666; font-weight: bold; margin: 0 0 5px 0;\">PROJECT PROPOSAL</p>\n<h1 style=\"margin: 0 0 20px 0; color: #333;\">Write Your Compelling Proposal Title Here</h1>\n\n<div style=\"display: flex; justify-content: space-between; border-bottom: 2px solid #d4af37; padding-bottom: 15px; margin-bottom: 20px;\">\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>PREPARED BY</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">Your Name • Your Company</p>\n  </div>\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>SUBMITTED TO</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">Client Name – Organization</p>\n  </div>\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>DATE</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">April 22, 2026</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">OVERVIEW</h3>\n<p>Summarize the entire proposal in 3–5 sentences. What are you proposing, why does it matter, who benefits, and what's the expected outcome? Write this last but place it first.</p>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">PROBLEM STATEMENT</h4>\n    <p>Clearly define the problem or gap this proposal addresses. Use data or evidence to establish urgency and relevance. The more specific, the stronger your proposal.</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">PROPOSED SOLUTION</h4>\n    <p>Describe your solution in plain terms. How does it directly address the problem? What makes this approach effective, unique, or better than alternatives?</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">SCOPE OF WORK</h3>\n<ul style=\"margin: 0 0 10px 0; padding-left: 20px;\">\n  <li>Deliverable 1: [Description] – due [date]</li>\n  <li>Deliverable 2: [Description] – due [date]</li>\n  <li>Deliverable 3: [Description] – due [date]</li>\n  <li>Out of scope: [explicitly list exclusions]</li>\n</ul>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">TIMELINE</h4>\n    <p style=\"margin: 5px 0;\"><strong>Phase 1 – Discovery</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Phase 2 – Execution</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Phase 3 – Delivery</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Final Review:</strong> [Date]</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">BUDGET</h4>\n    <p style=\"margin: 5px 0;\"><strong>Estimated total:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Labor:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Materials/Tools:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Payment:</strong> 50% upfront - 50% on delivery</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">WHY US</h3>\n<p>Highlight your team's relevant experience, past successes, and unique qualifications. Include 1–2 specific examples of similar work delivered successfully.</p>\n    ",
-      "createdAt": "2026-05-20T16:04:33.671Z",
-      "updatedAt": "2026-05-20T16:04:34.506Z",
-      "revision": 1,
-      "owner": {
-        "id": "biswalpadmaja411@gmail.com",
-        "name": "biswalpadmaja411",
-        "email": "biswalpadmaja411@gmail.com"
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_a44348a953e1",
-      "title": "Resume 20/5/2026",
-      "content": "\n<h1 style=\"margin: 0 0 10px 0;\">Your Full Name</h1>\n<p style=\"margin: 0; font-size: 14px; color: #d4af37;\"><strong>Senior Software Engineer • Full-Stack Developer</strong></p>\n<p style=\"margin: 5px 0; font-size: 13px;\">your@email.com • (555) 000-0000 • City, State • linkedin.com/in/yourname</p>\n\n<h3 style=\"font-size: 14px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 8px; margin: 20px 0 10px 0;\">PROFESSIONAL SUMMARY</h3>\n<p style=\"margin: 0; text-align: justify;\">Results-driven professional with [X] years of experience delivering [key outcomes] across [industries/domains]. Known for [core strength 1], [core strength 2], and [core strength 3]. Seeking to leverage expertise at a forward-thinking organization.</p>\n\n<h3 style=\"font-size: 14px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 8px; margin: 20px 0 10px 0;\">WORK EXPERIENCE</h3>\n\n<p style=\"margin: 10px 0 5px 0;\"><strong>Senior Job Title</strong> <span style=\"float: right;\">Jan 2023 – Present</span></p>\n<p style=\"margin: 0 0 10px 0; font-size: 13px; color: #666;\">Company Name • City, State</p>\n<ul style=\"margin: 0 0 10px 0; padding-left: 20px;\">\n  <li>Achieved [specific result] by [specific action], resulting in [measurable outcome]</li>\n  <li>Led a team of [N] to deliver [project] on time and [X]% under budget</li>\n  <li>Improved [metric] by [X]% through [initiative or method]</li>\n</ul>\n\n<p style=\"margin: 10px 0 5px 0;\"><strong>Previous Job Title</strong> <span style=\"float: right;\">Mar 2020 – Dec 2022</span></p>\n<p style=\"margin: 0 0 10px 0; font-size: 13px; color: #666;\">Previous Company • City, State</p>\n<ul style=\"margin: 0 0 10px 0; padding-left: 20px;\">\n  <li>Key achievement with quantified result</li>\n  <li>Key responsibility or contribution</li>\n  <li>Collaboration or leadership highlight</li>\n</ul>\n\n<h3 style=\"font-size: 14px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 8px; margin: 20px 0 10px 0;\">EDUCATION</h3>\n<p style=\"margin: 10px 0 0 0;\"><strong>Degree • Major</strong> <span style=\"float: right;\">2016 – 2020</span></p>\n<p style=\"margin: 0; font-size: 13px; color: #666;\">University Name • GPA 3.9/4.0 • Dean's List</p>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #666; padding-bottom: 5px; margin: 0 0 10px 0;\">SKILLS</h4>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Technical:</strong> Skill 1 • Skill 2 • Skill 3</p>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Tools & Platforms:</strong> Tool 1 • Tool 2 • Platform 1 • Platform 2</p>\n    <p style=\"margin: 5px 0; font-size: 13px;\"><strong>Soft Skills:</strong> Leadership • Communication • Problem-solving • Strategic thinking</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #666; padding-bottom: 5px; margin: 0 0 10px 0;\">CERTIFICATIONS</h4>\n    <ul style=\"margin: 0; padding-left: 20px; font-size: 13px;\">\n      <li>Certification Name (2024)</li>\n      <li>Certification Name (2023)</li>\n      <li>Certification Name (2022)</li>\n    </ul>\n  </div>\n</div>\n\n<h3 style=\"font-size: 14px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 8px; margin: 20px 0 10px 0;\">LANGUAGES</h3>\n<p style=\"margin: 5px 0; font-size: 13px;\">English – Native</p>\n<p style=\"margin: 5px 0; font-size: 13px;\">Language 2 – Fluent</p>\n<p style=\"margin: 5px 0; font-size: 13px;\">Language 3 – Basic</p>\n    ",
-      "createdAt": "2026-05-20T14:33:47.589Z",
-      "updatedAt": "2026-05-20T15:53:12.960Z",
-      "revision": 2,
-      "owner": {
-        "id": "biswalpadmaja411@gmail.com",
-        "name": "biswalpadmaja411",
-        "email": "biswalpadmaja411@gmail.com"
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
       "id": "doc_16024028b527",
       "title": "Untitled Document",
       "content": "<p></p>",
@@ -488,46 +595,6 @@
       "ipfsPinnedAt": null
     },
     {
-      "id": "doc_dc6bc12a30d2",
-      "title": "Invoice 20/5/2026",
-      "content": "<h1><strong>INVOICE</strong></h1><p><strong>#INV-2026-001</strong></p><h2><strong>Your Business Name</strong></h2><p>123 Your Street, City, State ZIP</p><p>billing@business.com • (555) 000-0000</p><p><strong>BILL TO</strong></p><p><strong>Client Full Name</strong></p><p>Client Company Inc.</p><p>456 Client Street, City, State ZIP</p><p>client@company.com</p><p><strong>Invoice No.</strong> <span style=\"color: rgb(212, 175, 55);\">INV-2026-001</span></p><p><strong>Invoice Date</strong> <span style=\"color: rgb(212, 175, 55);\">April 22, 2026</span></p><p><strong>Due Date</strong> <span style=\"color: rgb(212, 175, 55);\">May 22, 2026</span></p><p><strong>Status</strong> <span style=\"color: rgb(212, 175, 55);\"><strong>UNPAID</strong></span></p><table style=\"min-width: 100px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p><strong>DESCRIPTION</strong></p></th><th colspan=\"1\" rowspan=\"1\"><p><strong>QTY</strong></p></th><th colspan=\"1\" rowspan=\"1\"><p><strong>UNIT PRICE</strong></p></th><th colspan=\"1\" rowspan=\"1\"><p><strong>AMOUNT</strong></p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Service or Product Name</p></td><td colspan=\"1\" rowspan=\"1\"><p>1</p></td><td colspan=\"1\" rowspan=\"1\"><p>$1,200.00</p></td><td colspan=\"1\" rowspan=\"1\"><p>$1,200.00</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Consulting Hours (Design)</p></td><td colspan=\"1\" rowspan=\"1\"><p>4</p></td><td colspan=\"1\" rowspan=\"1\"><p>$150.00</p></td><td colspan=\"1\" rowspan=\"1\"><p>$600.00</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Additional Service Item</p></td><td colspan=\"1\" rowspan=\"1\"><p>1</p></td><td colspan=\"1\" rowspan=\"1\"><p>$350.00</p></td><td colspan=\"1\" rowspan=\"1\"><p>$350.00</p></td></tr></tbody></table><p><strong>Subtotal</strong> <span>$2,150.00</span></p><p><strong>Tax (GST 18%)</strong> <span>$387.00</span></p><p><strong>Total Due </strong><span><strong>$2,537.00</strong></span></p><p><strong>PAYMENT INSTRUCTIONS</strong></p><p>Bank Transfer: Your Bank Name</p><p>Account Name: Your Business Name</p><p></p><p></p><p>Account No.: XXXX-XXXX-XXXX</p><p>IFSC / Routing: XXXXXXXX</p><p>Or pay via: razorpay.com/your-link</p><p><strong>TERMS &amp; NOTES</strong></p><p>Payment due within 30 days of invoice date. Late payments are subject to a 1.5% monthly interest charge. Thank you for your business — we appreciate the partnership!</p>",
-      "createdAt": "2026-05-20T14:29:51.621Z",
-      "updatedAt": "2026-05-20T14:30:25.421Z",
-      "revision": 4,
-      "owner": {
-        "id": "biswalpadmaja411@gmail.com",
-        "name": "biswalpadmaja411",
-        "email": "biswalpadmaja411@gmail.com"
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_4af3fa7ba007",
-      "title": "Proposal 20/5/2026",
-      "content": "\n<p style=\"font-size: 12px; color: #666; font-weight: bold; margin: 0 0 5px 0;\">PROJECT PROPOSAL</p>\n<h1 style=\"margin: 0 0 20px 0; color: #333;\">Write Your Compelling Proposal Title Here</h1>\n\n<div style=\"display: flex; justify-content: space-between; border-bottom: 2px solid #d4af37; padding-bottom: 15px; margin-bottom: 20px;\">\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>PREPARED BY</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">Your Name • Your Company</p>\n  </div>\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>SUBMITTED TO</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">Client Name – Organization</p>\n  </div>\n  <div>\n    <p style=\"margin: 0; font-size: 13px; color: #666;\"><strong>DATE</strong></p>\n    <p style=\"margin: 5px 0 0 0; font-size: 13px; color: #d4af37;\">April 22, 2026</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">OVERVIEW</h3>\n<p>Summarize the entire proposal in 3–5 sentences. What are you proposing, why does it matter, who benefits, and what's the expected outcome? Write this last but place it first.</p>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">PROBLEM STATEMENT</h4>\n    <p>Clearly define the problem or gap this proposal addresses. Use data or evidence to establish urgency and relevance. The more specific, the stronger your proposal.</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">PROPOSED SOLUTION</h4>\n    <p>Describe your solution in plain terms. How does it directly address the problem? What makes this approach effective, unique, or better than alternatives?</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">SCOPE OF WORK</h3>\n<ul style=\"margin: 0 0 10px 0; padding-left: 20px;\">\n  <li>Deliverable 1: [Description] – due [date]</li>\n  <li>Deliverable 2: [Description] – due [date]</li>\n  <li>Deliverable 3: [Description] – due [date]</li>\n  <li>Out of scope: [explicitly list exclusions]</li>\n</ul>\n\n<div style=\"display: flex; gap: 30px; margin: 20px 0;\">\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">TIMELINE</h4>\n    <p style=\"margin: 5px 0;\"><strong>Phase 1 – Discovery</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Phase 2 – Execution</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Phase 3 – Delivery</strong> [Dates]</p>\n    <p style=\"margin: 5px 0;\"><strong>Final Review:</strong> [Date]</p>\n  </div>\n  <div style=\"flex: 1;\">\n    <h4 style=\"font-size: 13px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 0 0 10px 0;\">BUDGET</h4>\n    <p style=\"margin: 5px 0;\"><strong>Estimated total:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Labor:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Materials/Tools:</strong> $[amount]</p>\n    <p style=\"margin: 5px 0;\"><strong>Payment:</strong> 50% upfront - 50% on delivery</p>\n  </div>\n</div>\n\n<h3 style=\"font-size: 13px; font-weight: bold; border-left: 4px solid #d4af37; padding-left: 10px; margin: 20px 0 10px 0;\">WHY US</h3>\n<p>Highlight your team's relevant experience, past successes, and unique qualifications. Include 1–2 specific examples of similar work delivered successfully.</p>\n    ",
-      "createdAt": "2026-05-20T12:02:02.790Z",
-      "updatedAt": "2026-05-20T14:24:41.838Z",
-      "revision": 2,
-      "owner": {
-        "id": "biswalpadmaja411@gmail.com",
-        "name": "biswalpadmaja411",
-        "email": "biswalpadmaja411@gmail.com"
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
       "id": "doc_3aee999269ae",
       "title": "Untitled Document",
       "content": "<p></p>",
@@ -538,147 +605,6 @@
         "id": "biswalpadmaja411@gmail.com",
         "name": "biswalpadmaja411",
         "email": "biswalpadmaja411@gmail.com"
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_7135df5e1072",
-      "title": "Test",
-      "content": "<p>x</p>",
-      "createdAt": "2026-05-20T11:56:27.150Z",
-      "updatedAt": "2026-05-20T11:56:42.378Z",
-      "revision": 0,
-      "owner": {
-        "id": "guest-user",
-        "name": "Guest User",
-        "email": ""
-      },
-      "sharedWith": [
-        {
-          "id": "share_699845427660",
-          "email": "testshare@example.com",
-          "role": "editor",
-          "sharedAt": "2026-05-20T11:56:42.378Z"
-        }
-      ],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_a5301dec94ce",
-      "title": "Test Document for Share",
-      "content": "<p>Testing share feature</p>",
-      "createdAt": "2026-05-20T11:56:13.213Z",
-      "updatedAt": "2026-05-20T11:56:13.533Z",
-      "revision": 0,
-      "owner": {
-        "id": "guest-user",
-        "name": "Guest User",
-        "email": ""
-      },
-      "sharedWith": [
-        {
-          "id": "share_ab03ef7538c3",
-          "email": "share.test@example.com",
-          "role": "editor",
-          "sharedAt": "2026-05-20T11:56:13.533Z"
-        }
-      ],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_ed35057fd439",
-      "title": "Business Report from Template",
-      "content": "\n<h1>Strategic Business Report</h1>\n<p><strong>Prepared by:</strong> Your Name</p>\n<p><strong>Prepared for:</strong> Client or Department</p>\n<h2>Executive Summary</h2>\n<p>Summarize the purpose, key findings, and recommended next steps.</p>\n<h2>Objectives</h2>\n<ul>\n  <li>Primary objective</li>\n  <li>Success metric</li>\n  <li>Timeline</li>\n</ul>\n<h2>Findings</h2>\n<p>Present evidence, risks, and opportunities.</p>\n<h2>Recommendations</h2>\n<ol>\n  <li><strong>Recommendation one</strong> - rationale and impact.</li>\n  <li><strong>Recommendation two</strong> - rationale and impact.</li>\n</ol>",
-      "createdAt": "2026-05-20T11:55:41.649Z",
-      "updatedAt": "2026-05-20T11:55:41.649Z",
-      "revision": 0,
-      "owner": {
-        "id": "guest-user",
-        "name": "Guest User",
-        "email": ""
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_a74bf3d79ef0",
-      "title": "Business Report Test",
-      "content": "\n<h1>Strategic Business Report</h1>\n<p><strong>Prepared by:</strong> Your Name</p>\n<p><strong>Prepared for:</strong> Client or Department</p>\n<h2>Executive Summary</h2>\n<p>Summarize the purpose, key findings, and recommended next steps.</p>\n<h2>Objectives</h2>\n<ul>\n  <li>Primary objective</li>\n  <li>Success metric</li>\n  <li>Timeline</li>\n</ul>\n<h2>Findings</h2>\n<p>Present evidence, risks, and opportunities.</p>\n<h2>Recommendations</h2>\n<ol>\n  <li><strong>Recommendation one</strong> - rationale and impact.</li>\n  <li><strong>Recommendation two</strong> - rationale and impact.</li>\n</ol>",
-      "createdAt": "2026-05-20T11:55:05.486Z",
-      "updatedAt": "2026-05-20T11:55:05.486Z",
-      "revision": 0,
-      "owner": {
-        "id": "guest-user",
-        "name": "Guest User",
-        "email": ""
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_a6d7ffa67e66",
-      "title": "Test Blank Doc",
-      "content": "<p></p>",
-      "createdAt": "2026-05-20T11:55:05.244Z",
-      "updatedAt": "2026-05-20T11:55:05.703Z",
-      "revision": 0,
-      "owner": {
-        "id": "guest-user",
-        "name": "Guest User",
-        "email": ""
-      },
-      "sharedWith": [
-        {
-          "id": "share_f73f3ad8917b",
-          "email": "testuser@example.com",
-          "role": "editor",
-          "sharedAt": "2026-05-20T11:55:05.703Z"
-        }
-      ],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_1c69bb566274",
-      "title": "Untitled Document",
-      "content": "<p><strong>table</strong></p>",
-      "createdAt": "2026-05-20T11:46:46.000Z",
-      "updatedAt": "2026-05-22T17:24:14.138Z",
-      "revision": 35,
-      "owner": {
-        "id": "test@example.com",
-        "name": "test",
-        "email": "test@example.com"
       },
       "sharedWith": [],
       "versions": [],
@@ -701,120 +627,6 @@
         "email": "test@example.com"
       },
       "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_bfddeb8e383c",
-      "title": "From Business Template",
-      "content": "\n<h1>Strategic Business Report</h1>\n<p><strong>Prepared by:</strong> Your Name</p>\n<p><strong>Prepared for:</strong> Client or Department</p>\n<h2>Executive Summary</h2>\n<p>Summarize the purpose, key findings, and recommended next steps.</p>\n<h2>Objectives</h2>\n<ul>\n  <li>Primary objective</li>\n  <li>Success metric</li>\n  <li>Timeline</li>\n</ul>\n<h2>Findings</h2>\n<p>Present evidence, risks, and opportunities.</p>\n<h2>Recommendations</h2>\n<ol>\n  <li><strong>Recommendation one</strong> - rationale and impact.</li>\n  <li><strong>Recommendation two</strong> - rationale and impact.</li>\n</ol>",
-      "createdAt": "2026-05-20T11:21:52.224Z",
-      "updatedAt": "2026-05-20T11:21:52.224Z",
-      "revision": 0,
-      "owner": {
-        "id": "guest-user",
-        "name": "Guest User",
-        "email": ""
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_a7ac506b5b45",
-      "title": "Test Doc",
-      "content": "<p>Test</p>",
-      "createdAt": "2026-05-20T11:21:19.641Z",
-      "updatedAt": "2026-05-20T11:22:07.159Z",
-      "revision": 0,
-      "owner": {
-        "id": "guest-user",
-        "name": "Guest User",
-        "email": ""
-      },
-      "sharedWith": [
-        {
-          "id": "share_6f2e2857b8df",
-          "email": "test@example.com",
-          "role": "editor",
-          "sharedAt": "2026-05-20T11:22:07.159Z"
-        }
-      ],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_7ce5781a6898",
-      "title": "Test Doc",
-      "content": "<p>Test</p>",
-      "createdAt": "2026-05-20T11:20:51.553Z",
-      "updatedAt": "2026-05-20T11:20:51.553Z",
-      "revision": 0,
-      "owner": {
-        "id": "guest-user",
-        "name": "Guest User",
-        "email": ""
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_893fbbadb2df",
-      "title": "Test Doc",
-      "content": "<p>Test</p>",
-      "createdAt": "2026-05-20T11:18:42.109Z",
-      "updatedAt": "2026-05-20T11:18:42.109Z",
-      "revision": 0,
-      "owner": {
-        "id": "guest-user",
-        "name": "Guest User",
-        "email": ""
-      },
-      "sharedWith": [],
-      "versions": [],
-      "comments": [],
-      "trackChanges": false,
-      "ipfsHash": null,
-      "ipfsGatewayUrl": null,
-      "ipfsPinnedAt": null
-    },
-    {
-      "id": "doc_1a312ae13074",
-      "title": "Untitled Document",
-      "content": "<p>vbnmcvbnm</p>",
-      "createdAt": "2026-05-08T14:32:59.443Z",
-      "updatedAt": "2026-05-08T14:33:34.480Z",
-      "revision": 4,
-      "owner": {
-        "id": "biswalpadmaja411@gmail.com",
-        "name": "biswalpadmaja411",
-        "email": "biswalpadmaja411@gmail.com"
-      },
-      "sharedWith": [
-        {
-          "id": "share_56e8cac1e653",
-          "email": "biswalpadmaja411@gmail.com",
-          "role": "editor",
-          "sharedAt": "2026-05-08T14:33:09.930Z"
-        }
-      ],
       "versions": [],
       "comments": [],
       "trackChanges": false,

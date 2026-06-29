@@ -12,7 +12,11 @@ function renderContentToThumbnail(htmlContent, theme, pageIndex) {
     try {
       const tempDiv = document.createElement('div');
       tempDiv.style.cssText = `position:fixed;top:-9999px;left:-9999px;width:${PAGE_W}px;height:${PAGE_H}px;padding:${PADDING}px;background:${theme === 'dark' ? '#1a1a1a' : '#ffffff'};font-family:'Crimson Pro',Georgia,serif;font-size:12pt;line-height:1.7;color:${theme === 'dark' ? '#e8e0d0' : '#333333'};overflow:hidden;word-wrap:break-word;`;
-      tempDiv.innerHTML = htmlContent || '<p></p>';
+      try {
+        tempDiv.innerHTML = htmlContent || '<p></p>';
+      } catch {
+        tempDiv.innerHTML = '<p></p>';
+      }
       document.body.appendChild(tempDiv);
 
       setTimeout(() => {
@@ -84,18 +88,23 @@ export function useThumbnailGenerator() {
   const renderQueue = useRef([]);
   const isRendering = useRef(false);
 
-  const processRenderQueue = async () => {
+const processRenderQueue = async () => {
     if (isRendering.current || renderQueue.current.length === 0) return;
     isRendering.current = true;
-    while (renderQueue.current.length > 0) {
-      const item = renderQueue.current.shift();
-      if (item) {
-        const { pageIndex, htmlContent } = item;
-        const thumbnail = await renderContentToThumbnail(htmlContent, theme, pageIndex);
-        if (thumbnail) setThumbnail(pageIndex, thumbnail);
+    try {
+      while (renderQueue.current.length > 0) {
+        const item = renderQueue.current.shift();
+        if (item) {
+          const { pageIndex, htmlContent } = item;
+          const thumbnail = await renderContentToThumbnail(htmlContent, theme, pageIndex);
+          if (thumbnail) setThumbnail(pageIndex, thumbnail);
+        }
       }
+    } catch (err) {
+      console.error('Error processing thumbnail queue:', err);
+    } finally {
+      isRendering.current = false;
     }
-    isRendering.current = false;
   };
 
   useEffect(() => {
