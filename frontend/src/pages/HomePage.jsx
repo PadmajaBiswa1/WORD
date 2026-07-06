@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import mammoth from 'mammoth';
 import { documentApi, exportApi } from '@/services/api';
 import { buildDocxBlob, buildHtmlDocument, exportToDocx, exportToHtml, exportToPdf } from '@/services/export';
+import { buildAiResult, getPlainTextFromHtml, openTranslationUrl } from '@/services/ai';
 import { useTheme } from '@/hooks/useTheme';
 import { useUIStore, useDocumentStore } from '@/store';
 
@@ -55,6 +56,7 @@ const LoadingIcon = () => (
 
 const MENU_ITEMS = [
   { key: 'home', label: 'Home', icon: '⌂' },
+  { key: 'ai', label: 'AI', icon: '✦' },
   { key: 'new', label: 'New', icon: '✧' },
   { key: 'open', label: 'Open', icon: '◫' },
   { key: 'save', label: 'Save', icon: '⎙' },
@@ -446,6 +448,34 @@ function nextCopyName(title = 'Untitled Document') {
   return `Copy of ${base}`;
 }
 
+const LANG_CODES = {
+  afrikaans: 'af', albanian: 'sq', arabic: 'ar', armenian: 'hy',
+  azerbaijani: 'az', basque: 'eu', belarusian: 'be', bengali: 'bn',
+  bosnian: 'bs', bulgarian: 'bg', catalan: 'ca', chinese: 'zh',
+  'chinese simplified': 'zh-CN', 'chinese traditional': 'zh-TW',
+  croatian: 'hr', czech: 'cs', danish: 'da', dutch: 'nl',
+  english: 'en', esperanto: 'eo', estonian: 'et', filipino: 'tl',
+  finnish: 'fi', french: 'fr', galician: 'gl', georgian: 'ka',
+  german: 'de', greek: 'el', gujarati: 'gu', hebrew: 'he',
+  hindi: 'hi', hungarian: 'hu', icelandic: 'is', indonesian: 'id',
+  irish: 'ga', italian: 'it', japanese: 'ja', javanese: 'jv',
+  kannada: 'kn', kazakh: 'kk', korean: 'ko', latin: 'la',
+  latvian: 'lv', lithuanian: 'lt', macedonian: 'mk', malay: 'ms',
+  maltese: 'mt', maori: 'mi', marathi: 'mr', mongolian: 'mn',
+  nepali: 'ne', norwegian: 'no', persian: 'fa', polish: 'pl',
+  portuguese: 'pt', punjabi: 'pa', romanian: 'ro', russian: 'ru',
+  serbian: 'sr', slovak: 'sk', slovenian: 'sl', somali: 'so',
+  spanish: 'es', swahili: 'sw', swedish: 'sv', tamil: 'ta',
+  telugu: 'te', thai: 'th', turkish: 'tr', ukrainian: 'uk',
+  urdu: 'ur', uzbek: 'uz', vietnamese: 'vi', welsh: 'cy',
+  xhosa: 'xh', yiddish: 'yi', yoruba: 'yo', zulu: 'zu',
+};
+
+function getLanguageCode(name = '') {
+  const key = name.toLowerCase().trim();
+  return LANG_CODES[key] || key;
+}
+
 function downloadEtherxFile(title, content) {
   const payload = {
     title: cleanBaseName(title),
@@ -584,6 +614,16 @@ export function HomePage() {
   const [saveAsBusy, setSaveAsBusy] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0); // Force re-render for time updates
 
+  // AI panel state
+  const [aiAction, setAiAction] = useState(null);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiTone, setAiTone] = useState('professional');
+  const [aiRewriteMode, setAiRewriteMode] = useState('clear');
+  const [aiFallbackTitle, setAiFallbackTitle] = useState('');
+  const [aiLanguage, setAiLanguage] = useState('Spanish');
+  const [aiPageCount, setAiPageCount] = useState(1);
+  const [aiRunning, setAiRunning] = useState(false);
+
   const returnTo = location.state?.returnTo || '/doc/new';
   const fileInputRef = useRef(null);
 
@@ -653,6 +693,151 @@ export function HomePage() {
     const filtered = q ? docs.filter((d) => d.title.toLowerCase().includes(q)) : docs;
     return filtered.slice(0, 4);
   }, [docs, search]);
+
+  const syncDocRecord = (docId, patch) => {
+    setDocs((prev) => prev.map((doc) => {
+      if (String(doc.id) !== String(docId)) return doc;
+      return {
+        ...doc,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      };
+    }));
+  };
+
+  const persistSelectedDocPatch = async (patch = {}) => {
+    if (!selectedDoc) {
+      toast('Select a document first', 'info');
+      return null;
+    }
+
+    const nextPatch = {
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (selectedDoc.localOnly) {
+      const nextDoc = { ...selectedDoc, ...nextPatch, localOnly: true };
+      const nextLocalDocs = readLocalDocs().map((doc) => (String(doc.id) === String(selectedDoc.id) ? nextDoc : doc));
+      if (!nextLocalDocs.some((doc) => String(doc.id) === String(selectedDoc.id))) {
+        nextLocalDocs.unshift(nextDoc);
+      }
+      writeLocalDocs(nextLocalDocs);
+      setDocs((prev) => prev.map((doc) => String(doc.id) === String(selectedDoc.id) ? nextDoc : doc));
+      if (nextPatch.title) setDocTitle(nextPatch.title);
+      if (nextPatch.content) setDocContent(nextPatch.content);
+      return nextDoc;
+    }
+
+    try {
+      await documentApi.save(selectedDoc.id, nextPatch);
+      syncDocRecord(selectedDoc.id, nextPatch);
+      if (nextPatch.title) setDocTitle(nextPatch.title);
+      if (nextPatch.content) setDocContent(nextPatch.content);
+      return { ...selectedDoc, ...nextPatch };
+    } catch (error) {
+      toast(`Unable to save AI result: ${error?.message || 'Save failed'}`, 'error');
+      return null;
+    }
+  };
+
+  const createAiDocument = async (title, content) => {
+    const safeTitle = title || 'AI Draft';
+    try {
+      const created = await documentApi.create({ title: safeTitle, content });
+      const newId = String(created?.id || created?._id || created?.document?.id || created?.document?._id || 'new');
+      setSelectedDocId(newId);
+      toast('AI draft created', 'success');
+      navigate(`/doc/${newId}`);
+      return true;
+    } catch {
+      const { doc } = createLocalDoc({ title: safeTitle, content });
+      const next = upsertLocalDoc(doc);
+      setDocs(next);
+      setSelectedDocId(doc.id);
+      resetDoc();
+      setDocTitle(doc.title);
+      setDocContent(doc.content);
+      toast('AI draft created locally', 'success');
+      navigate('/doc/new');
+      return true;
+    }
+  };
+
+  const currentDocumentText = () => getPlainTextFromHtml(selectedDoc?.content || '');
+
+  const handleRunAiAction = async () => {
+    if (!aiAction) return;
+
+    if (aiAction === 'content-generator') {
+      if (!aiTopic.trim()) { toast('Enter a topic for the content generator', 'info'); return; }
+      setAiRunning(true);
+      try {
+        const result = buildAiResult('content-generator', '', { 
+          topic: aiTopic.trim(), 
+          tone: aiTone,
+          pages: aiPageCount
+        });
+        await createAiDocument(`${aiTopic.trim()} Draft`, result.html || '<p></p>');
+        setAiAction(null);
+        setAiTopic('');
+        setAiPageCount(1);
+      } finally { setAiRunning(false); }
+      return;
+    }
+
+    const source = currentDocumentText();
+    if (!source) { toast('Select a document with content first', 'info'); return; }
+
+    setAiRunning(true);
+    try {
+      if (aiAction === 'summarize') {
+        const result = buildAiResult('summarize', source);
+        await createAiDocument(`Summary of ${cleanBaseName(selectedDoc?.title || 'Document')}`, result.html || '<p></p>');
+        setAiAction(null);
+        return;
+      }
+      if (aiAction === 'grammar') {
+        const result = buildAiResult('grammar', source);
+        const saved = await persistSelectedDocPatch({ content: result.html || '<p></p>' });
+        if (saved) {
+          toast('Grammar corrected. Opening document…', 'success');
+          openDoc(selectedDoc);
+          setAiAction(null);
+        }
+        return;
+      }
+      if (aiAction === 'rewrite') {
+        const result = buildAiResult('rewrite', source, { mode: aiRewriteMode });
+        const saved = await persistSelectedDocPatch({ content: result.html || '<p></p>' });
+        if (saved) {
+          toast(`Rewritten in "${aiRewriteMode}" style. Opening document…`, 'success');
+          openDoc(selectedDoc);
+          setAiAction(null);
+        }
+        return;
+      }
+      if (aiAction === 'title') {
+        const fallback = aiFallbackTitle.trim() || selectedDoc?.title || 'Untitled Document';
+        const result = buildAiResult('title', source, { fallbackTitle: fallback });
+        const saved = await persistSelectedDocPatch({ title: result.title || fallback });
+        if (saved) {
+          toast(`Title updated to "${result.title || fallback}"`, 'success');
+          setAiAction(null);
+        }
+        return;
+      }
+      if (aiAction === 'translate') {
+        const result = buildAiResult('translate', selectedDoc.content, { language: aiLanguage });
+        const saved = await persistSelectedDocPatch({ content: result.html || result.text });
+        if (saved) {
+          toast(`Document translated to ${aiLanguage}. Opening...`, 'success');
+          openDoc(selectedDoc);
+          setAiAction(null);
+        }
+      }
+    } finally { setAiRunning(false); }
+  };
 
   async function createFromTemplate(key) {
     if (key === 'blank') {
@@ -748,8 +933,9 @@ export function HomePage() {
   }
 
   async function runMenuAction(key) {
-      if (key === 'home' || key === 'open' || key === 'export' || key === 'share' || key === 'saveAs' || key === 'info' || key === 'statistics' || key === 'settings') {
+      if (key === 'home' || key === 'ai' || key === 'open' || key === 'export' || key === 'share' || key === 'saveAs' || key === 'info' || key === 'statistics' || key === 'settings') {
         setActiveMenu(key);
+        if (key !== 'ai') setAiAction(null);
         if (key === 'saveAs' && selectedDoc) {
           setSaveAsName(nextCopyName(selectedDoc.title));
         }
@@ -1209,6 +1395,161 @@ export function HomePage() {
                 ))}
               </div>
             </div>
+          </section>
+        )}
+
+        {activeMenu === 'ai' && (
+          <section style={styles.panel}>
+            <h2 style={styles.panelTitle}>AI Assist</h2>
+            <p style={styles.panelSubtitle}>Apply AI-assisted actions to the selected document or create a new draft.</p>
+            <div style={styles.aiGrid}>
+              {[
+                { key: 'content-generator', icon: '✦', label: 'Content Generator', desc: 'Start a new AI draft from a topic' },
+                { key: 'summarize', icon: '▤', label: 'Text Summarizer', desc: 'Create a summary document' },
+                { key: 'grammar', icon: '✓', label: 'Grammar Correction', desc: 'Fix grammar in the selected document' },
+                { key: 'rewrite', icon: '↻', label: 'Rewrite Assistant', desc: 'Rewrite the selected document' },
+                { key: 'title', icon: '🏷', label: 'Title Generator', desc: 'Generate a better document title' },
+                { key: 'translate', icon: '🌐', label: 'Translation', desc: 'Open a translation view for the document' },
+              ].map(({ key, icon, label, desc }) => (
+                <button
+                  key={key}
+                  style={{ ...styles.aiBtn, ...(aiAction === key ? styles.aiBtnActive : null) }}
+                  onClick={() => setAiAction(aiAction === key ? null : key)}
+                  disabled={aiRunning}
+                >
+                  <span style={styles.aiBtnIcon}>{icon}</span>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <strong>{label}</strong>
+                    <small>{desc}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {aiAction && (
+              <div style={styles.aiFormArea}>
+                <div style={styles.aiFormTitle}>
+                  {aiAction === 'content-generator' && 'Generate Content'}
+                  {aiAction === 'summarize' && 'Summarize Document'}
+                  {aiAction === 'grammar' && 'Correct Grammar'}
+                  {aiAction === 'rewrite' && 'Rewrite Document'}
+                  {aiAction === 'title' && 'Generate Title'}
+                  {aiAction === 'translate' && 'Translate Document'}
+                </div>
+
+                {aiAction === 'content-generator' && (
+                  <>
+                    <div style={styles.aiFormGroup}>
+                      <label style={styles.aiFormLabel}>Topic *</label>
+                      <input
+                        style={styles.aiFormInput}
+                        value={aiTopic}
+                        onChange={(e) => setAiTopic(e.target.value)}
+                        placeholder="e.g. Project Update, Market Analysis"
+                        autoFocus
+                        onKeyDown={(e) => e.key === 'Enter' && handleRunAiAction()}
+                      />
+                    </div>
+                    <div style={styles.aiFormGroup}>
+                      <label style={styles.aiFormLabel}>Tone</label>
+                      <select
+                        style={styles.aiFormSelect}
+                        value={aiTone}
+                        onChange={(e) => setAiTone(e.target.value)}
+                      >
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                        <option value="formal">Formal</option>
+                        <option value="friendly">Friendly</option>
+                      </select>
+                    </div>
+                    <div style={styles.aiFormGroup}>
+                      <label style={styles.aiFormLabel}>Page count (1-10)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        style={styles.aiFormInput}
+                        value={aiPageCount}
+                        onChange={(e) => setAiPageCount(parseInt(e.target.value, 10) || 1)}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {aiAction === 'rewrite' && (
+                  <div style={styles.aiFormGroup}>
+                    <label style={styles.aiFormLabel}>Rewrite style</label>
+                    <select
+                      style={styles.aiFormSelect}
+                      value={aiRewriteMode}
+                      onChange={(e) => setAiRewriteMode(e.target.value)}
+                    >
+                      <option value="clear">Clear</option>
+                      <option value="formal">Formal</option>
+                      <option value="short">Short</option>
+                    </select>
+                  </div>
+                )}
+
+                {aiAction === 'title' && (
+                  <div style={styles.aiFormGroup}>
+                    <label style={styles.aiFormLabel}>Fallback title (used if content is too short)</label>
+                    <input
+                      style={styles.aiFormInput}
+                      value={aiFallbackTitle}
+                      onChange={(e) => setAiFallbackTitle(e.target.value)}
+                      placeholder={selectedDoc?.title || 'Untitled Document'}
+                      onKeyDown={(e) => e.key === 'Enter' && handleRunAiAction()}
+                    />
+                  </div>
+                )}
+
+                {aiAction === 'translate' && (
+                  <div style={styles.aiFormGroup}>
+                    <label style={styles.aiFormLabel}>Target language</label>
+                    <select
+                      style={styles.aiFormSelect}
+                      value={aiLanguage}
+                      onChange={(e) => setAiLanguage(e.target.value)}
+                    >
+                      <option value="Spanish">Spanish</option>
+                      <option value="French">French</option>
+                      <option value="German">German</option>
+                      <option value="Hindi">Hindi</option>
+                      <option value="Japanese">Japanese</option>
+                      <option value="Italian">Italian</option>
+                      <option value="Portuguese">Portuguese</option>
+                      <option value="Russian">Russian</option>
+                      <option value="Arabic">Arabic</option>
+                    </select>
+                  </div>
+                )}
+
+                {['summarize', 'grammar', 'rewrite', 'title', 'translate'].includes(aiAction) && (
+                  <p style={styles.aiFormHint}>
+                    Selected document: <strong>{selectedDoc?.title || 'None — select a document first'}</strong>
+                  </p>
+                )}
+
+                <div style={styles.aiFormActions}>
+                  <button
+                    style={{ ...styles.aiBtnRun, ...(aiRunning ? { opacity: 0.6, cursor: 'not-allowed' } : null) }}
+                    onClick={handleRunAiAction}
+                    disabled={aiRunning}
+                  >
+                    {aiRunning ? 'Running…' : 'Run'}
+                  </button>
+                  <button
+                    style={styles.aiBtnCancel}
+                    onClick={() => setAiAction(null)}
+                    disabled={aiRunning}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -1726,10 +2067,128 @@ const styles = {
     color: 'var(--text-heading)',
     fontSize: 26,
   },
+  panelSubtitle: {
+    margin: '-4px 0 16px',
+    color: 'var(--text-secondary)',
+    fontSize: 14,
+    lineHeight: 1.5,
+  },
   panelRow: {
     fontSize: 14,
     color: 'var(--text-primary)',
     marginBottom: 8,
+  },
+  aiGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 12,
+  },
+  aiBtn: {
+    border: '1px solid var(--border)',
+    borderRadius: 12,
+    background: 'linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-elevated) 100%)',
+    color: 'var(--text-primary)',
+    padding: '14px 16px',
+    minHeight: 84,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 12,
+    textAlign: 'left',
+    boxShadow: '0 1px 0 rgba(255,255,255,0.03) inset',
+  },
+  aiBtnIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(212,175,55,0.12)',
+    color: 'var(--gold)',
+    flexShrink: 0,
+    fontSize: 18,
+  },
+  aiBtnActive: {
+    border: '1px solid var(--border-gold)',
+    background: 'var(--bg-hover)',
+    color: 'var(--text-gold)',
+  },
+  aiFormArea: {
+    marginTop: 16,
+    padding: 16,
+    background: 'var(--bg-surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 10,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  aiFormTitle: {
+    fontSize: 15,
+    fontWeight: 700,
+    color: 'var(--text-primary)',
+    marginBottom: 2,
+  },
+  aiFormGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  aiFormLabel: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: 'var(--text-secondary)',
+  },
+  aiFormInput: {
+    border: '1px solid var(--border)',
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-primary)',
+    borderRadius: 6,
+    padding: '9px 12px',
+    fontSize: 14,
+    fontFamily: 'inherit',
+    outline: 'none',
+  },
+  aiFormSelect: {
+    border: '1px solid var(--border)',
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-primary)',
+    borderRadius: 6,
+    padding: '9px 12px',
+    fontSize: 14,
+    fontFamily: 'inherit',
+  },
+  aiFormHint: {
+    margin: 0,
+    fontSize: 13,
+    color: 'var(--text-muted)',
+  },
+  aiFormActions: {
+    display: 'flex',
+    gap: 10,
+    marginTop: 4,
+  },
+  aiBtnRun: {
+    border: '1px solid var(--border-gold)',
+    borderRadius: 8,
+    background: 'var(--bg-hover)',
+    color: 'var(--text-gold)',
+    padding: '9px 24px',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 600,
+    fontFamily: 'inherit',
+  },
+  aiBtnCancel: {
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    background: 'transparent',
+    color: 'var(--text-muted)',
+    padding: '9px 16px',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontFamily: 'inherit',
   },
   panelList: {
     display: 'flex',

@@ -11,16 +11,22 @@ import { initTheme }         from '@/hooks/useTheme';
 class EditorErrorBoundary extends React.PureComponent {
   state = { hasError: false };
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error('EditorErrorBoundary caught:', error, info);
   }
 
   render() {
     if (this.state.hasError) {
+      const msg = this.state.error?.message || 'Unknown error';
+      const stack = this.state.error?.stack || '';
       return (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-primary)' }}>
+        <div style={{ padding: 40, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
           <h2 style={{ color: '#e05c5c', marginBottom: 16 }}>Something went wrong</h2>
-          <p style={{ marginBottom: 16 }}>The editor encountered an error. Please refresh the page.</p>
+          <pre style={{ background: '#1a0000', color: '#ff9999', padding: 16, borderRadius: 4, overflowX: 'auto', fontSize: 12, marginBottom: 16, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg}{stack ? '\n\n' + stack : ''}</pre>
           <button style={{ padding: '8px 16px', cursor: 'pointer' }} onClick={() => window.location.reload()}>
             Refresh Page
           </button>

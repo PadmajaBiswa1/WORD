@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUIStore, useEditorStore } from '@/store';
 import { Modal, Button, Label, Stack } from '@/components/ui';
+import { runDictation, runImageTextCapture, runReadAloud, runSmartSuggestions } from '@/utils/smartFeatures';
 
 const THEMES = [
   { name: 'Title', accent: '#c9a84c', heading: '#c9a84c', font: 'Crimson Pro', spacing: '1.7', pageColor: '#ffffff', effect: 'soft' },
@@ -791,6 +792,61 @@ export function DesignTab() {
         </div>
 
         <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--ribbon-ink)', fontFamily: 'var(--font-ui)' }}>Design</div>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          borderRight: '1px solid var(--ribbon-divider)',
+          padding: '5px 10px 3px 10px',
+          minWidth: 210,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <button
+            onClick={() => runDictation({ editor, toast })}
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--ribbon-ink)' }}
+          >
+            <div style={{ fontSize: 20, lineHeight: 1 }}>🎤</div>
+            <div style={{ fontSize: 11, marginTop: 2 }}>Voice Typing</div>
+          </button>
+
+          <button
+            onClick={() => runReadAloud({ editor, toast })}
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--ribbon-ink)' }}
+          >
+            <div style={{ fontSize: 20, lineHeight: 1 }}>🔊</div>
+            <div style={{ fontSize: 11, marginTop: 2 }}>Text-to-Speech</div>
+          </button>
+
+          <button
+            onClick={() => runImageTextCapture({ editor, toast, mode: 'ocr' })}
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--ribbon-ink)' }}
+          >
+            <div style={{ fontSize: 20, lineHeight: 1 }}>🧾</div>
+            <div style={{ fontSize: 11, marginTop: 2 }}>OCR</div>
+          </button>
+
+          <button
+            onClick={() => runImageTextCapture({ editor, toast, mode: 'handwriting' })}
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--ribbon-ink)' }}
+          >
+            <div style={{ fontSize: 20, lineHeight: 1 }}>✍</div>
+            <div style={{ fontSize: 11, marginTop: 2 }}>Handwriting</div>
+          </button>
+
+          <button
+            onClick={() => runSmartSuggestions({ editor, toast })}
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--ribbon-ink)' }}
+          >
+            <div style={{ fontSize: 20, lineHeight: 1 }}>✨</div>
+            <div style={{ fontSize: 11, marginTop: 2 }}>Suggestions</div>
+          </button>
+        </div>
+
+        <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--ribbon-ink)', fontFamily: 'var(--font-ui)' }}>Smart Features</div>
       </div>
 
       <div

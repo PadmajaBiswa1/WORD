@@ -7,14 +7,11 @@ import { HorizontalRuler } from './HorizontalRuler';
 import { FloatingFormatToolbar } from './FloatingFormatToolbar';
 import { PictureFormatToolbar } from './PictureFormatToolbar';
 import { useUIStore, useDocumentStore, useCollaborationStore } from '@/store';
+import { getLayoutMetrics } from '@/utils/pageLayout';
 
 const HEADER_FOOTER_STORAGE_KEY = 'etherx-header-footer-meta';
 
-const PAGE_HEIGHT  = 1123; // A4 height in pixels (at 96 DPI)
-const PAGE_WIDTH   = 794;  // A4 width in pixels (at 96 DPI)
-const PAGE_PADDING = 96;   // Top and bottom padding (48px each side = 96px total)
 const PAGE_GAP = 18;       // Visual gap between pages in print-layout view
-const CONTENT_HEIGHT = PAGE_HEIGHT - PAGE_PADDING * 2 - PAGE_GAP;
 
 function colorFromString(seed = '') {
   let hash = 0;
@@ -31,7 +28,7 @@ function colorFromString(seed = '') {
 
 export function EditorCanvas() {
   const editor    = useEditorSetup();
-  const { zoom, setActivePage, rulerVisible }  = useUIStore();
+  const { zoom, setActivePage, rulerVisible, pageSize, pageOrientation, pageMargin, pageColumns }  = useUIStore();
   const { setStats, headerFooter, setHeaderFooter } = useDocumentStore();
   const collaborators = useCollaborationStore((s) => s.collaborators);
   const sessionId = useCollaborationStore((s) => s.sessionId);
@@ -62,27 +59,46 @@ export function EditorCanvas() {
   // Enable image resize and drag functionality
   useImageResizeAndDrag(wrapRef);
   
+  const layoutMetrics = useMemo(() => getLayoutMetrics({ size: pageSize, orientation: pageOrientation, margin: pageMargin }), [pageSize, pageOrientation, pageMargin]);
+
   // Calculate scaled dimensions for responsive sizing
   const scaledDimensions = useMemo(() => ({
-    pageHeight: PAGE_HEIGHT * scale,
-    pageWidth: PAGE_WIDTH * scale,
-    padding: PAGE_PADDING * scale,
+    pageHeight: layoutMetrics.pageHeight * scale,
+    pageWidth: layoutMetrics.pageWidth * scale,
+    padding: layoutMetrics.padding * scale,
     pageGap: PAGE_GAP * scale,
-    contentHeight: CONTENT_HEIGHT * scale,
+    pageStep: (layoutMetrics.pageHeight + PAGE_GAP) * scale,
+    contentHeight: Math.max(1, (layoutMetrics.contentHeight - PAGE_GAP) * scale),
     scrollPaddingY: 40 * scale,
     scrollPaddingX: 20 * scale,
-  }), [scale]);
+  }), [layoutMetrics, scale]);
 
   // Debounced page count — reads height only, never touches Tiptap DOM
-const recalcPages = useCallback(() => {
+  const recalcPages = useCallback(() => {
    clearTimeout(overflowTimer.current);
    overflowTimer.current = setTimeout(() => {
-     const el = wrapRef.current?.querySelector('.ProseMirror');
-     if (!el) return;
+     const proseEl = wrapRef.current?.querySelector('.ProseMirror');
+     if (!proseEl) return;
+
      const contentHeight = scaledDimensions.contentHeight || 1;
-     const pages = Math.max(1, Math.min(500, Math.ceil(el.scrollHeight / contentHeight)));
-     const text  = el.innerText || '';
+
+     // 1) Height-based estimate (what we had)
+     const heightBased = Math.max(1, Math.min(500, Math.ceil(proseEl.scrollHeight / contentHeight)));
+
+     // 2) Marker-based estimate (page breaks inserted/imported as HTML/Nodes)
+     // PageBreak.js renders: div[data-page-break="true"]. PageBreak marker simulation also uses same attr.
+     const markerEls = wrapRef.current?.querySelectorAll('div[data-page-break="true"], .etherx-page-break');
+     const markerCount = markerEls ? markerEls.length : 0;
+
+     // Each marker implies at least one additional page.
+     // Example: 0 markers => 1 page; 1 marker => 2 pages; etc.
+     const markerBased = Math.max(1, Math.min(500, markerCount + 1));
+
+     const pages = Math.max(heightBased, markerBased);
+
+     const text = proseEl.innerText || '';
      const words = text.trim().split(/\s+/).filter(Boolean).length;
+
      setPageCount(pages);
      setStats({ wordCount: words, charCount: text.length, pageCount: pages });
    }, 120);
@@ -210,7 +226,7 @@ const recalcPages = useCallback(() => {
     if (!scrollEl) return;
 
     const onScroll = () => {
-      const approx = Math.floor((scrollEl.scrollTop + scaledDimensions.pageHeight * 0.35) / scaledDimensions.pageHeight);
+      const approx = Math.floor((scrollEl.scrollTop + scaledDimensions.pageHeight * 0.35) / scaledDimensions.pageStep);
       const clamped = Math.max(0, Math.min(pageCount - 1, approx));
       setActivePage(clamped);
     };
@@ -218,7 +234,7 @@ const recalcPages = useCallback(() => {
     scrollEl.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => scrollEl.removeEventListener('scroll', onScroll);
-  }, [scaledDimensions.pageHeight, pageCount, setActivePage]);
+  }, [scaledDimensions.pageHeight, scaledDimensions.pageStep, pageCount, setActivePage]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -254,37 +270,50 @@ const recalcPages = useCallback(() => {
       <div
         ref={wrapRef}
         id="document-page-0"
-style={{
-           width:     scaledDimensions.pageWidth,
-           minHeight: Math.min(100000, scaledDimensions.pageHeight * Math.max(1, pageCount)),
-           background: 'var(--bg-page)',
-          boxShadow: 'var(--shadow-page)',
+        style={{
+          width: scaledDimensions.pageWidth,
+          minHeight: Math.min(100000, scaledDimensions.pageStep * Math.max(1, pageCount) + scaledDimensions.pageGap),
+          background: 'transparent',
           borderRadius: 2,
+          // The frames already include the page background; padding should affect
+          // where ProseMirror text starts relative to the page edges.
           padding: `${scaledDimensions.padding}px`,
           position: 'relative',
           wordBreak: 'break-word',
           overflowWrap: 'break-word',
           overflowX: 'hidden',
           transition: 'all 0.15s ease-out',
-
-          // Word-like fixed page spacing strip between pages
-          backgroundImage: `repeating-linear-gradient(
-            to bottom,
-            transparent,
-            transparent ${scaledDimensions.pageHeight - scaledDimensions.pageGap}px,
-            rgba(90,90,90,0.92) ${scaledDimensions.pageHeight - scaledDimensions.pageGap}px,
-            rgba(90,90,90,0.92) ${scaledDimensions.pageHeight}px
-          )`,
-          backgroundSize: `100% ${scaledDimensions.pageHeight}px`,
         }}
       >
         {Array.from({ length: pageCount }).map((_, i) => (
           <div
-            key={`anchor-${i}`}
-            id={`document-page-${i}`}
+            key={`page-frame-${i}`}
+            aria-hidden="true"
+            data-etherx-page-frame="true"
             style={{
               position: 'absolute',
-              top: i * scaledDimensions.pageHeight,
+              top: i * scaledDimensions.pageStep,
+              left: 0,
+              width: '100%',
+              // Keep frame height consistent with anchors so layout math stays stable
+              height: scaledDimensions.pageHeight,
+              background: 'var(--bg-page)',
+              boxShadow: 'var(--shadow-page)',
+              borderRadius: 2,
+              pointerEvents: 'none',
+              zIndex: 0,
+            }}
+          />
+        ))}
+
+        {Array.from({ length: pageCount }).map((_, i) => (
+          <div
+            key={`anchor-${i}`}
+            id={`document-page-${i}`}
+            data-etherx-page-anchor="true"
+            style={{
+              position: 'absolute',
+              top: i * scaledDimensions.pageStep,
               left: 0,
               width: 1,
               height: 1,
@@ -293,7 +322,9 @@ style={{
           />
         ))}
 
-        <EditorContent editor={editor} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <EditorContent editor={editor} />
+        </div>
 
         <FloatingFormatToolbar editor={editor} scrollContainerRef={scrollRef} />
         <PictureFormatToolbar editor={editor} scrollContainerRef={scrollRef} />
@@ -369,7 +400,7 @@ style={{
             key={i}
             style={{
               position:      'absolute',
-              top:           (i + 1) * scaledDimensions.pageHeight - (scaledDimensions.pageGap * 0.55),
+              top:           (i + 1) * scaledDimensions.pageStep - (scaledDimensions.pageGap * 0.55),
               left:          0,
               right:         0,
               textAlign:     'center',
@@ -389,7 +420,7 @@ style={{
             key={`header-${i}`}
             style={{
               position: 'absolute',
-              top: i * scaledDimensions.pageHeight + Math.max(16, scaledDimensions.padding * 0.22),
+              top: i * scaledDimensions.pageStep + Math.max(16, scaledDimensions.padding * 0.22),
               left: scaledDimensions.padding,
               right: scaledDimensions.padding,
               textAlign: String(headerFooter.headerAlign || 'Center').toLowerCase(),
@@ -411,7 +442,7 @@ style={{
             key={`footer-${i}`}
             style={{
               position: 'absolute',
-              top: (i + 1) * scaledDimensions.pageHeight - Math.max(32, scaledDimensions.padding * 0.3),
+              top: (i + 1) * scaledDimensions.pageStep - Math.max(32, scaledDimensions.padding * 0.3),
               left: scaledDimensions.padding,
               right: scaledDimensions.padding,
               textAlign: String(headerFooter.footerAlign || 'Center').toLowerCase(),
@@ -437,7 +468,7 @@ style={{
               key={`pagenum-${i}`}
               style={{
                 position: 'absolute',
-                top: isTop ? (i * scaledDimensions.pageHeight + Math.max(32, scaledDimensions.padding * 0.3)) : ((i + 1) * scaledDimensions.pageHeight - Math.max(28, scaledDimensions.padding * 0.25)),
+                top: isTop ? (i * scaledDimensions.pageStep + Math.max(32, scaledDimensions.padding * 0.3)) : ((i + 1) * scaledDimensions.pageStep - Math.max(28, scaledDimensions.padding * 0.25)),
                 left: scaledDimensions.padding,
                 right: scaledDimensions.padding,
                 textAlign: halign,

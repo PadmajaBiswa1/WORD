@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { Select } from '@/components/ui';
 import { useEditorStore } from '@/store';
 
@@ -52,17 +52,101 @@ export function useFontFormattingControls(editor) {
     editor.view.focus();
   }, [editor]);
 
+  const selectionSnapshotRef = useRef(null);
+
+  const snapshotSelection = useCallback(() => {
+    const sel = window.getSelection?.();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    selectionSnapshotRef.current = range.cloneRange();
+  }, []);
+
+  const restoreSelection = useCallback(() => {
+    const snap = selectionSnapshotRef.current;
+    const viewDom = editor?.view?.dom;
+    if (!snap || !viewDom) return false;
+
+    const sel = window.getSelection?.();
+    if (!sel) return false;
+
+    try {
+      // Ensure range is still inside the editor DOM
+      const common = snap.commonAncestorContainer;
+      if (!viewDom.contains(common)) return false;
+
+      sel.removeAllRanges();
+      sel.addRange(snap);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [editor]);
+
+  // Apply inline styles by wrapping the currently selected range.
+  // This avoids relying on selection state inside Tiptap when the dropdown click clears it.
+  const wrapSelectedRange = useCallback((stylePatch) => {
+    const viewDom = editor?.view?.dom;
+    if (!viewDom) return;
+
+    const restored = restoreSelection();
+    const sel = window.getSelection?.();
+    if (!restored || !sel || sel.rangeCount === 0) return;
+
+    const range = sel.getRangeAt(0);
+    if (range.collapsed) {
+      // If there's no actual selection, fall back to Tiptap commands.
+      Object.entries(stylePatch).forEach(([k, v]) => {
+        if (k === 'font-family') editor.chain().setFontFamily(v).run();
+        if (k === 'font-size') editor.chain().setFontSize(`${v}`).run();
+      });
+      return;
+    }
+
+    const wrapper = document.createElement('span');
+    Object.entries(stylePatch).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') wrapper.style.setProperty(k, String(v));
+    });
+
+    // surroundContents can throw if the range splits non-text nodes.
+    // Fallback to extract/insert.
+    try {
+      range.surroundContents(wrapper);
+    } catch {
+      const contents = range.extractContents();
+      wrapper.appendChild(contents);
+      range.insertNode(wrapper);
+    }
+
+    // Re-sync editor selection & state
+    editor.view.focus();
+    editor.view.dispatch(editor.view.state.tr);
+  }, [editor, restoreSelection]);
+
   const applyFontFamily = useCallback((value) => {
-    if (!editor) return;
+    if (!editor || !value) return;
     setFontFamily(value);
-    run(() => editor.chain().setFontFamily(value).run());
-  }, [editor, run, setFontFamily]);
+
+    snapshotSelection();
+    // Apply immediately to the saved selection range (not current live selection).
+    wrapSelectedRange({ 'font-family': value });
+
+    // Also update Tiptap mark state for persistence/cursor typing.
+    run(() => editor.chain().focus().setFontFamily(value).run());
+  }, [editor, run, setFontFamily, snapshotSelection, wrapSelectedRange]);
 
   const applyFontSize = useCallback((value) => {
     if (!editor || !value) return;
-    setFontSize(String(value));
-    run(() => editor.chain().setFontSize(`${value}pt`).run());
-  }, [editor, run, setFontSize]);
+    const next = String(value);
+    setFontSize(next);
+
+    snapshotSelection();
+    // Font size in HTML expects px/pt; Tiptap stores as `fontSize` attribute.
+    // We wrap selection with `font-size: <n>pt`.
+    wrapSelectedRange({ 'font-size': `${next}pt` });
+
+    run(() => editor.chain().focus().setFontSize(`${next}pt`).run());
+  }, [editor, run, setFontSize, snapshotSelection, wrapSelectedRange]);
+
 
   return { applyFontFamily, applyFontSize };
 }

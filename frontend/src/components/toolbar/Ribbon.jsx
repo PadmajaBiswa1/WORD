@@ -10,6 +10,7 @@ import { ReferenceTab } from './tabs/ReferenceTab';
 import { MailingsTab }  from './tabs/MailingsTab';
 import { ReviewTab }    from './tabs/ReviewTab';
 import { ViewTab }      from './tabs/ViewTab';
+import { AITab }        from './tabs/AITab';
 import { HelpTab }      from './tabs/HelpTab';
 import { RibbonFeatureSearch } from './RibbonFeatureSearch';
 
@@ -24,13 +25,14 @@ const TABS = [
   { id: 'mailings',  label: 'Mailings'  },
   { id: 'review',    label: 'Review'    },
   { id: 'view',      label: 'View'      },
+  { id: 'ai',        label: 'AI'        },
   { id: 'help',      label: 'Help'      },
 ];
 
 const TAB_CONTENT = {
   home: HomeTab, insert: InsertTab, draw: DrawTab, design: DesignTab,
   layout: LayoutTab, reference: ReferenceTab, mailings: MailingsTab,
-  review: ReviewTab, view: ViewTab, help: HelpTab,
+  review: ReviewTab, view: ViewTab, ai: AITab, help: HelpTab,
 };
 
 export function Ribbon() {

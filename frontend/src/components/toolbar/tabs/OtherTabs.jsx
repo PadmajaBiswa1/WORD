@@ -355,6 +355,7 @@ export function LayoutTab() {
 
 // ── Review Tab ───────────────────────────────────────────────
 import { useDocumentStore, useUIStore as useUI } from '@/store';
+import { runDictation, runImageTextCapture, runReadAloud, runSmartSuggestions } from '@/utils/smartFeatures';
 
 const MARKUP_OPTIONS = [
   { value: 'all', label: 'All Markup' },
@@ -370,16 +371,6 @@ const getSelectedText = (editor) => {
   const { from, to } = editor.state.selection;
   if (from === to) return editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ');
   return editor.state.doc.textBetween(from, to, ' ');
-};
-
-const speakText = (text) => {
-  if (!window.speechSynthesis) return false;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 1;
-  utterance.pitch = 1;
-  window.speechSynthesis.speak(utterance);
-  return true;
 };
 
 export function ReviewTab() {
@@ -435,16 +426,7 @@ export function ReviewTab() {
   };
 
   const handleReadAloud = () => {
-    const text = getSelectedText(editor).trim();
-    if (!text) {
-      toast('Select some text to read aloud', 'info');
-      return;
-    }
-    if (!speakText(text)) {
-      toast('Read aloud is not available in this browser', 'info');
-      return;
-    }
-    toast('Reading selection aloud', 'success');
+    runReadAloud({ editor, toast });
   };
 
   const openThesaurus = () => {
@@ -534,28 +516,6 @@ export function ReviewTab() {
     toast(`Change marker: ${tokens[idx]}`, 'info');
   };
 
-  const handleDictate = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      toast('Dictation is not available in this browser', 'info');
-      return;
-    }
-    const recognition = new SR();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.onresult = (event) => {
-      const transcript = event.results?.[0]?.[0]?.transcript || '';
-      if (transcript && editor) {
-        editor.chain().focus().insertContent(`${transcript} `).run();
-        toast('Dictation inserted', 'success');
-      }
-    };
-    recognition.onerror = () => toast('Dictation failed. Try again.', 'warning');
-    recognition.start();
-    toast('Listening for dictation...', 'info');
-  };
-
   const blockAuthors = () => {
     const selected = getSelectedText(editor);
     if (!selected) {
@@ -626,8 +586,12 @@ export function ReviewTab() {
         <Tooltip text="Hide Ink"><Button active={hideInk} onClick={handleHideInk}>🖌 Hide Ink</Button></Tooltip>
       </RibbonGroup>
 
-      <RibbonGroup label="Voice">
-        <Tooltip text="Dictate"><Button onClick={handleDictate}>🎤 Dictate</Button></Tooltip>
+      <RibbonGroup label="Smart Features">
+        <Tooltip text="Voice Typing"><Button onClick={() => runDictation({ editor, toast })}>🎤 Voice Typing</Button></Tooltip>
+        <Tooltip text="Text-to-Speech"><Button onClick={() => runReadAloud({ editor, toast })}>🔊 TTS</Button></Tooltip>
+        <Tooltip text="OCR (Image to Text)"><Button onClick={() => runImageTextCapture({ editor, toast, mode: 'ocr' })}>🧾 OCR</Button></Tooltip>
+        <Tooltip text="Handwriting Recognition"><Button onClick={() => runImageTextCapture({ editor, toast, mode: 'handwriting' })}>✍ Handwriting</Button></Tooltip>
+        <Tooltip text="Smart Suggestions"><Button onClick={() => runSmartSuggestions({ editor, toast })}>✨ Suggestions</Button></Tooltip>
       </RibbonGroup>
     </>
   );

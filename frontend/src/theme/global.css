@@ -564,6 +564,18 @@ body {
 
 .ProseMirror mark { background: rgba(212,175,55,.25); border-radius:2px; padding:0 2px; }
 
+.ProseMirror .etherx-insertion {
+  color: #2e7d32;
+  text-decoration: underline;
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.ProseMirror .etherx-deletion {
+  color: #c62828;
+  text-decoration: line-through;
+  background: rgba(244, 67, 54, 0.1);
+}
+
 .ProseMirror.etherx-show-formatting p::after {
   content: '¶';
   color: var(--text-muted);
@@ -589,23 +601,19 @@ body {
 
 /* ── Data attribute page break (from PageBreak extension) ────── */
 .ProseMirror [data-page-break] {
-  /* Hardcoded MS Word-like page break */
+  /* Thin, non-editable separator between pages */
   display: block !important;
   visibility: visible !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  max-height: 36px !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
   margin: 24px 0 !important;
   padding: 0 !important;
-  background: linear-gradient(to bottom, 
-    rgba(100, 100, 100, 0.15) 0%,
-    rgba(150, 150, 150, 0.25) 50%,
-    rgba(100, 100, 100, 0.15) 100%) !important;
-  border-top: 1px solid rgba(200, 200, 200, 0.4) !important;
-  border-bottom: 1px solid rgba(200, 200, 200, 0.4) !important;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 
-              inset 0 -1px 2px rgba(0, 0, 0, 0.1) !important;
-  pointer-events: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  pointer-events: auto !important;
+  cursor: default !important;
   user-select: none !important;
   position: relative !important;
   page-break-after: always !important;
@@ -613,15 +621,7 @@ body {
 
 /* Visual indicator text on page break */
 .ProseMirror [data-page-break]::before {
-  content: '— Page Break —' !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  height: 100% !important;
-  font-size: 11px !important;
-  color: rgba(100, 100, 100, 0.5) !important;
-  font-style: italic !important;
-  letter-spacing: 1px !important;
+  content: '' !important;
   pointer-events: none !important;
 }
 

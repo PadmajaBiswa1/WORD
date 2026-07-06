@@ -1,19 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDocumentStore, useEditorStore, useUIStore } from '@/store';
-
-const PAGE_SIZES = {
-  a4: { w: 794, h: 1123, label: 'A4' },
-  letter: { w: 816, h: 1056, label: 'Letter' },
-  legal: { w: 816, h: 1344, label: 'Legal' },
-  a3: { w: 1123, h: 1587, label: 'A3' },
-};
-
-const MARGIN_MAP = {
-  normal: 96,
-  narrow: 48,
-  moderate: 72,
-  wide: 144,
-};
+import { PAGE_SIZES, MARGIN_MAP, getLayoutMetrics } from '@/utils/pageLayout';
 
 const INDENT_CM = [0, 0.5, 1, 1.5, 2, 2.5, 3];
 const SPACING_PT = [0, 3, 6, 8, 10, 12, 18, 24, 30];
@@ -42,41 +29,8 @@ const toCssStyle = (obj) => Object.entries(obj)
 const pxToCm = (px = 0) => Number((px / 37.795).toFixed(1));
 const cmToPx = (cm = 0) => Math.round(cm * 37.795);
 
-function getPageElements() {
-  return Array.from(document.querySelectorAll('[id^="document-page-"]'));
-}
-
 function selectedImageElement() {
   return document.querySelector('.ProseMirror img.ProseMirror-selectednode') || document.querySelector('.ProseMirror .ProseMirror-selectednode img');
-}
-
-function applyPageLayout({ size, orientation, margin, columns }) {
-  const pages = getPageElements();
-  const pm = document.querySelector('.ProseMirror');
-  if (!pages.length) return false;
-
-  const dims = PAGE_SIZES[size] || PAGE_SIZES.a4;
-  const pad = MARGIN_MAP[margin] || 96;
-  const w = orientation === 'landscape' ? dims.h : dims.w;
-  const h = orientation === 'landscape' ? dims.w : dims.h;
-
-  pages.forEach((page) => {
-    page.style.width = `${w}px`;
-    page.style.minHeight = `${h}px`;
-    page.style.padding = `${pad}px`;
-  });
-
-  if (pm) {
-    if (columns > 1) {
-      pm.style.columnCount = String(columns);
-      pm.style.columnGap = '40px';
-    } else {
-      pm.style.columnCount = '';
-      pm.style.columnGap = '';
-    }
-  }
-
-  return true;
 }
 
 function Group({ title, children, width }) {
@@ -166,7 +120,11 @@ export function LayoutTab() {
   const applyParagraphLayout = (patch = {}) => {
     if (!editor) return toast('Editor is not ready yet', 'info');
 
-    const base = editor.getAttributes('paragraph')?.style || '';
+    // Try to get attributes from current block selection (paragraph, heading or blockquote)
+    const attrs = editor.getAttributes('paragraph')?.style ? editor.getAttributes('paragraph') : 
+                  editor.getAttributes('heading')?.style ? editor.getAttributes('heading') : 
+                  editor.getAttributes('blockquote');
+    const base = attrs?.style || '';
     const css = parseCssStyle(base);
 
     const nextLeft = Number.isFinite(Number(patch.indentLeftCm)) ? Number(patch.indentLeftCm) : indentLeftCm;
@@ -179,18 +137,12 @@ export function LayoutTab() {
     css['margin-top'] = `${Math.round(nextBefore * 1.333)}px`;
     css['margin-bottom'] = `${Math.round(nextAfter * 1.333)}px`;
 
-    editor.chain().focus().updateAttributes('paragraph', { style: toCssStyle(css) }).run();
-  };
-
-  const apply = (patch) => {
-    const next = {
-      size: pageSize,
-      orientation: pageOrientation,
-      margin: pageMargin,
-      columns: pageColumns,
-      ...patch,
-    };
-    applyPageLayout(next);
+    const style = toCssStyle(css);
+    editor.chain().focus()
+      .updateAttributes('paragraph', { style })
+      .updateAttributes('heading', { style })
+      .updateAttributes('blockquote', { style })
+      .run();
   };
 
   const withSelectedImage = (action) => {
@@ -223,7 +175,11 @@ export function LayoutTab() {
   useEffect(() => {
     if (!editor) return;
     const syncFromSelection = () => {
-      const style = editor.getAttributes('paragraph')?.style || '';
+      // Check for style attributes in any of the block types
+      const attrs = editor.getAttributes('paragraph')?.style ? editor.getAttributes('paragraph') : 
+                    editor.getAttributes('heading')?.style ? editor.getAttributes('heading') : 
+                    editor.getAttributes('blockquote');
+      const style = attrs?.style || '';
       const css = parseCssStyle(style);
       const leftPx = parseInt((css['margin-left'] || '0').replace('px', ''), 10) || 0;
       const rightPx = parseInt((css['margin-right'] || '0').replace('px', ''), 10) || 0;
@@ -239,15 +195,6 @@ export function LayoutTab() {
     editor.on('selectionUpdate', syncFromSelection);
     return () => editor.off('selectionUpdate', syncFromSelection);
   }, [editor]);
-
-  useEffect(() => {
-    applyPageLayout({
-      size: pageSize,
-      orientation: pageOrientation,
-      margin: pageMargin,
-      columns: pageColumns,
-    });
-  }, [pageSize, pageOrientation, pageMargin, pageColumns, pageCount]);
 
   useEffect(() => {
     const pm = document.querySelector('.ProseMirror');
@@ -380,7 +327,6 @@ export function LayoutTab() {
           ]}
           onChange={(next) => {
             setPageMargin(next);
-            apply({ margin: next });
             toast(`Margins: ${next}`, 'success');
           }}
           width={98}
@@ -388,7 +334,6 @@ export function LayoutTab() {
         <IconTextButton icon="▯" text="Orientation" onClick={() => {
           const next = pageOrientation === 'portrait' ? 'landscape' : 'portrait';
           setPageOrientation(next);
-          apply({ orientation: next });
         }} active={pageOrientation === 'landscape'} />
         <OptionPicker
           label="Size"
@@ -401,7 +346,6 @@ export function LayoutTab() {
           ]}
           onChange={(next) => {
             setPageSize(next);
-            apply({ size: next });
             toast(`Size: ${(PAGE_SIZES[next] || PAGE_SIZES.a4).label}`, 'success');
           }}
           width={92}
@@ -417,7 +361,6 @@ export function LayoutTab() {
           onChange={(next) => {
             const c = Number(next);
             setPageColumns(c);
-            apply({ columns: c });
             toast(`Columns: ${c}`, 'success');
           }}
           width={96}

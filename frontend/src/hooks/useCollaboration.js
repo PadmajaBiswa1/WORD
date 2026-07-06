@@ -24,12 +24,14 @@ export function useCollaboration(docId) {
   const revision = useDocumentStore((s) => s.revision);
   const setRevision = useDocumentStore((s) => s.setRevision);
   const setCollaborators = useCollaborationStore((s) => s.setCollaborators);
+  const setTypingUsers = useCollaborationStore((s) => s.setTypingUsers);
   const setConnected = useCollaborationStore((s) => s.setConnected);
   const configureSession = useCollaborationStore((s) => s.configureSession);
   const setLastSyncedAt = useCollaborationStore((s) => s.setLastSyncedAt);
   const setLastRemoteEditAt = useCollaborationStore((s) => s.setLastRemoteEditAt);
   const resetCollaboration = useCollaborationStore((s) => s.reset);
   const toast = useUIStore((s) => s.toast);
+
 
   const suppressNextContentBroadcast = useRef(null);
   const suppressNextCommentBroadcast = useRef(null);
@@ -38,11 +40,17 @@ export function useCollaboration(docId) {
   const changeTimer = useRef(null);
   const commentTimer = useRef(null);
 
+  const typingTimersRef = useRef(new Map());
+
   useEffect(() => {
     if (!docId) {
       resetCollaboration();
+      typingTimersRef.current.forEach((t) => clearTimeout(t));
+      typingTimersRef.current.clear();
+      setTypingUsers([]);
       return undefined;
     }
+
 
     const collab = initCollab(docId);
     configureSession({
@@ -83,11 +91,56 @@ export function useCollaboration(docId) {
 
     const offPresence = collab.on('presence', (data) => {
       setCollaborators(data?.collaborators || []);
+
+      // Typing indicator: treat presence updates as activity for the sender.
+      try {
+        const remoteUser = data?.user || {};
+        const remoteSessionId = remoteUser?.id || remoteUser?.sessionId || data?.uid || remoteUser?.uid;
+        if (remoteSessionId && remoteSessionId !== collab.sessionId) {
+          const timers = typingTimersRef.current;
+          const key = remoteSessionId;
+          if (timers.has(key)) clearTimeout(timers.get(key));
+          const timeoutId = setTimeout(() => {
+            const nowTyping = Array.from(typingTimersRef.current.keys()).filter((k) => k !== key);
+            setTypingUsers(nowTyping.map((sid) => ({ sessionId: sid, name: sid })));
+          }, 1200);
+          timers.set(key, timeoutId);
+          const currentTyping = Array.from(timers.keys()).map((sid) => ({ sessionId: sid, name: sid }));
+          setTypingUsers(currentTyping);
+        }
+      } catch {
+        // ignore typing indicator errors
+      }
     });
+
 
     const offChange = collab.on('change', (data) => {
       if (!data || data.sessionId === collab.sessionId) return;
       const nextDocument = data.payload || {};
+
+      // Typing indicator: mark remote collaborator as typing briefly when changes arrive.
+      try {
+        const remoteUser = data?.user || {};
+        const remoteSessionId = remoteUser?.id || remoteUser?.sessionId || data?.uid || remoteUser?.uid;
+        const typingName = remoteUser?.name || data?.userName || 'Someone';
+        if (remoteSessionId && remoteSessionId !== collab.sessionId) {
+          const timers = typingTimersRef.current;
+          const key = remoteSessionId;
+          if (timers.has(key)) clearTimeout(timers.get(key));
+          const timeoutId = setTimeout(() => {
+            const nowTyping = Array.from(typingTimersRef.current.keys()).filter((k) => k !== key);
+            // Store expects objects; keep minimal shape.
+            setTypingUsers(nowTyping.map((sid) => ({ sessionId: sid, name: sid })));
+          }, 1800);
+          timers.set(key, timeoutId);
+
+          const currentTyping = Array.from(timers.keys()).map((sid) => ({ sessionId: sid, name: sid }));
+          setTypingUsers(currentTyping);
+        }
+      } catch {
+        // ignore typing indicator errors
+      }
+
       const currentRevision = Number(useDocumentStore.getState().revision || 0);
       const incomingRevision = Number(nextDocument.revision ?? data.revision);
       if (Number.isFinite(incomingRevision) && incomingRevision <= currentRevision) return;
@@ -164,7 +217,11 @@ export function useCollaboration(docId) {
       offConflict();
       collab.disconnect();
       resetCollaboration();
+      typingTimersRef.current.forEach((t) => clearTimeout(t));
+      typingTimersRef.current.clear();
+      setTypingUsers([]);
     };
+
   }, [docId, configureSession, resetCollaboration, setCollaborators, setConnected, setLastRemoteEditAt, setLastSyncedAt, setRevision, toast]);
 
   useEffect(() => {

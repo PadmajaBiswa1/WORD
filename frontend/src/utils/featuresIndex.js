@@ -3,13 +3,17 @@
  * Organized by category and tab
  */
 
+import { buildAiResult, openTranslationUrl } from '@/services/ai';
+import { useDocumentStore, useUIStore } from '@/store';
+import { runDictation, runImageTextCapture, runReadAloud, runSmartSuggestions } from '@/utils/smartFeatures';
+
 export const FEATURES = [
   // ═══ HOME TAB ═══
   {
     id: 'cut',
     name: 'Cut',
     category: 'Clipboard',
-    tab: 'home',
+    tab: 'ai',
     keywords: ['cut', 'clipboard', 'remove'],
     description: 'Cut selection to clipboard',
     action: (editor) => editor?.chain().focus().cut().run(),
@@ -18,7 +22,7 @@ export const FEATURES = [
     id: 'copy',
     name: 'Copy',
     category: 'Clipboard',
-    tab: 'home',
+    tab: 'ai',
     keywords: ['copy', 'clipboard', 'duplicate'],
     description: 'Copy selection to clipboard',
     action: (editor) => editor?.chain().focus().copy().run(),
@@ -27,7 +31,7 @@ export const FEATURES = [
     id: 'paste',
     name: 'Paste',
     category: 'Clipboard',
-    tab: 'home',
+    tab: 'ai',
     keywords: ['paste', 'clipboard', 'insert'],
     description: 'Paste from clipboard',
     action: (editor) => editor?.chain().focus().paste().run(),
@@ -36,7 +40,7 @@ export const FEATURES = [
     id: 'format-painter',
     name: 'Format Painter',
     category: 'Clipboard',
-    tab: 'home',
+    tab: 'ai',
     keywords: ['format', 'painter', 'style', 'brush'],
     description: 'Copy formatting to other text',
   },
@@ -44,7 +48,7 @@ export const FEATURES = [
     id: 'bold',
     name: 'Bold',
     category: 'Text Formatting',
-    tab: 'home',
+    tab: 'ai',
     keywords: ['bold', 'strong', 'b', 'weight'],
     description: 'Make text bold (Ctrl+B)',
     action: (editor) => editor?.chain().focus().toggleBold().run(),
@@ -53,7 +57,7 @@ export const FEATURES = [
     id: 'italic',
     name: 'Italic',
     category: 'Text Formatting',
-    tab: 'home',
+    tab: 'ai',
     keywords: ['italic', 'slant', 'i', 'emphasis'],
     description: 'Make text italic (Ctrl+I)',
     action: (editor) => editor?.chain().focus().toggleItalic().run(),
@@ -134,6 +138,125 @@ export const FEATURES = [
     keywords: ['clear', 'formatting', 'reset', 'normal'],
     description: 'Remove all text formatting',
     action: (editor) => editor?.chain().focus().clearNodes().unsetAllMarks().run(),
+  },
+  {
+    id: 'ai-generate',
+    name: 'AI Content Generator',
+    category: 'AI Assist',
+    tab: 'home',
+    keywords: ['ai', 'generate', 'content', 'draft', 'write'],
+    description: 'Generate a draft from a topic prompt',
+    action: (editor) => {
+      if (!editor) return;
+      const topic = window.prompt('What should the AI content generator write about?', 'project update');
+      if (!topic) return;
+      const tone = window.prompt('Tone for the draft?', 'professional') || 'professional';
+      const result = buildAiResult('content-generator', '', { topic, tone });
+      editor.chain().focus().insertContent(result.html || '<p></p>').run();
+    },
+  },
+  {
+    id: 'ai-summarize',
+    name: 'AI Text Summarizer',
+    category: 'AI Assist',
+    tab: 'home',
+    keywords: ['ai', 'summarize', 'summary', 'shorten', 'digest'],
+    description: 'Summarize the selected text or document',
+    action: (editor) => {
+      if (!editor) return;
+      const { from, to } = editor.state.selection;
+      const source = from !== to
+        ? editor.state.doc.textBetween(from, to, ' ').trim()
+        : editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ').trim();
+      if (!source) return;
+      const result = buildAiResult('summarize', source);
+      if (from !== to) {
+        editor.chain().focus().insertContentAt({ from, to }, result.html || '<p></p>').run();
+      } else {
+        editor.chain().focus().insertContent(result.html || '<p></p>').run();
+      }
+    },
+  },
+  {
+    id: 'ai-grammar',
+    name: 'AI Grammar Correction',
+    category: 'AI Assist',
+    tab: 'home',
+    keywords: ['ai', 'grammar', 'correct', 'proofread', 'fix text'],
+    description: 'Correct grammar and punctuation',
+    action: (editor) => {
+      if (!editor) return;
+      const { from, to } = editor.state.selection;
+      const source = from !== to
+        ? editor.state.doc.textBetween(from, to, ' ').trim()
+        : editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ').trim();
+      if (!source) return;
+      const result = buildAiResult('grammar', source);
+      if (from !== to) {
+        editor.chain().focus().insertContentAt({ from, to }, result.html || '<p></p>').run();
+      } else {
+        editor.chain().focus().insertContent(result.html || '<p></p>').run();
+      }
+    },
+  },
+  {
+    id: 'ai-rewrite',
+    name: 'AI Rewrite Assistant',
+    category: 'AI Assist',
+    tab: 'home',
+    keywords: ['ai', 'rewrite', 'rephrase', 'formal', 'short'],
+    description: 'Rewrite text in a clearer style',
+    action: (editor) => {
+      if (!editor) return;
+      const mode = window.prompt('Rewrite style: clear, formal, or short', 'clear') || 'clear';
+      const { from, to } = editor.state.selection;
+      const source = from !== to
+        ? editor.state.doc.textBetween(from, to, ' ').trim()
+        : editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ').trim();
+      if (!source) return;
+      const result = buildAiResult('rewrite', source, { mode });
+      if (from !== to) {
+        editor.chain().focus().insertContentAt({ from, to }, result.html || '<p></p>').run();
+      } else {
+        editor.chain().focus().insertContent(result.html || '<p></p>').run();
+      }
+    },
+  },
+  {
+    id: 'ai-title',
+    name: 'AI Title Generator',
+    category: 'AI Assist',
+    tab: 'home',
+    keywords: ['ai', 'title', 'headline', 'rename'],
+    description: 'Generate a document title from the content',
+    action: (editor) => {
+      if (!editor) return;
+      const { from, to } = editor.state.selection;
+      const source = from !== to
+        ? editor.state.doc.textBetween(from, to, ' ').trim()
+        : editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ').trim();
+      const fallbackTitle = window.prompt('Fallback title if the content is short', 'Untitled Document') || 'Untitled Document';
+      const result = buildAiResult('title', source, { fallbackTitle });
+      useDocumentStore.getState().setTitle(result.title || fallbackTitle);
+    },
+  },
+  {
+    id: 'ai-translate',
+    name: 'AI Translation',
+    category: 'AI Assist',
+    tab: 'home',
+    keywords: ['ai', 'translate', 'language', 'translate text'],
+    description: 'Open a translation view for the selected text',
+    action: (editor) => {
+      if (!editor) return;
+      const { from, to } = editor.state.selection;
+      const source = from !== to
+        ? editor.state.doc.textBetween(from, to, ' ').trim()
+        : editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ').trim();
+      if (!source) return;
+      const language = window.prompt('Translate to which language?', 'Spanish') || 'Spanish';
+      openTranslationUrl(source, language);
+    },
   },
   {
     id: 'bullet-list',
@@ -359,6 +482,51 @@ export const FEATURES = [
     keywords: ['comment', 'note', 'annotation', 'feedback'],
     description: 'Add or manage comments',
     dialog: 'comments',
+  },
+  {
+    id: 'voice-typing',
+    name: 'Voice Typing',
+    category: 'Smart Features',
+    tab: 'review',
+    keywords: ['voice typing', 'dictate', 'speech to text', 'speech recognition'],
+    description: 'Convert speech into text',
+    action: (editor) => runDictation({ editor, toast: useUIStore.getState().toast }),
+  },
+  {
+    id: 'text-to-speech',
+    name: 'Text-to-Speech',
+    category: 'Smart Features',
+    tab: 'review',
+    keywords: ['text to speech', 'tts', 'read aloud', 'listen'],
+    description: 'Read the current text aloud',
+    action: (editor) => runReadAloud({ editor, toast: useUIStore.getState().toast }),
+  },
+  {
+    id: 'ocr-image-to-text',
+    name: 'OCR (Image to Text)',
+    category: 'Smart Features',
+    tab: 'review',
+    keywords: ['ocr', 'image to text', 'scan', 'extract text'],
+    description: 'Extract text from an image',
+    action: (editor) => runImageTextCapture({ editor, toast: useUIStore.getState().toast, mode: 'ocr' }),
+  },
+  {
+    id: 'handwriting-recognition',
+    name: 'Handwriting Recognition',
+    category: 'Smart Features',
+    tab: 'review',
+    keywords: ['handwriting', 'notes', 'handwritten text', 'recognition'],
+    description: 'Convert handwritten text into editable text',
+    action: (editor) => runImageTextCapture({ editor, toast: useUIStore.getState().toast, mode: 'handwriting' }),
+  },
+  {
+    id: 'smart-suggestions',
+    name: 'Smart Suggestions',
+    category: 'Smart Features',
+    tab: 'review',
+    keywords: ['smart suggestions', 'suggestions', 'ai help', 'rewrite', 'summarize'],
+    description: 'Suggest useful AI edits for the current text',
+    action: (editor) => runSmartSuggestions({ editor, toast: useUIStore.getState().toast }),
   },
 
   // ═══ VIEW TAB ═══

@@ -1,7 +1,12 @@
 import { usePageStore } from '@/store/usePageStore';
+import { useUIStore } from '@/store';
+import { PAGE_SIZES } from '@/utils/pageLayout';
 
 export function PageStatusBar() {
   const { pages, activePage, zoom, setZoom } = usePageStore();
+  const { pageSize, pageOrientation } = useUIStore();
+  const sizeLabel = (PAGE_SIZES[pageSize] || PAGE_SIZES.a4).label;
+  const orientationLabel = pageOrientation === 'landscape' ? 'Landscape' : 'Portrait';
 
   return (
     <div
@@ -31,7 +36,7 @@ export function PageStatusBar() {
 
       <div style={{ flex: 1 }} />
 
-      <span style={{ marginRight: '4px' }}>A4 · Portrait</span>
+      <span style={{ marginRight: '4px' }}>{sizeLabel} · {orientationLabel}</span>
       <span style={{ margin: '0 10px', color: 'var(--border-strong)' }}>|</span>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

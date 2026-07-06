@@ -230,7 +230,7 @@ export function FeatureSearch() {
                         marginLeft: 8,
                         whiteSpace: 'nowrap',
                       }}>
-                        {feature.tab.charAt(0).toUpperCase() + feature.tab.slice(1)}
+                        {feature.tab === 'ai' ? 'AI' : feature.tab.charAt(0).toUpperCase() + feature.tab.slice(1)}
                       </span>
                     )}
                   </button>

@@ -231,6 +231,7 @@ export const useCollaborationStore = create((set) => ({
   userName: 'You',
   role: 'editor',
   collaborators: [],
+  typingUsers: [],
   lastSyncedAt: null,
   lastRemoteEditAt: null,
 
@@ -247,6 +248,7 @@ export const useCollaborationStore = create((set) => ({
       status: connected ? 'Live' : 'Disconnected',
     }),
   setCollaborators: (collaborators) => set({ collaborators: Array.isArray(collaborators) ? collaborators : [] }),
+  setTypingUsers: (typingUsers) => set({ typingUsers: Array.isArray(typingUsers) ? typingUsers : [] }),
   setLastSyncedAt: (value = new Date()) =>
     set({ lastSyncedAt: value instanceof Date ? value : new Date(value) }),
   setLastRemoteEditAt: (value = new Date()) =>
@@ -259,6 +261,7 @@ export const useCollaborationStore = create((set) => ({
       userName: 'You',
       role: 'editor',
       collaborators: [],
+      typingUsers: [],
       lastSyncedAt: null,
       lastRemoteEditAt: null,
     }),

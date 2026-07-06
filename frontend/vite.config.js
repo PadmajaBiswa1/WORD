@@ -9,10 +9,11 @@ export default defineConfig(({ mode }) => {
     || env.VITE_API_URL
     || process.env.VITE_API_PROXY_TARGET
     || process.env.VITE_API_URL
-    || 'http://localhost:5050'
+    || 'http://localhost:3001'
   )
     .replace(/\/api\/?$/, '')
     .replace(/\/$/, '');
+
 
   return {
     plugins: [react()],

@@ -35,9 +35,10 @@ export function HelpTab() {
         <Tooltip text="Suggest a Feature"><Button onClick={() => window.open('mailto:feedback@etherx.app?subject=Feature%20Suggestion', '_blank')}>💡 Suggest</Button></Tooltip>
       </RibbonGroup>
 
+
       <RibbonGroup label="About">
         <Tooltip text="About EtherX Word"><Button onClick={copyVersionInfo}>ℹ About</Button></Tooltip>
-        <Tooltip text="Privacy Policy"><Button onClick={() => window.open('https://privacy.microsoft.com/en-us/privacystatement', '_blank')}>🔒 Privacy</Button></Tooltip>
+        <Tooltip text="Privacy Policy"><Button onClick={() => window.open('https://etherx.app/privacy', '_blank')}>🔒 Privacy</Button></Tooltip>
         <Tooltip text="Check for Updates"><Button onClick={() => window.open('https://github.com/search?q=EtherXW&type=repositories', '_blank')}>↻ Updates</Button></Tooltip>
       </RibbonGroup>
     </>

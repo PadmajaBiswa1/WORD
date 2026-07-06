@@ -43,10 +43,10 @@ const HELP_SECTIONS = [
    • Watch others type as they type
    • Comments and replies sync instantly
 
-3. Track Changes
-   • View Tab → Track Changes to enable
-   • See who made what changes and when
-   • Accept/reject changes one by one
+3. Review (Word-like)
+   • Use Review actions (Track Changes / Comments)
+   • See who made changes and when
+   • Resolve items after approval
 
 4. Comments & Feedback
    • Right-click or select text → Add Comment

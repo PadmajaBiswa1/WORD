@@ -1,14 +1,12 @@
 import { useRef, useState, useMemo } from 'react';
-import { useUIStore, useDocumentStore, useEditorStore } from '@/store';
+import { useUIStore, useDocumentStore, useEditorStore, useCollaborationStore } from '@/store';
+import { PAGE_SIZES, getLayoutMetrics } from '@/utils/pageLayout';
 
 const THUMB_W  = 108;
 const THUMB_H  = 153;
-const PAGE_H   = 1123;
-const MARGIN_Y = 96;
-const CONTENT_H = PAGE_H - MARGIN_Y * 2;
 
 // Split ProseMirror DOM children into page buckets using rendered offsetTop.
-function getPageBuckets(pageCount) {
+function getPageBuckets(pageCount, metrics, zoom) {
   const proseMirror = document.querySelector('.ProseMirror');
   if (!proseMirror) return null;
 
@@ -16,10 +14,12 @@ function getPageBuckets(pageCount) {
   if (!children.length) return null;
 
   const buckets = Array.from({ length: pageCount }, () => []);
+  const PAGE_GAP = 18;
+  const scale = zoom / 100;
+  const pageStep = (metrics.pageHeight + PAGE_GAP) * scale;
 
   children.forEach((child) => {
-    // offsetTop is relative to the ProseMirror container (which starts after top margin)
-    const page = Math.min(Math.floor(child.offsetTop / CONTENT_H), pageCount - 1);
+    const page = Math.min(Math.floor(child.offsetTop / pageStep), pageCount - 1);
     buckets[Math.max(0, page)].push(child.outerHTML);
   });
 
@@ -27,9 +27,14 @@ function getPageBuckets(pageCount) {
 }
 
 export function PageSidebar() {
-  const { sidebarOpen, activePage, setActivePage } = useUIStore();
+  const { sidebarOpen, activePage, setActivePage, pageSize, pageOrientation, pageMargin, zoom } = useUIStore();
   const { pageCount, pageOrder, reorderPages, pageThumbnails } = useDocumentStore();
   const editor = useEditorStore((s) => s.editor);
+  const typingUsers = useCollaborationStore((s) => s.typingUsers);
+
+  const metrics = getLayoutMetrics({ size: pageSize, orientation: pageOrientation, margin: pageMargin });
+  const sizeLabel = (PAGE_SIZES[pageSize] || PAGE_SIZES.a4).label;
+  const orientationLabel = pageOrientation === 'landscape' ? 'Landscape' : 'Portrait';
 
   const [dragIndex, setDragIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
@@ -64,7 +69,7 @@ export function PageSidebar() {
     const from = dragNode.current;
     if (from !== null && from !== i && editor) {
       // 1. Get page buckets from rendered DOM
-      const buckets = getPageBuckets(pageCount);
+      const buckets = getPageBuckets(pageCount, metrics, zoom);
       if (buckets) {
         // 2. Reorder buckets
         const reordered = [...buckets];
@@ -107,6 +112,9 @@ export function PageSidebar() {
     }
   };
 
+  const typingNames = (typingUsers || []).filter((u) => u?.sessionId).map((u) => u.name);
+  const hasTyping = typingNames.length > 0;
+
   return (
     <div style={{
       width: 160, flexShrink: 0,
@@ -125,6 +133,32 @@ export function PageSidebar() {
         <span>Pages</span>
         <span style={{ color: '#d4af37' }}>{pageCount}</span>
       </div>
+
+      {hasTyping ? (
+        <div style={{
+          padding: '6px 12px 10px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex', flexDirection: 'column',
+          gap: 2,
+        }}>
+          <div style={{
+            fontFamily: 'var(--font-ui)', fontSize: 9,
+            color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em',
+            fontWeight: 700,
+          }}>
+            Typing
+          </div>
+          <div style={{
+            fontFamily: 'var(--font-ui)', fontSize: 10,
+            color: 'var(--text-primary)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            fontWeight: 600,
+          }}>
+            {typingNames.slice(0, 3).join(', ')}{typingNames.length > 3 ? '…' : ''}
+          </div>
+        </div>
+      ) : null}
+
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px 8px', display: 'flex', flexDirection: 'column' }}>
         {order.map((pageNum, i) => {
@@ -184,7 +218,7 @@ export function PageSidebar() {
         display: 'flex', flexDirection: 'column', gap: 2,
       }}>
         <span>{pageCount} page{pageCount !== 1 ? 's' : ''}</span>
-        <span style={{ fontSize: 9 }}>A4 · Portrait</span>
+        <span style={{ fontSize: 9 }}>{sizeLabel} · {orientationLabel}</span>
       </div>
     </div>
   );
@@ -216,7 +250,7 @@ function PageThumb({ index, active, thumbnail, isDragging }) {
         transition: 'border-color 0.15s, box-shadow 0.15s, background-color 0.15s',
         boxShadow: isDragging
           ? '0 8px 24px rgba(0,0,0,0.5), 0 0 0 2px #d4af37'
-          : active ? 'var(--gold-glow)' : 'var(--shadow-sm)',
+          : active ? '0 0 12px rgba(212, 175, 55, 0.35)' : '0 2px 4px rgba(0,0,0,0.1)',
       }}
         onMouseEnter={(e) => { if (!active && !isDragging) e.currentTarget.style.borderColor = '#d4af37'; }}
         onMouseLeave={(e) => { if (!active && !isDragging) e.currentTarget.style.borderColor = themeColors.border; }}

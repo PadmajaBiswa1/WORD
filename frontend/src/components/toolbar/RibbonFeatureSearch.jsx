@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from '@/components/ui';
-import { useUIStore, useEditorStore } from '@/store';
+import { useUIStore, useEditorStore, useDocumentStore } from '@/store';
+import { buildAiResult, openTranslationUrl } from '@/services/ai';
 import { ensureRegistered, searchCommands } from './commandRegistry';
+import { runDictation, runImageTextCapture, runReadAloud, runSmartSuggestions } from '@/utils/smartFeatures';
 
 const makeAction = (key, { title, tab, keywords = [], run }) => ({
   key,
@@ -78,6 +80,57 @@ export function RibbonFeatureSearch({ compactWidth = 190, onActivateTab: onActiv
       { id: 'home-find',       key: 'home-find',       title: 'Find & Replace', tab: 'home',  keywords: ['find', 'replace', 'search text', 'find replace','ctrl+h'], run: () => openDialog('findReplace'), },
       { id: 'home-selectall',  key: 'home-selectall',  title: 'Select All',     tab: 'home',  keywords: ['select all', 'select everything', 'ctrl+a'], run: () => { }, },
       { id: 'home-help',       key: 'home-help',       title: 'Get Help',       tab: 'home',  keywords: ['help', 'support', 'assistance'], run: () => openDialog('help'), },
+      { id: 'home-ai-generate', key:'home-ai-generate', title:'AI Content Generator', tab:'ai', keywords:['ai','generate','content','draft','write'], run: () => {
+        if (!editor) return;
+        const topic = window.prompt('What should the AI content generator write about?', 'project update');
+        if (!topic) return;
+        const tone = window.prompt('Tone for the draft?', 'professional') || 'professional';
+        const result = buildAiResult('content-generator', '', { topic, tone });
+        editor.chain().focus().insertContent(result.html || '<p></p>').run();
+      } },
+      { id: 'home-ai-summarize', key:'home-ai-summarize', title:'AI Text Summarizer', tab:'ai', keywords:['ai','summarize','summary','shorten'], run: () => {
+        if (!editor) return;
+        const { from, to } = editor.state.selection;
+        const source = from !== to ? editor.state.doc.textBetween(from, to, ' ').trim() : editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ').trim();
+        if (!source) return;
+        const result = buildAiResult('summarize', source);
+        if (from !== to) editor.chain().focus().insertContentAt({ from, to }, result.html || '<p></p>').run();
+        else editor.chain().focus().insertContent(result.html || '<p></p>').run();
+      } },
+      { id: 'home-ai-grammar', key:'home-ai-grammar', title:'AI Grammar Correction', tab:'ai', keywords:['ai','grammar','correct','proofread'], run: () => {
+        if (!editor) return;
+        const { from, to } = editor.state.selection;
+        const source = from !== to ? editor.state.doc.textBetween(from, to, ' ').trim() : editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ').trim();
+        if (!source) return;
+        const result = buildAiResult('grammar', source);
+        if (from !== to) editor.chain().focus().insertContentAt({ from, to }, result.html || '<p></p>').run();
+        else editor.chain().focus().insertContent(result.html || '<p></p>').run();
+      } },
+      { id: 'home-ai-rewrite', key:'home-ai-rewrite', title:'AI Rewrite Assistant', tab:'ai', keywords:['ai','rewrite','rephrase','formal','short'], run: () => {
+        if (!editor) return;
+        const mode = window.prompt('Rewrite style: clear, formal, or short', 'clear') || 'clear';
+        const { from, to } = editor.state.selection;
+        const source = from !== to ? editor.state.doc.textBetween(from, to, ' ').trim() : editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ').trim();
+        if (!source) return;
+        const result = buildAiResult('rewrite', source, { mode });
+        if (from !== to) editor.chain().focus().insertContentAt({ from, to }, result.html || '<p></p>').run();
+        else editor.chain().focus().insertContent(result.html || '<p></p>').run();
+      } },
+      { id: 'home-ai-title', key:'home-ai-title', title:'AI Title Generator', tab:'ai', keywords:['ai','title','headline','rename'], run: () => {
+        if (!editor) return;
+        const source = editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ').trim();
+        const fallback = window.prompt('Fallback title if the content is short', 'Untitled Document') || 'Untitled Document';
+        const result = buildAiResult('title', source, { fallbackTitle: fallback });
+        useDocumentStore.getState().setTitle(result.title || fallback);
+      } },
+      { id: 'home-ai-translate', key:'home-ai-translate', title:'AI Translation', tab:'ai', keywords:['ai','translate','language'], run: () => {
+        if (!editor) return;
+        const { from, to } = editor.state.selection;
+        const source = from !== to ? editor.state.doc.textBetween(from, to, ' ').trim() : editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ').trim();
+        if (!source) return;
+        const language = window.prompt('Translate to which language?', 'Spanish') || 'Spanish';
+        openTranslationUrl(source, language);
+      } },
       // ── Insert Tab ──
       { id: 'ins-coverpage',   key:'ins-coverpage',    title: 'Cover Page',     tab: 'insert',keywords: ['cover page','title page','cover'], run: () => { }, },
       { id: 'ins-blankpage',   key:'ins-blankpage',    title: 'Blank Page',     tab: 'insert',keywords: ['blank page','new page'], run: () => { }, },
@@ -154,7 +207,7 @@ export function RibbonFeatureSearch({ compactWidth = 190, onActivateTab: onActiv
       { id: 'rev-spell',       key: 'rev-spell',       title: 'Spelling & Grammar',tab:'review',keywords:['spelling','grammar','spell check','abc','f7'], run: () => { }, },
       { id: 'rev-thesaurus',   key: 'rev-thesaurus',   title: 'Thesaurus',      tab: 'review',keywords:['thesaurus','synonym','word book'], run: () => { }, },
       { id: 'rev-wordcount',   key: 'rev-wordcount',   title: 'Word Count',     tab: 'review',keywords:['word count','count words','characters'], run: () => openDialog('wordCount'), },
-      { id: 'rev-readaloud',   key: 'rev-readaloud',   title: 'Read Aloud',     tab: 'review',keywords:['read aloud','tts','text to speech','listen'], run: () => { }, },
+      { id: 'rev-readaloud',   key: 'rev-readaloud',   title: 'Text-to-Speech', tab: 'review',keywords:['read aloud','tts','text to speech','listen'], run: () => runReadAloud({ editor, toast }) },
       { id: 'rev-accessibility',key:'rev-accessibility',title:'Check Accessibility',tab:'review',keywords:['accessibility','a11y','check accessible'], run: () => openDialog('accessibility'), },
       { id: 'rev-translate',   key: 'rev-translate',   title: 'Translate',      tab: 'review',keywords:['translate','language','google translate'], run: () => { }, },
       { id: 'rev-lang',        key: 'rev-lang',        title: 'Set Language',   tab: 'review',keywords:['language','proofing language','dictionary'], run: () => openDialog('language'), },
@@ -176,7 +229,10 @@ export function RibbonFeatureSearch({ compactWidth = 190, onActivateTab: onActiv
       { id: 'rev-blockauth',   key:'rev-blockauth',     title: 'Block Authors',   tab: 'review',keywords:['block authors','author protection'], run: () => { }, },
       { id: 'rev-restrict',    key:'rev-restrict',      title: 'Restrict Editing',tab:'review',keywords:['restrict editing','protect','lock document'], run: () => openDialog('restrictEditing'), },
       { id: 'rev-hideink',     key:'rev-hideink',       title: 'Hide Ink',        tab: 'review',keywords:['hide ink','ink'], run: () => { }, },
-      { id: 'rev-dictate',     key:'rev-dictate',       title: 'Dictate',         tab: 'review',keywords:['dictate','speech','voice to text','speech recognition'], run: () => { }, },
+      { id: 'rev-dictate',     key:'rev-dictate',       title: 'Voice Typing',    tab: 'review',keywords:['dictate','speech','voice to text','speech recognition'], run: () => runDictation({ editor, toast }) },
+      { id: 'rev-ocr',         key:'rev-ocr',           title: 'OCR (Image to Text)', tab: 'review',keywords:['ocr','image to text','scan text','extract text'], run: () => runImageTextCapture({ editor, toast, mode: 'ocr' }) },
+      { id: 'rev-handwriting', key:'rev-handwriting',   title: 'Handwriting Recognition', tab: 'review',keywords:['handwriting','recognition','notes','image text'], run: () => runImageTextCapture({ editor, toast, mode: 'handwriting' }) },
+      { id: 'rev-smart-suggestions', key:'rev-smart-suggestions', title: 'Smart Suggestions', tab: 'review', keywords:['suggestions','smart','ai help','rewrite','summarize'], run: () => runSmartSuggestions({ editor, toast }) },
       // ── View Tab ──
       { id: 'view-print',      key:'view-print',       title: 'Print Layout',    tab: 'view',keywords:['print layout','reading view','print'], run: () => { }, },
       { id: 'view-web',        key:'view-web',         title: 'Web Layout',      tab: 'view',keywords:['web layout','web view'], run: () => { }, },
@@ -455,7 +511,7 @@ export function RibbonFeatureSearch({ compactWidth = 190, onActivateTab: onActiv
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {a.tab === 'file' ? 'File' : a.tab[0].toUpperCase() + a.tab.slice(1)}
+                    {a.tab === 'file' ? 'File' : a.tab === 'ai' ? 'AI' : a.tab[0].toUpperCase() + a.tab.slice(1)}
                   </span>
                 )}
               </button>

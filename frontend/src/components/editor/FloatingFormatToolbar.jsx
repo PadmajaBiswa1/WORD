@@ -8,8 +8,9 @@ const LINE_SPACING_VALUES = [
   { value: '1', label: '1.0' },
   { value: '1.15', label: '1.15' },
   { value: '1.5', label: '1.5' },
-  { value: '2', label: '2.0' },
+  { value: '2', label: '2', label: '2.0' },
 ];
+
 
 const TEXT_COLORS = ['#111111', '#7f8c8d', '#c0392b', '#d35400', '#b8860b', '#1f6feb', '#8e44ad', '#16a085'];
 const HIGHLIGHT_COLORS = ['#fff59d', '#ffe08a', '#ffd6a5', '#c8f7c5', '#a8e0ff', '#f4c7f3', '#ffd1dc', '#d9f7be'];
@@ -78,6 +79,35 @@ function isImageSelection(editor) {
 export function FloatingFormatToolbar({ editor, scrollContainerRef }) {
   const { theme } = useUIStore();
   const { fontFamily, fontSize, toast } = useEditorStore();
+
+  const selectionSnapshotRef = useRef(null);
+
+  const snapshotSelection = useCallback(() => {
+    const sel = window.getSelection?.();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    selectionSnapshotRef.current = range.cloneRange();
+  }, []);
+
+  const restoreSelection = useCallback(() => {
+    const snap = selectionSnapshotRef.current;
+    const viewDom = editor?.view?.dom;
+    if (!snap || !viewDom) return false;
+
+    const sel = window.getSelection?.();
+    if (!sel) return false;
+
+    try {
+      const common = snap.commonAncestorContainer;
+      if (!viewDom.contains(common)) return false;
+      sel.removeAllRanges();
+      sel.addRange(snap);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [editor]);
+
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [anchor, setAnchor] = useState(null);
@@ -217,7 +247,16 @@ export function FloatingFormatToolbar({ editor, scrollContainerRef }) {
   };
 
   const cycleLineSpacing = (value) => {
-    updateParagraphStyle({ 'line-height': value });
+    if (!editor || !value) return;
+    snapshotSelection();
+
+    const restored = restoreSelection();
+    if (restored) {
+      updateParagraphStyle({ 'line-height': value });
+    }
+
+    // ensure focus after change
+    editor.view.focus();
   };
 
   const currentTextColor = editor?.getAttributes('textStyle')?.color || '';
@@ -231,24 +270,25 @@ export function FloatingFormatToolbar({ editor, scrollContainerRef }) {
   return createPortal(
     <div
       ref={toolbarRef}
-      onMouseDown={(event) => {
-        event.preventDefault();
-        pointerLockRef.current = true;
-        window.setTimeout(() => { pointerLockRef.current = false; }, 0);
-      }}
       style={{
         position: 'fixed',
         top: position.top,
         left: position.left,
         transform: `translate(-50%, ${visible ? '0' : '-6px'})`,
         opacity: visible ? 1 : 0,
-        pointerEvents: visible ? 'auto' : 'none',
+        pointerEvents: 'none',
         transition: 'opacity 160ms ease, transform 160ms ease',
         zIndex: 5000,
+        width: 'max-content',
         maxWidth: 'min(92vw, 1080px)',
       }}
     >
       <div
+        onMouseDown={(event) => {
+          event.preventDefault();
+          pointerLockRef.current = true;
+          window.setTimeout(() => { pointerLockRef.current = false; }, 0);
+        }}
         style={{
           display: 'flex',
           flexWrap: 'wrap',
@@ -263,6 +303,7 @@ export function FloatingFormatToolbar({ editor, scrollContainerRef }) {
             ? '0 20px 36px rgba(0, 0, 0, 0.38)'
             : '0 18px 32px rgba(0, 0, 0, 0.14)',
           backdropFilter: 'blur(10px)',
+          pointerEvents: visible ? 'auto' : 'none',
         }}
       >
         <FontFormattingControls

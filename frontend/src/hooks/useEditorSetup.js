@@ -3,9 +3,9 @@
 //  FontSize is implemented as a custom inline Extension so no
 //  extra npm package is required.
 // ═══════════════════════════════════════════════════════════════
-import { useEffect } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useEditor as useTiptap } from '@tiptap/react';
-import { Extension } from '@tiptap/core';
+import { Extension, Mark } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
@@ -29,7 +29,7 @@ import Superscript from '@tiptap/extension-superscript';
 import FontFamily from '@tiptap/extension-font-family';
 import Blockquote from '@tiptap/extension-blockquote';
 import { PageBreak } from '@/components/editor/PageBreak';
-import { useEditorStore, useDocumentStore } from '@/store';
+import { useEditorStore, useDocumentStore, useUIStore } from '@/store';
 
 const LANGUAGE_KEY = 'etherx-language';
 
@@ -118,58 +118,125 @@ const FontSize = Extension.create({
   },
 });
 
+// ── BlockStyle extension ─────────────────────────────────────
+// Allows paragraph, heading, and blockquote nodes to store and 
+// render inline style attributes (used for indentation and spacing).
+const BlockStyle = Extension.create({
+  name: 'blockStyle',
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph', 'heading', 'blockquote'],
+        attributes: {
+          style: {
+            default: null,
+            parseHTML: (element) => element.getAttribute('style'),
+            renderHTML: (attributes) =>
+              attributes.style ? { style: attributes.style } : {},
+          },
+        },
+      },
+    ];
+  },
+});
+
+// ── Track Changes marks ─────────────────────────────────────
+const Insertion = Mark.create({
+  name: 'insertion',
+  addOptions() {
+    return {
+      HTMLAttributes: {
+        class: 'etherx-insertion',
+        'data-mark': 'insertion',
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'ins' }, { tag: 'span[data-mark="insertion"]' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', HTMLAttributes, 0];
+  },
+});
+
+const Deletion = Mark.create({
+  name: 'deletion',
+  addOptions() {
+    return {
+      HTMLAttributes: {
+        class: 'etherx-deletion',
+        'data-mark': 'deletion',
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'del' }, { tag: 'span[data-mark="deletion"]' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', HTMLAttributes, 0];
+  },
+});
+
 // ── Hook ─────────────────────────────────────────────────────
 export function useEditorSetup() {
   const { setEditor, fontFamily, fontSize, spellCheck, beginProgrammaticChange } = useEditorStore();
   const { content } = useDocumentStore();
+  const { pageColumns } = useUIStore();
+  const isLocalChange = useRef(false);
 
-  const syncToolbarFormattingState = (instance) => {
+  const syncToolbarFormattingState = useCallback((instance) => {
     const attrs = instance.getAttributes('textStyle') || {};
-    const nextFamily = attrs.fontFamily || useEditorStore.getState().fontFamily;
+    const currentStore = useEditorStore.getState();
+    const nextFamily = attrs.fontFamily || currentStore.fontFamily;
     const rawSize = attrs.fontSize;
     const parsedSize = rawSize ? parseInt(String(rawSize), 10) : NaN;
     const nextSize = Number.isFinite(parsedSize)
       ? String(parsedSize)
-      : useEditorStore.getState().fontSize;
+      : currentStore.fontSize;
 
-    const state = useEditorStore.getState();
-    if (state.fontFamily !== nextFamily) state.setFontFamily(nextFamily);
-    if (state.fontSize !== nextSize) state.setFontSize(nextSize);
-  };
+    if (currentStore.fontFamily !== nextFamily) currentStore.setFontFamily(nextFamily);
+    if (currentStore.fontSize !== nextSize) currentStore.setFontSize(nextSize);
+  }, []);
+
+  const extensions = useMemo(() => [
+    StarterKit.configure({
+      history: { depth: 100 },
+      heading: { levels: [1, 2, 3, 4, 5, 6] },
+      blockquote: false,
+    }),
+    Blockquote.configure({
+      HTMLAttributes: {
+        class: 'etherx-blockquote',
+      },
+    }),
+    Underline,
+    TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote'] }),
+    TextStyle,
+    Color,
+    FontFamily,
+    FontSize,
+    Highlight.configure({ multicolor: true }),
+    Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
+    ResizableImage.configure({ allowBase64: true }),
+    Table.configure({ resizable: true }),
+    TableRow, TableCell, TableHeader,
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    CharacterCount,
+    Placeholder.configure({ placeholder: 'Begin your document…' }),
+    Typography,
+    Focus.configure({ className: 'has-focus', mode: 'all' }),
+    Subscript,
+    Superscript,
+    PageBreak,
+    BlockStyle,
+    Insertion,
+    Deletion,
+  ], []);
 
   const editor = useTiptap({
-    extensions: [
-      StarterKit.configure({
-        history: { depth: 100 },
-        heading: { levels: [1, 2, 3, 4, 5, 6] },
-        blockquote: false, // Disable from StarterKit, we'll use custom config
-      }),
-      Blockquote.configure({
-        HTMLAttributes: {
-          class: 'etherx-blockquote',
-        },
-      }),
-      Underline,
-      TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote'] }),
-      TextStyle,   // required by Color, FontFamily, FontSize
-      Color,
-      FontFamily,
-      FontSize,    // custom inline extension — setFontSize() command available
-      Highlight.configure({ multicolor: true }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
-      ResizableImage.configure({ allowBase64: true }),
-      Table.configure({ resizable: true }),
-      TableRow, TableCell, TableHeader,
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      CharacterCount,
-      Placeholder.configure({ placeholder: 'Begin your document…' }),
-      Typography,
-      Focus.configure({ className: 'has-focus', mode: 'all' }),
-      Subscript,
-      Superscript,
-      PageBreak,
-    ],
+    extensions,
     content: content || '<p></p>',
     autofocus: true,
     editorProps: {
@@ -180,34 +247,46 @@ export function useEditorSetup() {
     onUpdate: ({ editor }) => {
       const { isProgrammaticChange, programmaticContent, endProgrammaticChange } = useEditorStore.getState();
       const html = editor.getHTML();
+      
       if (isProgrammaticChange && (programmaticContent === null || programmaticContent === html)) {
         endProgrammaticChange();
         useDocumentStore.getState().applyRemoteUpdate({ content: html });
         return;
       }
+      
       if (isProgrammaticChange) endProgrammaticChange();
+      
+      // Mark this as a local change to prevent the sync-back effect from resetting the editor
+      isLocalChange.current = true;
       useDocumentStore.getState().setContent(html);
       syncToolbarFormattingState(editor);
+      
+      // Clear the local change flag after the state has had a chance to update
+      requestAnimationFrame(() => {
+        isLocalChange.current = false;
+      });
     },
     onSelectionUpdate: ({ editor }) => {
       syncToolbarFormattingState(editor);
     },
-  });
+  }, [extensions]);
 
-  // Sync store changes to editor global styles and selection
+  // Sync store changes to editor global styles
   useEffect(() => {
     if (!editor) return;
-
-    // Apply to the current selection or typing cursor so formatting persists for new text.
-    if (!editor.isDestroyed) {
-      editor.chain().focus().setFontFamily(fontFamily).setFontSize(fontSize + 'pt').run();
-    }
 
     // Update global editor attributes
     const stack = FONT_STACK_BY_FAMILY[fontFamily] || `"${fontFamily}", "Noto Sans", "Segoe UI", "Nirmala UI", "Microsoft YaHei", "Malgun Gothic", sans-serif`;
     editor.view.dom.style.setProperty('font-family', stack);
     editor.view.dom.style.setProperty('font-size', `${fontSize}pt`);
   }, [editor, fontFamily, fontSize]);
+
+  // Sync layout columns
+  useEffect(() => {
+    if (!editor) return;
+    editor.view.dom.style.setProperty('column-count', pageColumns > 1 ? String(pageColumns) : 'auto');
+    editor.view.dom.style.setProperty('column-gap', pageColumns > 1 ? '40px' : 'normal');
+  }, [editor, pageColumns]);
 
   useEffect(() => {
     if (!editor?.view?.dom || typeof window === 'undefined') return;
@@ -225,7 +304,13 @@ export function useEditorSetup() {
   // When document content is loaded externally (open file/doc), apply it to editor.
   useEffect(() => {
     if (!editor || typeof content !== 'string') return;
+    
+    // Crucial: Skip if this content update originated from this editor instance
+    if (isLocalChange.current) return;
+    
+    // Skip if content is already in sync
     if (editor.getHTML() === content) return;
+    
     beginProgrammaticChange(content);
     editor.commands.setContent(content || '<p></p>', false);
   }, [editor, content, beginProgrammaticChange]);
@@ -234,6 +319,17 @@ export function useEditorSetup() {
     if (editor) setEditor(editor);
     return () => { if (editor) setEditor(null); };
   }, [editor, setEditor]);
+
+  // Handle Track Changes state toggle
+  const trackChanges = useDocumentStore((s) => s.trackChanges);
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    if (trackChanges) {
+      editor.chain().focus().setMark('insertion').run();
+    } else {
+      editor.chain().focus().unsetMark('insertion').run();
+    }
+  }, [editor, trackChanges]);
 
   return editor;
 }

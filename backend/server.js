@@ -34,12 +34,11 @@ const configuredFrontendUrls = String(process.env.FRONTEND_URL || '')
   .filter(Boolean);
 const allowedOrigins = new Set([
   ...configuredFrontendUrls,
-  'http://localhost:3000',
   'http://localhost:3001',
-  'http://localhost:5173',
 ]);
 
 connectDB();
+
 
 app.use(cors({
   origin(origin, callback) {
@@ -73,13 +72,29 @@ app.use('/api', (req, res) => {
   });
 });
 
-const PORT = Number(process.env.PORT || 5000);
-const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const BASE_PORT = Number(process.env.PORT || 3001);
+const MAX_PORT_ATTEMPTS = Number(process.env.PORT_RETRY_ATTEMPTS || 20);
 
-server.on('error', (error) => {
-  if (error?.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Set PORT to another value in backend/.env.`);
-    process.exit(1);
-  }
-  throw error;
-});
+function startServer(port, attempt = 0) {
+  const server = app.listen(port, () => {
+    const extraInfo = port !== BASE_PORT ? ` (fallback from ${BASE_PORT})` : '';
+    console.log(`Server running on port ${port}${extraInfo}`);
+  });
+
+  server.on('error', (error) => {
+    if (error?.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
+      const nextPort = port + 1;
+      console.warn(`Port ${port} is in use, retrying on ${nextPort}...`);
+      return startServer(nextPort, attempt + 1);
+    }
+
+    if (error?.code === 'EADDRINUSE') {
+      console.error(`Unable to find a free port after ${MAX_PORT_ATTEMPTS + 1} attempts (starting at ${BASE_PORT}).`);
+      process.exit(1);
+    }
+
+    throw error;
+  });
+}
+
+startServer(BASE_PORT);

@@ -1,14 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useUIStore, useDocumentStore } from '@/store';
+import { useUIStore } from '@/store';
+import { MARGIN_MAP } from '@/utils/pageLayout';
 
-const PIXELS_PER_INCH = 96; // Standard screen DPI
+const PIXELS_PER_INCH = 96;
 const PIXELS_PER_CM = PIXELS_PER_INCH / 2.54;
 
+function getNearestMarginPreset(px) {
+  const entries = Object.entries(MARGIN_MAP);
+  let nearest = entries[0];
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  entries.forEach((entry) => {
+    const distance = Math.abs(entry[1] - px);
+    if (distance < bestDistance) {
+      nearest = entry;
+      bestDistance = distance;
+    }
+  });
+
+  return nearest[0];
+}
+
 export function HorizontalRuler() {
-  const { zoom } = useUIStore();
-  const { margins } = useDocumentStore();
+  const { zoom, pageMargin, setPageMargin, toast } = useUIStore();
   const [draggingMargin, setDraggingMargin] = useState(null);
   const rulerRef = useRef(null);
+  const dragPositionRef = useRef(null);
 
   const scale = zoom / 100;
   const rulerHeight = 24;
@@ -16,42 +33,53 @@ export function HorizontalRuler() {
   const minorTickHeight = 4;
   const inchWidth = PIXELS_PER_INCH * scale;
   const cmWidth = PIXELS_PER_CM * scale;
-  const unit = 'inch'; // 'inch' or 'cm'
+  const unit = 'inch';
   const unitWidth = unit === 'inch' ? inchWidth : cmWidth;
-  const label = unit === 'inch' ? 'in' : 'cm';
 
-  // Scaled margins
-  const leftMargin = (margins?.left || 48) * scale;
-  const rightMargin = (margins?.right || 48) * scale;
+  const marginPx = (MARGIN_MAP[pageMargin] || MARGIN_MAP.normal) * scale;
+  const leftMargin = marginPx;
+  const rightMargin = marginPx;
+
+  const commitMargin = () => {
+    if (!draggingMargin || !rulerRef.current || dragPositionRef.current === null) return;
+
+    const rect = rulerRef.current.getBoundingClientRect();
+    const rawPx = draggingMargin === 'right'
+      ? rect.width - dragPositionRef.current
+      : dragPositionRef.current;
+    const nextMargin = getNearestMarginPreset(Math.max(0, rawPx / scale));
+
+    setPageMargin(nextMargin);
+    toast(`Margin: ${nextMargin}`, 'info');
+  };
 
   const handleMouseDown = (marginType) => {
     setDraggingMargin(marginType);
+    dragPositionRef.current = null;
   };
 
   const handleMouseUp = () => {
+    commitMargin();
     setDraggingMargin(null);
+    dragPositionRef.current = null;
   };
 
   const handleMouseMove = (e) => {
     if (!draggingMargin || !rulerRef.current) return;
 
     const rect = rulerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-
-    // Convert pixels to document units and update margins
-    // This would integrate with useDocumentStore to persist margins
-    console.log(`${draggingMargin}: ${x / scale}px`);
+    dragPositionRef.current = e.clientX - rect.left;
   };
 
   useEffect(() => {
-    if (draggingMargin) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
+    if (!draggingMargin) return undefined;
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
   }, [draggingMargin]);
 
   return (
@@ -69,21 +97,18 @@ export function HorizontalRuler() {
         userSelect: 'none',
       }}
     >
-      {/* Ruler markings */}
       <svg
         width="100%"
         height={rulerHeight}
         style={{ position: 'absolute', left: 0, top: 0 }}
       >
-        {/* Draw tick marks and labels */}
         {Array.from({ length: Math.ceil(1000 / unitWidth) }).map((_, i) => {
           const x = i * unitWidth;
-          const isMajor = i % 1 === 0; // Every inch/cm
-          const isSubMajor = i % 0.5 === 0; // Half inch/cm
+          const isMajor = i % 1 === 0;
+          const isSubMajor = i % 0.5 === 0;
 
           return (
             <g key={i}>
-              {/* Major tick */}
               {isMajor && (
                 <>
                   <line
@@ -105,7 +130,6 @@ export function HorizontalRuler() {
                   </text>
                 </>
               )}
-              {/* Half-inch/cm tick */}
               {isSubMajor && !isMajor && (
                 <line
                   x1={x}
@@ -121,7 +145,6 @@ export function HorizontalRuler() {
         })}
       </svg>
 
-      {/* Left margin handle */}
       <div
         onMouseDown={() => handleMouseDown('left')}
         style={{
@@ -138,7 +161,6 @@ export function HorizontalRuler() {
         title="Drag to adjust left margin"
       />
 
-      {/* Right margin handle */}
       <div
         onMouseDown={() => handleMouseDown('right')}
         style={{
