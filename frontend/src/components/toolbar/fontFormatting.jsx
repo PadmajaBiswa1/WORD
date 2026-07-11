@@ -148,7 +148,7 @@ export function useFontFormattingControls(editor) {
   }, [editor, run, setFontSize, snapshotSelection, wrapSelectedRange]);
 
 
-  return { applyFontFamily, applyFontSize };
+  return { applyFontFamily, applyFontSize, snapshotSelection, restoreSelection };
 }
 
 export function FontFormattingControls({
@@ -159,14 +159,26 @@ export function FontFormattingControls({
   sizeWidth = 64,
   searchable = true,
   searchPlaceholder = 'Search fonts...',
+  applyFontFamily: applyFontFamilyProp,
+  applyFontSize: applyFontSizeProp,
+  onFocus,
 }) {
-  const { applyFontFamily, applyFontSize } = useFontFormattingControls(editor);
+  const controls = useFontFormattingControls(editor);
+  const applyFontFamily = applyFontFamilyProp || controls.applyFontFamily;
+  const applyFontSize = applyFontSizeProp || controls.applyFontSize;
+  const snapshotSelection = controls.snapshotSelection;
+
+  const handleFocus = (e) => {
+    snapshotSelection();
+    onFocus?.(e);
+  };
 
   return (
     <>
       <Select
         value={fontFamily}
         onChange={applyFontFamily}
+        onFocus={handleFocus}
         options={FONT_FAMILY_OPTIONS}
         width={familyWidth}
         title="Font Family"
@@ -176,6 +188,7 @@ export function FontFormattingControls({
       <Select
         value={fontSize}
         onChange={applyFontSize}
+        onFocus={handleFocus}
         options={FONT_SIZE_OPTIONS}
         width={sizeWidth}
         title="Font Size"

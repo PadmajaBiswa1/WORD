@@ -3,10 +3,38 @@
 // ═══════════════════════════════════════════════════════════════
 import { create } from 'zustand';
 
+const DESIGN_STORAGE_PREFIX = 'etherx-doc-design:';
+
+function getDefaultPageColor() {
+  try {
+    return localStorage.getItem('etherx-theme') === 'dark' ? '#1a1a1a' : '#fdfbf7';
+  } catch {
+    return '#fdfbf7';
+  }
+}
+
+const baseDesignState = () => ({
+  pageColor: getDefaultPageColor(),
+  pageColorMode: 'theme',
+  pageFillImage: '',
+  borderSetting: 'box',
+  borderStyle: 'solid',
+  borderColor: '#6f5320',
+  borderWidth: 1,
+  pageShadow: 'var(--shadow-page)',
+  accent: '#c9a84c',
+  heading: '#c9a84c',
+  subtle: '#444444',
+  font: 'Crimson Pro',
+  spacing: '1.7',
+  effect: 'none',
+});
+
 const baseDocumentState = () => ({
   id: null,
   title: 'Untitled Document',
   content: '',
+  design: baseDesignState(),
   headerFooter: {
     headerText: '',
     headerAlign: 'Center',
@@ -33,8 +61,29 @@ const baseDocumentState = () => ({
   pageThumbnails: {},
 });
 
+function readStoredDesign(docId) {
+  if (typeof window === 'undefined' || !docId) return null;
+  try {
+    const raw = window.localStorage.getItem(`${DESIGN_STORAGE_PREFIX}${docId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredDesign(docId, design) {
+  if (typeof window === 'undefined' || !docId) return;
+  try {
+    window.localStorage.setItem(`${DESIGN_STORAGE_PREFIX}${docId}`, JSON.stringify(design || {}));
+  } catch {
+    // ignore storage errors
+  }
+}
+
 /* ── Document Store ─────────────────────────────────────────── */
-export const useDocumentStore = create((set) => ({
+export const useDocumentStore = create((set, get) => ({
     ...baseDocumentState(),
 
     setId: (id) => set({ id }),
@@ -44,6 +93,10 @@ export const useDocumentStore = create((set) => ({
         id: doc.id ?? doc._id ?? state.id ?? null,
         title: doc.title || 'Untitled Document',
         content: doc.content ?? '<p></p>',
+        design: {
+          ...state.design,
+          ...(doc.design || doc.pageDesign || readStoredDesign(doc.id ?? doc._id) || {}),
+        },
         headerFooter: {
           ...state.headerFooter,
           ...(doc.headerFooter || {}),
@@ -62,6 +115,7 @@ export const useDocumentStore = create((set) => ({
       set((state) => ({
         title: patch.title ?? state.title,
         content: typeof patch.content === 'string' ? patch.content : state.content,
+        design: patch.design ? { ...state.design, ...patch.design } : state.design,
         headerFooter: patch.headerFooter ? { ...state.headerFooter, ...patch.headerFooter } : state.headerFooter,
         comments: Array.isArray(patch.comments) ? patch.comments : state.comments,
         trackChanges: typeof patch.trackChanges === 'boolean' ? patch.trackChanges : state.trackChanges,
@@ -73,6 +127,15 @@ export const useDocumentStore = create((set) => ({
 
     setTitle:    (title)   => set({ title,   isDirty: true }),
     setContent:  (content) => set({ content, isDirty: true, updatedAt: new Date() }),
+    setDesign:   (design = {}) => set((state) => {
+      const nextDesign = { ...state.design, ...design };
+      writeStoredDesign(state.id, nextDesign);
+      return {
+        design: nextDesign,
+        isDirty: true,
+        updatedAt: new Date(),
+      };
+    }),
     setHeaderFooter: (headerFooter = {}) =>
       set((state) => ({
         headerFooter: { ...state.headerFooter, ...headerFooter },
@@ -112,7 +175,17 @@ export const useDocumentStore = create((set) => ({
     deleteComment: (id) => set((s) => ({ comments: s.comments.filter((c) => c.id !== id), isDirty: true, updatedAt: new Date() })),
     resolveComment: (id) => set((s) => ({ comments: s.comments.map((c) => c.id === id ? { ...c, resolved: true } : c), isDirty: true, updatedAt: new Date() })),
     toggleTrackChanges: () => set((s) => ({ trackChanges: !s.trackChanges, isDirty: true, updatedAt: new Date() })),
-    reset: () => set(baseDocumentState()),
+    reset: () => {
+      const currentId = get().id;
+      if (currentId) {
+        try {
+          window.localStorage.removeItem(`${DESIGN_STORAGE_PREFIX}${currentId}`);
+        } catch {
+          // ignore storage errors
+        }
+      }
+      set(baseDocumentState());
+    },
 }));
 
 /* ── UI Store ───────────────────────────────────────────────── */

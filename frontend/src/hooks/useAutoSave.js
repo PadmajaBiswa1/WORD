@@ -15,7 +15,7 @@ export function useAutoSave() {
   const save = useCallback(async () => {
     const store = useDocumentStore.getState();
     if (!store) return;
-    const { id, title, content: c, comments, trackChanges, isDirty: dirty, setSaving, setLastSaved } = store;
+    const { id, title, content: c, design, comments, trackChanges, isDirty: dirty, setSaving, setLastSaved } = store;
     
     if (!id) {
       console.warn('⚠️ Cannot save: no document ID');
@@ -30,7 +30,7 @@ export function useAutoSave() {
     setSaving(true);
     try {
       console.log(`💾 Saving document ${id}: "${title}" (${c?.length || 0} chars)`);
-      await documentApi.save(id, { title, content: c, comments, trackChanges });
+      await documentApi.save(id, { title, content: c, design, comments, trackChanges });
       console.log(`✅ Document ${id} saved successfully`);
       setLastSaved();
       toast('Document saved', 'success');

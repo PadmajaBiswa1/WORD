@@ -5,6 +5,25 @@ const crypto = require('crypto');
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DATA_FILE = path.join(DATA_DIR, 'documents.json');
 
+function defaultDesign() {
+  return {
+    pageColor: '#fdfbf7',
+    pageColorMode: 'theme',
+    pageFillImage: '',
+    borderSetting: 'box',
+    borderStyle: 'solid',
+    borderColor: '#6f5320',
+    borderWidth: 1,
+    pageShadow: 'var(--shadow-page)',
+    accent: '#c9a84c',
+    heading: '#c9a84c',
+    subtle: '#444444',
+    font: 'Crimson Pro',
+    spacing: '1.7',
+    effect: 'none',
+  };
+}
+
 function ensureStore() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) {
@@ -57,6 +76,9 @@ function normalizeDoc(document) {
     versions: Array.isArray(document.versions) ? document.versions : [],
     comments: Array.isArray(document.comments) ? document.comments : [],
     trackChanges: Boolean(document.trackChanges),
+    design: document.design && typeof document.design === 'object'
+      ? { ...defaultDesign(), ...document.design }
+      : defaultDesign(),
     // IPFS fields
     ipfsHash: document.ipfsHash || null,
     ipfsGatewayUrl: document.ipfsGatewayUrl || null,
@@ -99,6 +121,7 @@ function createDocument(input = {}, user = {}) {
     versions: [],
     comments: Array.isArray(input.comments) ? input.comments : [],
     trackChanges: Boolean(input.trackChanges),
+    design: input.design && typeof input.design === 'object' ? { ...defaultDesign(), ...input.design } : defaultDesign(),
   });
   store.documents.unshift(doc);
   writeStore(store);
@@ -118,6 +141,9 @@ function updateDocument(id, input = {}, options = {}) {
   if (typeof input.content === 'string') next.content = input.content;
   if (Array.isArray(input.comments)) next.comments = input.comments;
   if (typeof input.trackChanges === 'boolean') next.trackChanges = input.trackChanges;
+  if (input.design && typeof input.design === 'object') {
+    next.design = { ...defaultDesign(), ...(current.design || {}), ...input.design };
+  }
   
   // Handle IPFS fields
   if (typeof input.ipfsHash === 'string' || input.ipfsHash === null) next.ipfsHash = input.ipfsHash || null;
@@ -128,7 +154,8 @@ function updateDocument(id, input = {}, options = {}) {
     typeof input.title === 'string'
     || typeof input.content === 'string'
     || Array.isArray(input.comments)
-    || typeof input.trackChanges === 'boolean';
+    || typeof input.trackChanges === 'boolean'
+    || (input.design && typeof input.design === 'object');
 
   if (hasCollabMutation) {
     next.revision = Number(current.revision || 0) + 1;

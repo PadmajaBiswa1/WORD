@@ -16,6 +16,14 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useUIStore, useDocumentStore } from '@/store';
 import { documentApi } from '@/services/api';
 
+function getDefaultPageColor() {
+  try {
+    return localStorage.getItem('etherx-theme') === 'dark' ? '#1a1a1a' : '#fdfbf7';
+  } catch {
+    return '#fdfbf7';
+  }
+}
+
 export function EditorPage({ isShared = false }) {
   const { id: routeId } = useParams();
   const fullscreen = useUIStore((s) => s.fullscreen);
@@ -59,7 +67,11 @@ export function EditorPage({ isShared = false }) {
       console.log('📝 Creating new blank document...');
       reset();
       documentApi
-        .create({ title: 'Untitled Document', content: '<p></p>' })
+        .create({
+          title: 'Untitled Document',
+          content: '<p></p>',
+          design: { pageColor: getDefaultPageColor(), pageColorMode: 'theme' },
+        })
         .then((created) => {
           const newId = String(created?.id || created?._id || '');
           if (newId) {

@@ -7,11 +7,29 @@ import { HorizontalRuler } from './HorizontalRuler';
 import { FloatingFormatToolbar } from './FloatingFormatToolbar';
 import { PictureFormatToolbar } from './PictureFormatToolbar';
 import { useUIStore, useDocumentStore, useCollaborationStore } from '@/store';
-import { getLayoutMetrics } from '@/utils/pageLayout';
+import { getLayoutMetrics, PAGE_GAP, PAGE_BORDER_WIDTH } from '@/utils/pageLayout';
 
 const HEADER_FOOTER_STORAGE_KEY = 'etherx-header-footer-meta';
+const THEME_DEFAULT_PAGE_COLORS = new Set(['#ffffff', '#fff', '#fdfbf7', '#1a1a1a']);
 
-const PAGE_GAP = 18;       // Visual gap between pages in print-layout view
+function normalizeColor(value = '') {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isThemeDefaultPageColor(value) {
+  return THEME_DEFAULT_PAGE_COLORS.has(normalizeColor(value));
+}
+
+function getThemePageColor(theme) {
+  return theme === 'dark' ? '#1a1a1a' : '#fdfbf7';
+}
+
+function getResolvedPageFill(design = {}) {
+  const color = normalizeColor(design.pageColor);
+  if (design.pageColorMode === 'custom') return color || 'var(--bg-page)';
+  if (design.pageColorMode === 'theme' || !color || isThemeDefaultPageColor(color)) return 'var(--bg-page)';
+  return color;
+}
 
 function colorFromString(seed = '') {
   let hash = 0;
@@ -28,7 +46,8 @@ function colorFromString(seed = '') {
 
 export function EditorCanvas() {
   const editor    = useEditorSetup();
-  const { zoom, setActivePage, rulerVisible, pageSize, pageOrientation, pageMargin, pageColumns }  = useUIStore();
+  const { zoom, setActivePage, rulerVisible, pageSize, pageOrientation, pageMargin, pageColumns, theme }  = useUIStore();
+  const design = useDocumentStore((s) => s.design);
   const { setStats, headerFooter, setHeaderFooter } = useDocumentStore();
   const collaborators = useCollaborationStore((s) => s.collaborators);
   const sessionId = useCollaborationStore((s) => s.sessionId);
@@ -68,7 +87,7 @@ export function EditorCanvas() {
     padding: layoutMetrics.padding * scale,
     pageGap: PAGE_GAP * scale,
     pageStep: (layoutMetrics.pageHeight + PAGE_GAP) * scale,
-    contentHeight: Math.max(1, (layoutMetrics.contentHeight - PAGE_GAP) * scale),
+    contentHeight: Math.max(1, layoutMetrics.contentHeight * scale - (PAGE_BORDER_WIDTH * 2)),
     scrollPaddingY: 40 * scale,
     scrollPaddingX: 20 * scale,
   }), [layoutMetrics, scale]);
@@ -90,11 +109,8 @@ export function EditorCanvas() {
      const markerEls = wrapRef.current?.querySelectorAll('div[data-page-break="true"], .etherx-page-break');
      const markerCount = markerEls ? markerEls.length : 0;
 
-     // Each marker implies at least one additional page.
-     // Example: 0 markers => 1 page; 1 marker => 2 pages; etc.
-     const markerBased = Math.max(1, Math.min(500, markerCount + 1));
-
-     const pages = Math.max(heightBased, markerBased);
+    // Once pagination has materialized page break nodes, trust them over height heuristics.
+    const pages = markerCount > 0 ? Math.max(1, Math.min(500, markerCount + 1)) : heightBased;
 
      const text = proseEl.innerText || '';
      const words = text.trim().split(/\s+/).filter(Boolean).length;
@@ -113,6 +129,23 @@ export function EditorCanvas() {
   useEffect(() => {
     recalcPages();
   }, [recalcPages, zoom]);
+
+  useEffect(() => {
+    const page = wrapRef.current;
+    if (!page || !design) return;
+
+    const pageFill = getResolvedPageFill(design);
+    const pageColorMode = pageFill === 'var(--bg-page)' ? 'theme' : 'custom';
+
+    page.dataset.pageColorMode = pageColorMode;
+    page.dataset.pageColor = pageColorMode === 'theme' ? getThemePageColor(theme) : pageFill;
+    page.style.setProperty('--etherx-page-fill', pageFill);
+    page.style.setProperty('--etherx-page-fill-image', design.pageFillImage || 'none');
+    page.style.setProperty('--etherx-page-border-style', design.borderStyle || 'solid');
+    page.style.setProperty('--etherx-page-border-color', design.borderColor || 'transparent');
+    page.style.setProperty('--etherx-page-border-width', `${Number(design.borderWidth ?? 1)}px`);
+    page.style.setProperty('--etherx-page-shadow', design.pageShadow || 'var(--shadow-page)');
+  }, [design, theme]);
 
   useEffect(() => {
     const onResize = () => recalcPages();
@@ -275,36 +308,58 @@ export function EditorCanvas() {
           minHeight: Math.min(100000, scaledDimensions.pageStep * Math.max(1, pageCount) + scaledDimensions.pageGap),
           background: 'transparent',
           borderRadius: 2,
+          '--etherx-page-fill': 'var(--bg-page)',
+          '--etherx-page-border-width': '1px',
+          '--etherx-page-border-style': 'solid',
+          '--etherx-page-border-color': 'var(--page-border)',
+          '--etherx-page-shadow': 'var(--shadow-page)',
+          '--etherx-page-content-height': `${scaledDimensions.contentHeight}px`,
           // The frames already include the page background; padding should affect
           // where ProseMirror text starts relative to the page edges.
           padding: `${scaledDimensions.padding}px`,
           position: 'relative',
+          isolation: 'isolate',
           wordBreak: 'break-word',
           overflowWrap: 'break-word',
           overflowX: 'hidden',
           transition: 'all 0.15s ease-out',
         }}
       >
-        {Array.from({ length: pageCount }).map((_, i) => (
-          <div
-            key={`page-frame-${i}`}
-            aria-hidden="true"
-            data-etherx-page-frame="true"
-            style={{
-              position: 'absolute',
-              top: i * scaledDimensions.pageStep,
-              left: 0,
-              width: '100%',
-              // Keep frame height consistent with anchors so layout math stays stable
-              height: scaledDimensions.pageHeight,
-              background: 'var(--bg-page)',
-              boxShadow: 'var(--shadow-page)',
-              borderRadius: 2,
-              pointerEvents: 'none',
-              zIndex: 0,
-            }}
-          />
-        ))}
+        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+          {Array.from({ length: pageCount }).map((_, i) => (
+            <div
+              key={`page-frame-bg-${i}`}
+              data-etherx-page-frame="true"
+              data-etherx-page-surface="background"
+              style={{
+                position: 'absolute',
+                top: i * scaledDimensions.pageStep,
+                left: 0,
+                width: '100%',
+                height: scaledDimensions.pageHeight,
+                background: 'var(--etherx-page-fill, var(--bg-page))',
+                backgroundImage: 'var(--etherx-page-fill-image, none)',
+                borderRadius: 2,
+              }}
+            />
+          ))}
+        </div>
+
+        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
+          {Array.from({ length: Math.max(0, pageCount - 1) }).map((_, i) => (
+            <div
+              key={`page-gap-${i}`}
+              style={{
+                position: 'absolute',
+                top: i * scaledDimensions.pageStep + scaledDimensions.pageHeight,
+                left: 0,
+                width: '100%',
+                height: scaledDimensions.pageGap,
+                background: 'transparent',
+              }}
+            />
+          ))}
+        </div>
 
         {Array.from({ length: pageCount }).map((_, i) => (
           <div
@@ -328,6 +383,116 @@ export function EditorCanvas() {
 
         <FloatingFormatToolbar editor={editor} scrollContainerRef={scrollRef} />
         <PictureFormatToolbar editor={editor} scrollContainerRef={scrollRef} />
+
+        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}>
+          {Array.from({ length: pageCount }).map((_, i) => (
+            <div
+              key={`page-frame-overlay-${i}`}
+              data-etherx-page-surface="overlay"
+              style={{
+                position: 'absolute',
+                top: i * scaledDimensions.pageStep,
+                left: 0,
+                width: '100%',
+                height: scaledDimensions.pageHeight,
+                background: 'transparent',
+                border: 'var(--etherx-page-border-width, 1px) var(--etherx-page-border-style, solid) var(--etherx-page-border-color, var(--page-border))',
+                boxShadow: 'var(--etherx-page-shadow, var(--shadow-page))',
+                borderRadius: 2,
+                boxSizing: 'border-box',
+              }}
+            />
+          ))}
+
+          {Array.from({ length: pageCount }).map((_, i) => (
+            <div
+              key={`page-index-${i}`}
+              style={{
+                position: 'absolute',
+                top: i * scaledDimensions.pageStep + scaledDimensions.pageHeight - Math.max(24, scaledDimensions.padding * 0.25),
+                left: 0,
+                right: 0,
+                textAlign: 'center',
+                fontSize: 10 * scale,
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-ui)',
+                pointerEvents: 'none',
+                userSelect: 'none',
+              }}
+            >
+              {i + 1}
+            </div>
+          ))}
+
+          {headerFooter?.headerText ? Array.from({ length: pageCount }).map((_, i) => (
+            <div
+              key={`header-${i}`}
+              style={{
+                position: 'absolute',
+                top: i * scaledDimensions.pageStep + Math.max(16, scaledDimensions.padding * 0.22),
+                left: scaledDimensions.padding,
+                right: scaledDimensions.padding,
+                textAlign: String(headerFooter.headerAlign || 'Center').toLowerCase(),
+                fontSize: 10 * scale,
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-ui)',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                borderBottom: '1px solid rgba(140,140,140,0.45)',
+                paddingBottom: 6,
+              }}
+            >
+              {headerFooter.headerText}
+            </div>
+          )) : null}
+
+          {headerFooter?.footerText ? Array.from({ length: pageCount }).map((_, i) => (
+            <div
+              key={`footer-${i}`}
+              style={{
+                position: 'absolute',
+                top: i * scaledDimensions.pageStep + scaledDimensions.pageHeight - Math.max(32, scaledDimensions.padding * 0.3),
+                left: scaledDimensions.padding,
+                right: scaledDimensions.padding,
+                textAlign: String(headerFooter.footerAlign || 'Center').toLowerCase(),
+                fontSize: 10 * scale,
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-ui)',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                borderTop: '1px solid rgba(140,140,140,0.45)',
+                paddingTop: 6,
+              }}
+            >
+              {headerFooter.footerText}
+            </div>
+          )) : null}
+
+          {headerFooter?.pageNumberEnabled ? Array.from({ length: pageCount }).map((_, i) => {
+            const [vpos, halign] = String(headerFooter.pageNumberStyle || 'bottom-center').split('-');
+            const isTop = vpos === 'top';
+            const pageNumber = Number(headerFooter.pageNumberStart || 1) + i;
+            return (
+              <div
+                key={`pagenum-${i}`}
+                style={{
+                  position: 'absolute',
+                  top: isTop ? (i * scaledDimensions.pageStep + Math.max(32, scaledDimensions.padding * 0.3)) : (i * scaledDimensions.pageStep + scaledDimensions.pageHeight - Math.max(28, scaledDimensions.padding * 0.25)),
+                  left: scaledDimensions.padding,
+                  right: scaledDimensions.padding,
+                  textAlign: halign,
+                  fontSize: 10 * scale,
+                  color: 'var(--text-muted)',
+                  fontFamily: 'var(--font-ui)',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+              >
+                Page {pageNumber}
+              </div>
+            );
+          }) : null}
+        </div>
 
         {/* Remote collaborator selections */}
         {remoteSelections.map((selection) => (
@@ -393,96 +558,6 @@ export function EditorCanvas() {
             </div>
           </div>
         ))}
-
-        {/* Page number labels */}
-        {Array.from({ length: pageCount }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              position:      'absolute',
-              top:           (i + 1) * scaledDimensions.pageStep - (scaledDimensions.pageGap * 0.55),
-              left:          0,
-              right:         0,
-              textAlign:     'center',
-              fontSize:      10 * scale,
-              color:         'var(--text-muted)',
-              fontFamily:    'var(--font-ui)',
-              pointerEvents: 'none',
-              userSelect:    'none',
-            }}
-          >
-            {i + 1}
-          </div>
-        ))}
-
-        {headerFooter?.headerText ? Array.from({ length: pageCount }).map((_, i) => (
-          <div
-            key={`header-${i}`}
-            style={{
-              position: 'absolute',
-              top: i * scaledDimensions.pageStep + Math.max(16, scaledDimensions.padding * 0.22),
-              left: scaledDimensions.padding,
-              right: scaledDimensions.padding,
-              textAlign: String(headerFooter.headerAlign || 'Center').toLowerCase(),
-              fontSize: 10 * scale,
-              color: 'var(--text-muted)',
-              fontFamily: 'var(--font-ui)',
-              pointerEvents: 'none',
-              userSelect: 'none',
-              borderBottom: '1px solid rgba(140,140,140,0.45)',
-              paddingBottom: 6,
-            }}
-          >
-            {headerFooter.headerText}
-          </div>
-        )) : null}
-
-        {headerFooter?.footerText ? Array.from({ length: pageCount }).map((_, i) => (
-          <div
-            key={`footer-${i}`}
-            style={{
-              position: 'absolute',
-              top: (i + 1) * scaledDimensions.pageStep - Math.max(32, scaledDimensions.padding * 0.3),
-              left: scaledDimensions.padding,
-              right: scaledDimensions.padding,
-              textAlign: String(headerFooter.footerAlign || 'Center').toLowerCase(),
-              fontSize: 10 * scale,
-              color: 'var(--text-muted)',
-              fontFamily: 'var(--font-ui)',
-              pointerEvents: 'none',
-              userSelect: 'none',
-              borderTop: '1px solid rgba(140,140,140,0.45)',
-              paddingTop: 6,
-            }}
-          >
-            {headerFooter.footerText}
-          </div>
-        )) : null}
-
-        {headerFooter?.pageNumberEnabled ? Array.from({ length: pageCount }).map((_, i) => {
-          const [vpos, halign] = String(headerFooter.pageNumberStyle || 'bottom-center').split('-');
-          const isTop = vpos === 'top';
-          const pageNumber = Number(headerFooter.pageNumberStart || 1) + i;
-          return (
-            <div
-              key={`pagenum-${i}`}
-              style={{
-                position: 'absolute',
-                top: isTop ? (i * scaledDimensions.pageStep + Math.max(32, scaledDimensions.padding * 0.3)) : ((i + 1) * scaledDimensions.pageStep - Math.max(28, scaledDimensions.padding * 0.25)),
-                left: scaledDimensions.padding,
-                right: scaledDimensions.padding,
-                textAlign: halign,
-                fontSize: 10 * scale,
-                color: 'var(--text-muted)',
-                fontFamily: 'var(--font-ui)',
-                pointerEvents: 'none',
-                userSelect: 'none',
-              }}
-            >
-              Page {pageNumber}
-            </div>
-          );
-        }) : null}
       </div>
       </div>
     </div>

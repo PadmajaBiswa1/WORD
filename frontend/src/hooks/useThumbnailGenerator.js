@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import { useUIStore, useDocumentStore, useEditorStore } from '@/store';
-import { getLayoutMetrics } from '@/utils/pageLayout';
+import { getLayoutMetrics, PAGE_GAP } from '@/utils/pageLayout';
 
 async function renderContentToThumbnail(htmlContent, theme, pageIndex, metrics) {
   return new Promise((resolve) => {
@@ -82,7 +82,6 @@ export function useThumbnailGenerator() {
         if (!proseMirror) return;
 
         // Use the same scale and step logic as EditorCanvas.jsx
-        const PAGE_GAP = 18;
         const scale = zoom / 100;
         const pageStep = (metrics.pageHeight + PAGE_GAP) * scale;
 

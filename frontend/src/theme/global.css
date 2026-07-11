@@ -528,7 +528,11 @@ body {
 .ProseMirror hr { border:none; border-top:1px solid var(--gold); opacity:.35; margin:1.6em 0; }
 .ProseMirror a  { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
 .ProseMirror img {
-  max-width:100%; height:auto; border-radius: var(--radius-sm); display: block;
+  max-width:100%;
+  max-height: calc(var(--etherx-page-content-height, 1000px) - 24px);
+  height:auto;
+  border-radius: var(--radius-sm);
+  display: block;
   transition: all 0.1s ease;
 }
 .ProseMirror img.ProseMirror-selectednode,
@@ -600,14 +604,14 @@ body {
 }
 
 /* ── Data attribute page break (from PageBreak extension) ────── */
-.ProseMirror [data-page-break] {
+.ProseMirror [data-page-break]:not([data-etherx-auto-break="true"]) {
   /* Thin, non-editable separator between pages */
   display: block !important;
   visibility: visible !important;
-  height: 18px !important;
-  min-height: 18px !important;
-  max-height: 18px !important;
-  margin: 24px 0 !important;
+  height: 1px !important;
+  min-height: 1px !important;
+  max-height: 1px !important;
+  margin: 0 !important;
   padding: 0 !important;
   background: transparent !important;
   border: 0 !important;
@@ -616,6 +620,26 @@ body {
   cursor: default !important;
   user-select: none !important;
   position: relative !important;
+  page-break-after: always !important;
+}
+
+.ProseMirror [data-page-break][data-etherx-auto-break="true"] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  display: block !important;
+  visibility: visible !important;
+  height: var(--etherx-page-content-height, 1000px) !important;
+  min-height: var(--etherx-page-content-height, 1000px) !important;
+  max-height: var(--etherx-page-content-height, 1000px) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  cursor: default !important;
+  user-select: none !important;
+  position: relative !important;
+  overflow: hidden !important;
   page-break-after: always !important;
 }
 
@@ -635,7 +659,7 @@ body {
 }
 
 /* Ensure proper spacing around page breaks */
-.ProseMirror [data-page-break] + * {
+.ProseMirror [data-page-break]:not([data-etherx-auto-break="true"]) + * {
   margin-top: 24px !important;
   page-break-before: always !important;
 }

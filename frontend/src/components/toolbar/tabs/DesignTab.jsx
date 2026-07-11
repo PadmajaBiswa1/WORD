@@ -82,6 +82,36 @@ function getPageElement() {
   return document.getElementById('document-page-0');
 }
 
+// getPageElement() actually returns the big transparent multi-page WRAPPER
+// (id="document-page-0" is set on the container that spans every page
+// stacked together -- see EditorCanvas.jsx). That's fine for bookkeeping
+// (dataset attrs) and for things like export/thumbnails that want the whole
+// content container, but it is NOT the element the user actually sees as
+// "the page": that's the absolutely-positioned `[data-etherx-page-frame]`
+// div rendered on top of it, which paints the white/cream page background,
+// its shadow, and its rounded corners. Page borders need to be drawn on
+// THAT visible rectangle, or they end up hugging the wrapper's raw edge
+// instead of looking inset within the paper.
+// There is one `[data-etherx-page-frame]` per rendered page (see
+// EditorCanvas.jsx), not just the first. Returning only the first one is
+// what caused page borders to show up on page 1 and nowhere else.
+function getPageFrameElements() {
+  return Array.from(document.querySelectorAll('[data-etherx-page-frame]'));
+}
+
+// A flat "-10px" outline-offset barely reads as an inset once the page is
+// rendered at its actual on-screen size (and disappears further at higher
+// zoom, since the page grows but the offset doesn't). Scale the inset with
+// the current zoom level so it stays proportional, roughly matching a
+// 24pt margin from the paper's edge at 100% zoom -- similar to how Word's
+// own page borders sit noticeably inside the sheet rather than flush
+// against it.
+function getScaledBorderInset() {
+  const zoom = useUIStore.getState().zoom || 100;
+  const scale = zoom / 100;
+  return Math.round(32 * scale);
+}
+
 function getEditorElement() {
   return document.querySelector('.ProseMirror');
 }
@@ -117,47 +147,79 @@ function cyclePageColor() {
 
 function applyPageBorder(style, color = '#6f5320', width = 2) {
   const page = getPageElement();
+  const frames = getPageFrameElements();
   if (!page) return false;
+  // Dataset bookkeeping stays on the wrapper (other code reads it from
+  // there); the actual outline is painted on every visible page frame.
   if (style === 'none') {
-    page.style.outline = 'none';
-    page.style.outlineOffset = '0';
+    frames.forEach((frame) => {
+      frame.style.outline = 'none';
+      frame.style.outlineOffset = '0';
+    });
     page.dataset.pageBorder = 'none';
     return true;
   }
-  page.style.outline = `${width}px ${style} ${color}`;
-  page.style.outlineOffset = '-10px';
+  frames.forEach((frame) => {
+    frame.style.outline = `${width}px ${style} ${color}`;
+    frame.style.outlineOffset = `-${getScaledBorderInset()}px`;
+  });
   page.dataset.pageBorder = `${style}|${color}|${width}`;
   return true;
 }
 
-function applyPageBorderPreset({ setting, style, color, width }) {
+function applyPageBorderPreset({ setting, style, color, width, applyTo }) {
   const page = getPageElement();
+  const frames = getPageFrameElements();
   if (!page) return false;
   const nextSetting = setting || 'box';
   const nextStyle = style || 'solid';
   const nextColor = color || '#6f5320';
   const nextWidth = Number(width || 2);
+  const nextApplyTo = applyTo || page.dataset.pageBorderApplyTo || 'whole-document';
 
   page.dataset.pageBorderSetting = nextSetting;
   page.dataset.pageBorderStyle = nextStyle;
   page.dataset.pageBorderColor = nextColor;
   page.dataset.pageBorderWidth = String(nextWidth);
 
+  if (!frames.length) return true;
+
+  // "This section" isn't modeled separately from "whole document" in this
+  // editor (there's no section-break tracking), so it falls back to
+  // applying everywhere too. "First page only" targets just the first
+  // frame and explicitly clears any border left on the rest.
+  const targetFrames = nextApplyTo === 'first-page' ? frames.slice(0, 1) : frames;
+  const clearedFrames = nextApplyTo === 'first-page' ? frames.slice(1) : [];
+
+  clearedFrames.forEach((frame) => {
+    frame.style.outline = 'none';
+    frame.style.outlineOffset = '0';
+    frame.style.boxShadow = 'var(--shadow-page)';
+  });
+
   if (nextSetting === 'none') {
-    page.style.outline = 'none';
-    page.style.outlineOffset = '0';
-    page.style.boxShadow = 'var(--shadow-page)';
+    targetFrames.forEach((frame) => {
+      frame.style.outline = 'none';
+      frame.style.outlineOffset = '0';
+      frame.style.boxShadow = 'var(--shadow-page)';
+    });
     return true;
   }
 
+  // "custom" gets a slightly deeper inset than the standard presets.
+  const inset = getScaledBorderInset() * (nextSetting === 'custom' ? 1.4 : 1);
   const outline = `${nextWidth}px ${nextStyle} ${nextColor}`;
-  page.style.outline = outline;
-  page.style.outlineOffset = nextSetting === 'custom' ? '-14px' : '-10px';
-  page.style.boxShadow = nextSetting === 'shadow'
+  const boxShadow = nextSetting === 'shadow'
     ? '0 10px 24px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(255,255,255,0.5)'
     : nextSetting === '3d'
       ? '0 0 0 1px rgba(255,255,255,0.55), inset 0 0 0 1px rgba(0,0,0,0.18), var(--shadow-page)'
       : 'var(--shadow-page)';
+
+  targetFrames.forEach((frame) => {
+    frame.style.outline = outline;
+    frame.style.outlineOffset = `-${Math.round(inset)}px`;
+    frame.style.boxShadow = boxShadow;
+  });
   return true;
 }
 
@@ -459,6 +521,7 @@ export function DesignTab() {
       style: next.style || borderStyle,
       color: next.color || borderColor,
       width: Number(next.width || borderWidth),
+      applyTo: next.applyTo || borderApplyTo,
     };
     const page = getPageElement();
     if (!page) return false;

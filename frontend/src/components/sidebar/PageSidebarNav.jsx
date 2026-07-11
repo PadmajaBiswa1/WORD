@@ -17,6 +17,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 function SortablePageThumb({ page, index, isActive, onClick }) {
+  const theme = useUIStore((s) => s.theme);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: page.id,
   });
@@ -40,8 +41,8 @@ function SortablePageThumb({ page, index, isActive, onClick }) {
           width: '108px',
           height: '153px',
           margin: '8px auto',
-          background: 'white',
-          border: isActive ? '2px solid #d4af37' : '1px solid #ddd',
+          background: 'var(--bg-page)',
+          border: isActive ? '2px solid #d4af37' : '1px solid var(--border-strong)',
           borderRadius: '4px',
           cursor: 'pointer',
           boxShadow: isActive ? '0 0 8px rgba(212,175,55,0.4)' : '0 2px 4px rgba(0,0,0,0.1)',
@@ -49,7 +50,7 @@ function SortablePageThumb({ page, index, isActive, onClick }) {
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: '12px',
-          color: '#666',
+          color: theme === 'dark' ? 'var(--text-muted)' : '#666',
           transition: 'all 0.2s',
           position: 'relative',
         }}

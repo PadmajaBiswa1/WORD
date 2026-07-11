@@ -12,6 +12,9 @@ export const MARGIN_MAP = {
   wide: 144,
 };
 
+export const PAGE_GAP = 18;
+export const PAGE_BORDER_WIDTH = 1;
+
 export function getLayoutMetrics({ size, orientation, margin } = {}) {
   const dims = PAGE_SIZES[size] || PAGE_SIZES.a4;
   const pageWidth = orientation === 'landscape' ? dims.h : dims.w;

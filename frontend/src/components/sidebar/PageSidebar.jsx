@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo } from 'react';
 import { useUIStore, useDocumentStore, useEditorStore, useCollaborationStore } from '@/store';
-import { PAGE_SIZES, getLayoutMetrics } from '@/utils/pageLayout';
+import { PAGE_SIZES, getLayoutMetrics, PAGE_GAP } from '@/utils/pageLayout';
 
 const THUMB_W  = 108;
 const THUMB_H  = 153;
@@ -14,7 +14,6 @@ function getPageBuckets(pageCount, metrics, zoom) {
   if (!children.length) return null;
 
   const buckets = Array.from({ length: pageCount }, () => []);
-  const PAGE_GAP = 18;
   const scale = zoom / 100;
   const pageStep = (metrics.pageHeight + PAGE_GAP) * scale;
 

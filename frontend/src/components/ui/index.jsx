@@ -98,7 +98,7 @@ export function Tooltip({ children, text, shortcut, placement = 'top' }) {
 }
 
 /* ── Select ─────────────────────────────────────────────────── */
-export function Select({ value, onChange, options = [], width = 120, title, searchable = false, searchPlaceholder }) {
+export function Select({ value, onChange, options = [], width = 120, title, searchable = false, searchPlaceholder, onFocus, style = {} }) {
   const { theme } = useUIStore();
   const isDark = theme === 'dark';
   const [open, setOpen] = useState(false);
@@ -202,6 +202,10 @@ export function Select({ value, onChange, options = [], width = 120, title, sear
           type="button"
           title={title}
           onClick={() => setOpen((current) => !current)}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = '#c9a84c';
+            onFocus?.(e);
+          }}
           style={{
             height: 22,
             width: '100%',
@@ -226,10 +230,10 @@ export function Select({ value, onChange, options = [], width = 120, title, sear
             backgroundPosition: 'calc(100% - 12px) 9px, calc(100% - 7px) 9px',
             backgroundSize: '5px 5px, 5px 5px',
             backgroundRepeat: 'no-repeat',
+            ...style,
           }}
           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = styles.hoverBg; e.currentTarget.style.borderColor = '#c9a84c'; }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = styles.background; e.currentTarget.style.borderColor = styles.border.split('solid ')[1]; }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = '#c9a84c')}
           onBlur={(e) => (e.currentTarget.style.borderColor = styles.border.split('solid ')[1])}
         >
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{selected?.label}</span>
@@ -238,6 +242,7 @@ export function Select({ value, onChange, options = [], width = 120, title, sear
         {open && createPortal(
           <div
             ref={menuRef}
+            data-select-menu="true"
             style={{
               position: 'fixed',
               top: menuStyle.top,
@@ -340,7 +345,14 @@ export function Select({ value, onChange, options = [], width = 120, title, sear
   }
   
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} title={title}
+    <select 
+      value={value} 
+      onChange={(e) => onChange(e.target.value)} 
+      title={title}
+      onFocus={(e) => {
+        e.target.style.borderColor = '#c9a84c';
+        onFocus?.(e);
+      }}
       style={{
         height: 22,
         background: styles.background,
@@ -358,10 +370,10 @@ export function Select({ value, onChange, options = [], width = 120, title, sear
         backgroundPosition: 'calc(100% - 12px) 9px, calc(100% - 7px) 9px',
         backgroundSize: '5px 5px, 5px 5px',
         backgroundRepeat: 'no-repeat',
+        ...style,
       }}
       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = styles.hoverBg; e.currentTarget.style.borderColor = '#c9a84c'; }}
       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = styles.background; e.currentTarget.style.borderColor = styles.border.split('solid ')[1]; }}
-      onFocus={(e) => (e.target.style.borderColor = '#c9a84c')}
       onBlur={(e)  => (e.target.style.borderColor = styles.border.split('solid ')[1])}>
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>

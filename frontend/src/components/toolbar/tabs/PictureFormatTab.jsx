@@ -51,6 +51,10 @@ export function PictureFormatTab() {
   const { toast } = useUIStore();
   const [imgWidth, setImgWidth] = useState(240);
   const [imgHeight, setImgHeight] = useState(180);
+  // Draft text for the width/height inputs — lets the user freely type/clear
+  // digits without every keystroke being committed to the actual image.
+  const [draftWidth, setDraftWidth] = useState('240');
+  const [draftHeight, setDraftHeight] = useState('180');
   const [borderColor, setBorderColor] = useState('#000000');
   const [borderThickness, setBorderThickness] = useState(1);
   const [borderStyle, setBorderStyle] = useState('solid');
@@ -69,6 +73,8 @@ export function PictureFormatTab() {
       
       setImgWidth(width);
       setImgHeight(height);
+      setDraftWidth(String(width));
+      setDraftHeight(String(height));
       setBorderColor(css.borderColor || '#000000');
       setBorderThickness(parseInt(css.borderWidth, 10) || 1);
       setBorderStyle(css.borderStyle || 'solid');
@@ -131,10 +137,15 @@ export function PictureFormatTab() {
       updateImageAttrs({ width: String(newWidth), height: String(newHeight) });
       setImgWidth(newWidth);
       setImgHeight(newHeight);
+      setDraftWidth(String(newWidth));
+      setDraftHeight(String(newHeight));
       toast('Image cropped', 'success');
     });
   };
 
+  // Commits a width/height value to the actual image. Only called once the
+  // user has finished entering a value (blur / Enter) — never on every keystroke —
+  // so a temporarily empty or partial field never shrinks/hides the image.
   const resizeImage = (dimension, value) => {
     withSelectedImage(() => {
       const numValue = parseInt(value, 10) || 0;
@@ -142,12 +153,37 @@ export function PictureFormatTab() {
       if (dimension === 'width') {
         updateImageAttrs({ width: String(clamped) }, { width: `${clamped}px` });
         setImgWidth(clamped);
+        setDraftWidth(String(clamped));
       } else {
         updateImageAttrs({ height: String(clamped) }, { height: `${clamped}px` });
         setImgHeight(clamped);
+        setDraftHeight(String(clamped));
       }
       toast(`Image ${dimension}: ${clamped}px`, 'success');
     });
+  };
+
+  // Called on blur/Enter for the width input. If the field is empty or not a
+  // valid number, revert the displayed text without touching the image at all.
+  const commitWidth = () => {
+    const trimmed = draftWidth.trim();
+    const parsed = parseInt(trimmed, 10);
+    if (trimmed === '' || Number.isNaN(parsed)) {
+      setDraftWidth(String(imgWidth));
+      return;
+    }
+    resizeImage('width', trimmed);
+  };
+
+  // Same as commitWidth, for the height input.
+  const commitHeight = () => {
+    const trimmed = draftHeight.trim();
+    const parsed = parseInt(trimmed, 10);
+    if (trimmed === '' || Number.isNaN(parsed)) {
+      setDraftHeight(String(imgHeight));
+      return;
+    }
+    resizeImage('height', trimmed);
   };
 
   const rotateLeft = () => {
@@ -326,6 +362,8 @@ export function PictureFormatTab() {
 
       setImgWidth(240);
       setImgHeight(180);
+      setDraftWidth('240');
+      setDraftHeight('180');
       setBorderColor('#000000');
       setBorderThickness(1);
       setBorderStyle('solid');
@@ -384,7 +422,6 @@ export function PictureFormatTab() {
   const controlSections = useMemo(() => [
     {
       title: 'Adjust',
-      width: 320,
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -396,8 +433,13 @@ export function PictureFormatTab() {
               <span style={miniLabel}>Width</span>
               <input
                 type="number"
-                value={imgWidth}
-                onChange={(e) => resizeImage('width', e.target.value)}
+                value={draftWidth}
+                onChange={(e) => setDraftWidth(e.target.value)}
+                onBlur={commitWidth}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                  if (e.key === 'Escape') { setDraftWidth(String(imgWidth)); e.currentTarget.blur(); }
+                }}
                 style={numberInputStyle}
                 min={20}
                 max={2000}
@@ -407,8 +449,13 @@ export function PictureFormatTab() {
               <span style={miniLabel}>Height</span>
               <input
                 type="number"
-                value={imgHeight}
-                onChange={(e) => resizeImage('height', e.target.value)}
+                value={draftHeight}
+                onChange={(e) => setDraftHeight(e.target.value)}
+                onBlur={commitHeight}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                  if (e.key === 'Escape') { setDraftHeight(String(imgHeight)); e.currentTarget.blur(); }
+                }}
                 style={numberInputStyle}
                 min={20}
                 max={2000}
@@ -438,7 +485,6 @@ export function PictureFormatTab() {
     },
     {
       title: 'Picture Effects',
-      width: 420,
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -499,7 +545,6 @@ export function PictureFormatTab() {
     },
     {
       title: 'Layout',
-      width: 360,
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -536,8 +581,12 @@ export function PictureFormatTab() {
     applyTransparency,
     borderStyle,
     borderThickness,
+    commitHeight,
+    commitWidth,
     cropImage,
     customRotation,
+    draftHeight,
+    draftWidth,
     imgHeight,
     imgWidth,
     resetFormatting,
@@ -562,20 +611,19 @@ export function PictureFormatTab() {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 10,
+          gap: 8,
           minWidth: 0,
+          width: '100%',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {controlSections.map((section) => (
-            <div key={section.title} style={{ ...sectionShell, width: section.width }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '.08em' }}>{section.title}</span>
-              </div>
-              {section.content}
+        {controlSections.map((section) => (
+          <div key={section.title} style={{ ...sectionShell, width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '.08em' }}>{section.title}</span>
             </div>
-          ))}
-        </div>
+            {section.content}
+          </div>
+        ))}
       </div>
     </>
   );
