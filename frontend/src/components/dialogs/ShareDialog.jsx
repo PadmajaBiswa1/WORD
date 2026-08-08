@@ -3,6 +3,8 @@ import { useUIStore, useDocumentStore } from '@/store';
 import { useCollaborationStore } from '@/store';
 import { Modal, Button, Input, Label, Stack } from '@/components/ui';
 import { documentApi } from '@/services/api';
+import { sendInviteEmail } from '@/services/emailjs';
+import { getStoredUser } from '@/services/api';
 
 function getCollaboratorColor(index) {
   const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
@@ -16,7 +18,7 @@ function buildSharedUrl(docId) {
 export function ShareDialog() {
   const { closeDialog, toast } = useUIStore();
   const { id, title, content, setId, setLastSaved } = useDocumentStore();
-  const { collaborators, connected } = useCollaborationStore();
+  const { collaborators, connected, enableCollaboration } = useCollaborationStore();
   const [copied, setCopied] = useState(false);
   const [email,  setEmail]  = useState('');
   const [role,   setRole]   = useState('viewer');
@@ -44,6 +46,10 @@ export function ShareDialog() {
       setInvitedCollaborators([]);
     }
   };
+
+  useEffect(() => {
+    enableCollaboration();
+  }, [enableCollaboration]);
 
   useEffect(() => {
     if (!id) {
@@ -190,31 +196,37 @@ export function ShareDialog() {
       }
 
       // Provide detailed feedback based on response
-      if (response?.inviteEmailSent) {
-        toast(`✓ Invitation email sent to ${sharedEmail}`, 'success');
-        console.log(`✅ Email invitation sent successfully`);
-      } else if (response?.inviteEmailQueued) {
-        toast(`${sharedEmail} added. Invitation email is being sent.`, 'success');
-        console.log(`✅ Invitation email queued`);
-      } else if (response?.inviteEmailError) {
-        // Email service issue but collaborator was added
-        const errorMsg = response.inviteEmailError;
-        console.warn(`⚠️ Email failed: ${errorMsg}`);
-        
-        if (errorMsg.includes('SMTP') || errorMsg.includes('credential')) {
-          toast(`${sharedEmail} added as collaborator. Email service config needed.`, 'warning');
-        } else if (errorMsg.includes('timeout')) {
-          toast(`${sharedEmail} added. Email sending timed out - try resending invite.`, 'warning');
-        } else {
-          toast(`${sharedEmail} added as collaborator. Note: ${errorMsg}`, 'warning');
+      let emailError = null;
+      if (sharedEmail) {
+        try {
+          await sendInviteEmail({
+            toEmail: sharedEmail,
+            toName: sharedEmail,
+            inviterName: getStoredUser().name || getStoredUser().email || 'A collaborator',
+            documentTitle: title || 'Untitled Document',
+            shareUrl: response?.shareUrl || buildSharedUrl(docId),
+            role,
+          });
+        } catch (inviteEmailErr) {
+          emailError = inviteEmailErr?.message || 'Email delivery failed';
+          console.error('Invite email failed:', inviteEmailErr);
         }
-      } else if (response?.share) {
-        // Collaborator added (email status unclear from response)
-        toast(`✓ ${sharedEmail} added as collaborator`, 'success');
-        console.log(`✅ Collaborator added`);
+      }
+
+      if (response?.share) {
+        if (emailError) {
+          toast(`✓ ${sharedEmail} added as collaborator. Email could not be sent.`, 'warning');
+        } else if (sharedEmail) {
+          toast(`✓ Invitation email sent to ${sharedEmail}`, 'success');
+        } else {
+          toast(`✓ ${sharedEmail} added as collaborator`, 'success');
+        }
       } else {
         toast(`✓ ${sharedEmail} has been invited`, 'success');
-        console.log(`✅ Invitation created`);
+      }
+
+      if (!emailError && sharedEmail) {
+        console.log(`✅ Email invitation sent successfully`);
       }
       
       // Clear email field after successful invite

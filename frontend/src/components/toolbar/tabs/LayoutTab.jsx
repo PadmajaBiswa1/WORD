@@ -264,18 +264,18 @@ export function LayoutTab() {
 
   const rotateImage = () => {
     withSelectedImage((attrs, css) => {
-      const current = parseInt(String(attrs['data-rotate'] || css.transform?.match(/rotate\(([-\d]+)deg\)/)?.[1] || '0'), 10) || 0;
+      const current = parseInt(String(attrs.rotate || css.transform?.match(/rotate\(([-\d]+)deg\)/)?.[1] || '0'), 10) || 0;
       const next = (current + 15) % 360;
-      updateImageAttrs({ 'data-rotate': String(next) }, { transform: `rotate(${next}deg)` });
+      updateImageAttrs({ rotate: String(next) }, { transform: `rotate(${next}deg)` });
       toast('Rotated 15 degrees', 'success');
     });
   };
 
   const layerImage = (direction) => {
     withSelectedImage((attrs, css) => {
-      const current = parseInt(String(css['z-index'] || attrs['data-z'] || '1'), 10) || 1;
+      const current = parseInt(String(css['z-index'] || attrs.zIndex || '1'), 10) || 1;
       const next = direction === 'up' ? current + 1 : Math.max(0, current - 1);
-      updateImageAttrs({ 'data-z': String(next) }, { position: 'relative', 'z-index': String(next) });
+      updateImageAttrs({ zIndex: String(next) }, { position: 'relative', 'z-index': String(next) });
       toast(direction === 'up' ? 'Brought forward' : 'Sent backward', 'success');
     });
   };

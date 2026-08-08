@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useEditorStore, useUIStore } from '@/store';
 import { Button, Divider, Tooltip, Select } from '@/components/ui';
+import { getSelectedImageElement, isImageSelection } from '@/utils/imageSelection';
 
 const BORDER_STYLES = [
   { value: 'solid', label: 'Solid' },
@@ -28,9 +29,10 @@ const BG_COLORS = [
   '#52c41a', '#13c2c2', '#1677ff', '#722ed1', '#ff7a45',
 ];
 
-const selectedImageElement = () =>
-  document.querySelector('.ProseMirror img.ProseMirror-selectednode') ||
-  document.querySelector('.ProseMirror .ProseMirror-selectednode img');
+const PICTURE_EFFECT_FILTERS = {
+  shadow: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.5))',
+  glow: 'drop-shadow(0 0 8px rgba(255,255,0,0.7))',
+};
 
 const parseCssStyle = (style = '') => {
   const out = {};
@@ -56,7 +58,7 @@ export function PictureFormatTab() {
   const [draftWidth, setDraftWidth] = useState('240');
   const [draftHeight, setDraftHeight] = useState('180');
   const [borderColor, setBorderColor] = useState('#000000');
-  const [borderThickness, setBorderThickness] = useState(1);
+  const [borderThickness, setBorderThickness] = useState('1');
   const [borderStyle, setBorderStyle] = useState('solid');
   const [customRotation, setCustomRotation] = useState(0);
   const [transparency, setTransparency] = useState(0);
@@ -76,12 +78,13 @@ export function PictureFormatTab() {
       setDraftWidth(String(width));
       setDraftHeight(String(height));
       setBorderColor(css.borderColor || '#000000');
-      setBorderThickness(parseInt(css.borderWidth, 10) || 1);
+      setBorderThickness(String(parseInt(css.borderWidth, 10) || 1));
       setBorderStyle(css.borderStyle || 'solid');
-      setCustomRotation(parseInt(String(attrs['data-rotate'] || css.transform?.match(/rotate\(([^)]+)\)/)?.[1] || 0), 10) || 0);
-      setTransparency(100 - (parseInt(css.opacity, 10) * 100 || 100));
+      setCustomRotation(parseInt(String(attrs.rotate || css.transform?.match(/rotate\(([^)]+)\)/)?.[1] || 0), 10) || 0);
+      const opacity = Number.parseFloat(css.opacity);
+      setTransparency(Number.isFinite(opacity) ? Math.round((1 - Math.max(0, Math.min(1, opacity))) * 100) : 0);
       
-      const img = selectedImageElement();
+      const img = getSelectedImageElement(editor);
       if (img) {
         const wrap = img.dataset.wrap || (css.float === 'left' ? 'left' : css.float === 'right' ? 'right' : 'inline');
         setWrapMode(wrap);
@@ -97,7 +100,7 @@ export function PictureFormatTab() {
       toast('Editor is not ready yet', 'info');
       return;
     }
-    if (!editor.isActive('image')) {
+    if (!isImageSelection(editor)) {
       toast('Select an image first', 'info');
       return;
     }
@@ -121,18 +124,16 @@ export function PictureFormatTab() {
 
   const cropImage = () => {
     withSelectedImage((attrs, css) => {
-      const img = selectedImageElement();
+      const img = getSelectedImageElement(editor);
       if (!img) return;
       
       const rect = img.getBoundingClientRect();
-      const aspect = rect.width / rect.height;
-      
       const crop = window.confirm('Crop image to square aspect ratio? This will resize proportionally.');
       if (!crop) return;
       
-      const minDim = Math.min(rect.width, rect.height);
-      const newWidth = Math.round(minDim);
-      const newHeight = Math.round(minDim / aspect);
+      const minDim = Math.round(Math.min(rect.width, rect.height));
+      const newWidth = minDim;
+      const newHeight = minDim;
       
       updateImageAttrs({ width: String(newWidth), height: String(newHeight) });
       setImgWidth(newWidth);
@@ -188,120 +189,94 @@ export function PictureFormatTab() {
 
   const rotateLeft = () => {
     withSelectedImage((attrs, css) => {
-      const current = parseInt(String(attrs['data-rotate'] || css.transform?.match(/rotate\(([^)]+)\)/)?.[1] || 0), 10) || 0;
-      const next = (current - 90) % 360;
-      if (next < 0) updateImageAttrs({ 'data-rotate': String(next + 360) }, { transform: `rotate(${next + 360}deg)` });
-      else updateImageAttrs({ 'data-rotate': String(next) }, { transform: `rotate(${next}deg)` });
-      setCustomRotation(next < 0 ? next + 360 : next);
+      const current = parseInt(String(attrs.rotate || css.transform?.match(/rotate\(([^)]+)\)/)?.[1] || 0), 10) || 0;
+      const next = (current - 90 + 360) % 360;
+      updateImageAttrs({ rotate: String(next) }, { transform: next ? `rotate(${next}deg)` : null });
+      setCustomRotation(next);
       toast('Rotated left', 'success');
     });
   };
 
   const rotateRight = () => {
     withSelectedImage((attrs, css) => {
-      const current = parseInt(String(attrs['data-rotate'] || css.transform?.match(/rotate\(([^)]+)\)/)?.[1] || 0), 10) || 0;
+      const current = parseInt(String(attrs.rotate || css.transform?.match(/rotate\(([^)]+)\)/)?.[1] || 0), 10) || 0;
       const next = (current + 90) % 360;
-      updateImageAttrs({ 'data-rotate': String(next) }, { transform: `rotate(${next}deg)` });
+      updateImageAttrs({ rotate: String(next) }, { transform: next ? `rotate(${next}deg)` : null });
       setCustomRotation(next);
       toast('Rotated right', 'success');
     });
   };
 
   const applyCustomRotation = () => {
-    withSelectedImage((attrs, css) => {
-      updateImageAttrs({ 'data-rotate': String(customRotation) }, { transform: `rotate(${customRotation}deg)` });
-      toast(`Rotation: ${customRotation}°`, 'success');
+    withSelectedImage(() => {
+      const normalized = ((Number(customRotation) % 360) + 360) % 360;
+      updateImageAttrs(
+        { rotate: String(normalized) },
+        { transform: normalized ? `rotate(${normalized}deg)` : null },
+      );
+      setCustomRotation(normalized);
+      toast(`Rotation: ${normalized}°`, 'success');
     });
   };
 
-  const applyTransparency = () => {
-    withSelectedImage((attrs, css) => {
-      const opacity = 1 - (transparency / 100);
+  const applyTransparency = (nextTransparency = transparency) => {
+    withSelectedImage(() => {
+      const normalized = Math.max(0, Math.min(100, Number(nextTransparency) || 0));
+      const opacity = 1 - (normalized / 100);
       updateImageAttrs({}, { opacity: String(opacity) });
-      toast(`Transparency: ${transparency}%`, 'success');
+      setTransparency(normalized);
+      toast(`Transparency: ${normalized}%`, 'success');
+    });
+  };
+
+  const applyPictureEffect = (effect, filter, label) => {
+    withSelectedImage(() => {
+      updateImageAttrs(
+        { pictureEffects: effect },
+        {
+          filter: filter || null,
+          '-webkit-box-reflect': effect === 'reflection'
+            ? 'below 6px linear-gradient(transparent, rgba(0,0,0,0.28))'
+            : null,
+        },
+      );
+      toast(`${label} applied`, 'success');
     });
   };
 
   const addShadow = () => {
-    withSelectedImage((attrs, css) => {
-      updateImageAttrs({}, { 
-        filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.5))',
-        ...css 
-      });
-      toast('Shadow applied', 'success');
-    });
+    applyPictureEffect('shadow', PICTURE_EFFECT_FILTERS.shadow, 'Shadow');
   };
 
   const addGlow = () => {
-    withSelectedImage((attrs, css) => {
-      updateImageAttrs({}, { 
-        filter: 'drop-shadow(0 0 8px rgba(255,255,0,0.7))',
-        ...css 
-      });
-      toast('Glow applied', 'success');
-    });
+    applyPictureEffect('glow', PICTURE_EFFECT_FILTERS.glow, 'Glow');
   };
 
   const addReflection = () => {
-    withSelectedImage((attrs, css) => {
-      const img = selectedImageElement();
-      if (!img || !img.parentNode) return;
-      
-      updateImageAttrs({}, { ...css });
-      
-      requestAnimationFrame(() => {
-        const updatedImg = selectedImageElement();
-        if (updatedImg && updatedImg.parentNode) {
-          const reflectionDiv = document.createElement('div');
-          reflectionDiv.style.cssText = `
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 30%;
-            background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.2));
-            transform: scaleY(-1);
-            -webkit-mask-image: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,1));
-            mask-image: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,1));
-            pointer-events: none;
-          `;
-          updatedImg.parentNode.appendChild(reflectionDiv);
-        }
-      });
-      toast('Reflection applied', 'success');
-    });
+    applyPictureEffect('reflection', null, 'Reflection');
   };
 
-  const applyBorder = () => {
-    withSelectedImage((attrs, css) => {
+  const applyBorder = (nextColor = borderColor, nextThickness = borderThickness, nextStyle = borderStyle) => {
+    withSelectedImage(() => {
+      const thickness = Math.max(1, Math.min(5, Number(nextThickness) || 1));
       updateImageAttrs({}, {
-        border: `${borderThickness}px ${borderStyle} ${borderColor}`,
-        borderColor,
-        borderWidth: `${borderThickness}px`,
-        borderStyle,
+        border: `${thickness}px ${nextStyle} ${nextColor}`,
+        borderColor: nextColor,
+        borderWidth: `${thickness}px`,
+        borderStyle: nextStyle,
       });
       toast('Border applied', 'success');
     });
   };
 
   const alignImage = (where) => {
-    withSelectedImage((attrs, css) => {
-      const img = selectedImageElement();
-      if (!img) return;
-      
-      if (where === 'left') {
-        img.style.display = 'block';
-        img.style.marginLeft = '0';
-        img.style.marginRight = 'auto';
-      } else if (where === 'center') {
-        img.style.display = 'block';
-        img.style.marginLeft = 'auto';
-        img.style.marginRight = 'auto';
-      } else {
-        img.style.display = 'block';
-        img.style.marginLeft = 'auto';
-        img.style.marginRight = '0';
-      }
+    withSelectedImage(() => {
+      const margin = where === 'left'
+        ? '12px auto 12px 0'
+        : where === 'right'
+          ? '12px 0 12px auto'
+          : '12px auto';
+      updateImageAttrs({}, { display: 'block', float: null, margin });
       toast(`Aligned ${where}`, 'success');
     });
   };
@@ -310,23 +285,22 @@ export function PictureFormatTab() {
     withSelectedImage((attrs, css) => {
       if (!editor) return;
       
-      const img = selectedImageElement();
-      if (!img) return;
+      if (!getSelectedImageElement(editor)) return;
       
       setWrapMode(mode);
       
       if (mode === 'inline') {
-        updateImageAttrs({ 'data-wrap': mode }, { float: null, display: 'block', margin: '12px auto' });
+        updateImageAttrs({ wrap: mode }, { float: null, display: 'block', margin: '12px auto' });
       } else if (mode === 'left') {
-        updateImageAttrs({ 'data-wrap': mode }, { float: 'left', margin: '8px 16px 8px 0' });
+        updateImageAttrs({ wrap: mode }, { float: 'left', margin: '8px 16px 8px 0' });
       } else if (mode === 'right') {
-        updateImageAttrs({ 'data-wrap': mode }, { float: 'right', margin: '8px 0 8px 16px' });
+        updateImageAttrs({ wrap: mode }, { float: 'right', margin: '8px 0 8px 16px' });
       } else if (mode === 'topAndBottom' || mode === 'behindText') {
-        updateImageAttrs({ 'data-wrap': mode }, { display: 'block', margin: '24px auto', position: 'relative' });
+        updateImageAttrs({ wrap: mode }, { display: 'block', margin: '24px auto', position: 'relative' });
       } else if (mode === 'inFrontOfText') {
-        updateImageAttrs({ 'data-wrap': mode }, { position: 'absolute', margin: '12px auto' });
+        updateImageAttrs({ wrap: mode }, { position: 'absolute', margin: '12px auto' });
       } else if (mode === 'through') {
-        updateImageAttrs({ 'data-wrap': mode }, { position: 'absolute', margin: '12px auto' });
+        updateImageAttrs({ wrap: mode }, { position: 'absolute', margin: '12px auto' });
       }
       toast(`Wrap: ${mode}`, 'success');
     });
@@ -334,18 +308,18 @@ export function PictureFormatTab() {
 
   const bringForward = () => {
     withSelectedImage((attrs, css) => {
-      const current = parseInt(String(css['z-index'] || attrs['data-z'] || '1'), 10) || 1;
+      const current = parseInt(String(css['z-index'] || attrs.zIndex || '1'), 10) || 1;
       const next = current + 1;
-      updateImageAttrs({ 'data-z': String(next) }, { position: 'relative', 'z-index': String(next) });
+      updateImageAttrs({ zIndex: String(next) }, { position: 'relative', 'z-index': String(next) });
       toast('Brought forward', 'success');
     });
   };
 
   const sendBackward = () => {
     withSelectedImage((attrs, css) => {
-      const current = parseInt(String(css['z-index'] || attrs['data-z'] || '1'), 10) || 1;
+      const current = parseInt(String(css['z-index'] || attrs.zIndex || '1'), 10) || 1;
       const next = Math.max(0, current - 1);
-      updateImageAttrs({ 'data-z': String(next) }, { position: 'relative', 'z-index': String(next) });
+      updateImageAttrs({ zIndex: String(next) }, { position: 'relative', 'z-index': String(next) });
       toast('Sent backward', 'success');
     });
   };
@@ -358,6 +332,10 @@ export function PictureFormatTab() {
         width: null,
         height: null,
         style: null,
+        pictureEffects: '',
+        rotate: null,
+        wrap: null,
+        zIndex: null,
       }).run();
 
       setImgWidth(240);
@@ -365,7 +343,7 @@ export function PictureFormatTab() {
       setDraftWidth('240');
       setDraftHeight('180');
       setBorderColor('#000000');
-      setBorderThickness(1);
+      setBorderThickness('1');
       setBorderStyle('solid');
       setCustomRotation(0);
       setTransparency(0);
@@ -494,8 +472,8 @@ export function PictureFormatTab() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={miniLabel}>Transparency</span>
               <Select
-                value={transparency}
-                onChange={(v) => { setTransparency(v); applyTransparency(); }}
+                value={String(transparency)}
+                onChange={(v) => applyTransparency(v)}
                 options={TRANSPARENCY_OPTIONS}
                 width={78}
                 title="Transparency"
@@ -524,7 +502,7 @@ export function PictureFormatTab() {
               {BG_COLORS.map((c) => (
                 <button
                   key={c}
-                  onClick={() => { setBorderColor(c); applyBorder(); }}
+                  onClick={() => { setBorderColor(c); applyBorder(c, borderThickness, borderStyle); }}
                   style={{
                     width: 16,
                     height: 16,

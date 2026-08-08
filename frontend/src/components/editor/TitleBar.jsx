@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCollaborationStore, useDocumentStore, useEditorStore, useUIStore } from '@/store';
 import { useTheme } from '@/hooks/useTheme';
+import { getStoredUser } from '@/services/api';
 
 function getCollaboratorColor(index) {
   const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
@@ -19,9 +20,11 @@ export function TitleBar({ onSave }) {
   const toggleAutoSave = useUIStore((s) => s.toggleAutoSave);
   const title = useDocumentStore((s) => s.title);
   const setTitle = useDocumentStore((s) => s.setTitle);
+  const resetDocument = useDocumentStore((s) => s.reset);
   const editor = useEditorStore((s) => s.editor);
   const collaborators = useCollaborationStore((s) => s.collaborators);
   const collabStatus = useCollaborationStore((s) => s.status);
+  const resetCollaboration = useCollaborationStore((s) => s.reset);
   const { theme, toggleTheme } = useTheme();
   const visibleCollaborators = collaborators.slice(0, 3);
 
@@ -40,6 +43,14 @@ export function TitleBar({ onSave }) {
 
   const handleClose = () => {
     navigate('/home', { state: { returnTo: location.pathname } });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('etherx_token');
+    localStorage.removeItem('etherx_user');
+    resetDocument();
+    resetCollaboration();
+    navigate('/signin');
   };
 
   const onGoldHover = (e) => {
@@ -149,9 +160,17 @@ export function TitleBar({ onSave }) {
         >
           Share
         </button>
-        <button style={{
-          ...quickBtn, background: 'var(--gold)', color: 'var(--text-on-gold)', borderColor: 'var(--gold)', fontWeight: 700,
-        }} onMouseEnter={(e) => { e.currentTarget.style.background = '#d9bb67'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--gold)'; }}>U</button>
+        <button
+          title={`Logout${getStoredUser()?.name ? ` (${getStoredUser().name})` : ''}`}
+          onClick={handleLogout}
+          style={{
+            ...quickBtn, background: 'var(--gold)', color: 'var(--text-on-gold)', borderColor: 'var(--gold)', fontWeight: 700,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#d9bb67'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--gold)'; }}
+        >
+          Logout
+        </button>
         <button
           title="Toggle ribbon"
           onClick={toggleRibbon}

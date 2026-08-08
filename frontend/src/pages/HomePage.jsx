@@ -6,8 +6,15 @@ import { buildDocxBlob, buildHtmlDocument, exportToDocx, exportToHtml, exportToP
 import { buildAiResult, getPlainTextFromHtml, openTranslationUrl } from '@/services/ai';
 import { useTheme } from '@/hooks/useTheme';
 import { useUIStore, useDocumentStore } from '@/store';
+import { getStoredUser } from '@/services/api';
 
 const LOCAL_FILE_DOCS_KEY = 'etherx_file_docs';
+
+function getLocalDocsStorageKey() {
+  const user = getStoredUser();
+  const scope = user?.id || user?.email || 'guest';
+  return `${LOCAL_FILE_DOCS_KEY}:${String(scope).toLowerCase()}`;
+}
 
 // SVG Icon Components
 function getSaveAsIcon(location) {
@@ -556,7 +563,7 @@ function selectedStyle(active, danger) {
 
 function readLocalDocs() {
   try {
-    const raw = localStorage.getItem(LOCAL_FILE_DOCS_KEY);
+    const raw = localStorage.getItem(getLocalDocsStorageKey());
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
     return parsed.map((d) => ({
@@ -572,7 +579,7 @@ function readLocalDocs() {
 }
 
 function writeLocalDocs(list) {
-  localStorage.setItem(LOCAL_FILE_DOCS_KEY, JSON.stringify(list));
+  localStorage.setItem(getLocalDocsStorageKey(), JSON.stringify(list));
 }
 
 function upsertLocalDoc(doc) {

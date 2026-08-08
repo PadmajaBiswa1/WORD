@@ -1,150 +1,151 @@
 import { useEffect, useRef } from 'react';
+import { getSelectedImageElement, isImageSelection } from '@/utils/imageSelection';
 
-export function useImageResizeAndDrag(editorRef) {
-  const dragStateRef = useRef({
-    isDragging: false,
-    isResizing: false,
-    img: null,
-    startX: 0,
-    startY: 0,
-    initialWidth: 0,
-    initialHeight: 0,
+const parseCssStyle = (style = '') => {
+  const out = {};
+  String(style).split(';').forEach((pair) => {
+    const separator = pair.indexOf(':');
+    if (separator < 0) return;
+    const key = pair.slice(0, separator).trim();
+    const value = pair.slice(separator + 1).trim();
+    if (key && value) out[key] = value;
   });
+  return out;
+};
+
+const toCssStyle = (styles) => Object.entries(styles)
+  .filter(([, value]) => value !== undefined && value !== null && value !== '')
+  .map(([key, value]) => `${key}:${value}`)
+  .join(';');
+
+const createIdleDragState = () => ({
+  isDragging: false,
+  isResizing: false,
+  img: null,
+  startX: 0,
+  startY: 0,
+  initialWidth: 0,
+  initialHeight: 0,
+  initialMarginLeft: 0,
+  initialMarginTop: 0,
+});
+
+export function useImageResizeAndDrag(editor, editorRef) {
+  const dragStateRef = useRef(createIdleDragState());
 
   useEffect(() => {
-    if (!editorRef?.current) return;
+    if (!editor || !editorRef?.current) return undefined;
 
     const editorElement = editorRef.current;
     const proseMirrorEl = editorElement.querySelector('.ProseMirror');
+    if (!proseMirrorEl) return undefined;
 
-    const handleMouseDown = (e) => {
-      const img = e.target.closest('img');
-      if (!img) return;
+    const persistImageGeometry = (state) => {
+      const img = state.img;
+      if (!img || editor.isDestroyed) return;
 
-      // Check if image is selected
-      const isSelected = 
-        img.classList.contains('ProseMirror-selectednode') || 
-        img.parentElement?.classList.contains('ProseMirror-selectednode');
+      const attrs = editor.getAttributes('image') || {};
+      const css = parseCssStyle(attrs.style || '');
+      const computed = window.getComputedStyle(img);
+      const width = Math.max(20, Math.round(Number.parseFloat(computed.width) || img.getBoundingClientRect().width));
+      const height = Math.max(20, Math.round(Number.parseFloat(computed.height) || img.getBoundingClientRect().height));
 
-      if (!isSelected) return;
-
-      const rect = img.getBoundingClientRect();
-      const parentRect = editorElement.getBoundingClientRect();
-
-      // Check if clicking on resize handle (bottom-right corner area - 20px square)
-      const resizeHandleSize = 20;
-      const isResizeHandle = 
-        e.clientX > rect.right - resizeHandleSize &&
-        e.clientY > rect.bottom - resizeHandleSize;
-
-      if (isResizeHandle) {
-        dragStateRef.current.isResizing = true;
-        e.preventDefault();
-      } else {
-        dragStateRef.current.isDragging = true;
-        e.preventDefault();
+      css.width = `${width}px`;
+      css.height = `${height}px`;
+      if (state.isDragging) {
+        if (img.style.marginLeft) css['margin-left'] = img.style.marginLeft;
+        if (img.style.marginTop) css['margin-top'] = img.style.marginTop;
       }
 
-      dragStateRef.current.img = img;
-      dragStateRef.current.startX = e.clientX;
-      dragStateRef.current.startY = e.clientY;
-      dragStateRef.current.initialWidth = rect.width;
-      dragStateRef.current.initialHeight = rect.height;
-
-      img.style.cursor = dragStateRef.current.isResizing ? 'nwse-resize' : 'grabbing';
+      editor.chain().focus().updateAttributes('image', {
+        width: String(width),
+        height: String(height),
+        style: toCssStyle(css),
+      }).run();
     };
 
-    const handleMouseMove = (e) => {
-      const { isDragging, isResizing, img, startX, startY, initialWidth, initialHeight } = dragStateRef.current;
-      
-      if (!isDragging && !isResizing) return;
-      if (!img) return;
+    const handleMouseDown = (event) => {
+      const img = event.target.closest?.('img');
+      if (!img || !proseMirrorEl.contains(img)) return;
 
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
+      // Dragging/resizing starts only after ProseMirror has selected the image.
+      // A normal first click remains a regular node-selection click.
+      const selected = img.classList.contains('ProseMirror-selectednode')
+        || img.parentElement?.classList.contains('ProseMirror-selectednode')
+        || (isImageSelection(editor) && getSelectedImageElement(editor) === img);
+      if (!selected) return;
+
+      const rect = img.getBoundingClientRect();
+      const computed = window.getComputedStyle(img);
+      const resizeHandleSize = 20;
+      const isResizeHandle = event.clientX > rect.right - resizeHandleSize
+        && event.clientY > rect.bottom - resizeHandleSize;
+
+      dragStateRef.current = {
+        ...createIdleDragState(),
+        isDragging: !isResizeHandle,
+        isResizing: isResizeHandle,
+        img,
+        startX: event.clientX,
+        startY: event.clientY,
+        initialWidth: rect.width,
+        initialHeight: rect.height,
+        initialMarginLeft: Number.parseFloat(computed.marginLeft) || 0,
+        initialMarginTop: Number.parseFloat(computed.marginTop) || 0,
+      };
+
+      event.preventDefault();
+      img.style.cursor = isResizeHandle ? 'nwse-resize' : 'grabbing';
+    };
+
+    const handleMouseMove = (event) => {
+      const state = dragStateRef.current;
+      const { isDragging, isResizing, img } = state;
+      if ((!isDragging && !isResizing) || !img) return;
+
+      const deltaX = event.clientX - state.startX;
+      const deltaY = event.clientY - state.startY;
 
       if (isResizing) {
-        const newWidth = Math.max(50, initialWidth + deltaX);
-        const aspectRatio = initialHeight / initialWidth;
-        const newHeight = newWidth * aspectRatio;
-
+        const newWidth = Math.max(20, state.initialWidth + deltaX);
+        const aspectRatio = state.initialHeight / Math.max(state.initialWidth, 1);
+        const newHeight = Math.max(20, newWidth * aspectRatio);
         img.style.width = `${newWidth}px`;
         img.style.height = `${newHeight}px`;
-      } else if (isDragging) {
-        // Use margin to move the image
-        const currentMarginLeft = parseInt(img.style.marginLeft || '0', 10);
-        const currentMarginTop = parseInt(img.style.marginTop || '0', 10);
-        
-        img.style.marginLeft = `${currentMarginLeft + deltaX}px`;
-        img.style.marginTop = `${currentMarginTop + deltaY}px`;
-        
-        dragStateRef.current.startX = e.clientX;
-        dragStateRef.current.startY = e.clientY;
+      } else {
+        img.style.marginLeft = `${state.initialMarginLeft + deltaX}px`;
+        img.style.marginTop = `${state.initialMarginTop + deltaY}px`;
       }
     };
 
     const handleMouseUp = () => {
-      if (dragStateRef.current.img) {
-        dragStateRef.current.img.style.cursor = 'move';
-        
-        // Trigger editor update for persistence
-        const proseMirror = dragStateRef.current.img.closest('.ProseMirror');
-        if (proseMirror) {
-          proseMirror.dispatchEvent(new Event('input', { bubbles: true }));
-        }
+      const state = dragStateRef.current;
+      if (state.img) {
+        persistImageGeometry(state);
+        state.img.style.cursor = 'move';
       }
-
-      dragStateRef.current = {
-        isDragging: false,
-        isResizing: false,
-        img: null,
-        startX: 0,
-        startY: 0,
-        initialWidth: 0,
-        initialHeight: 0,
-      };
+      dragStateRef.current = createIdleDragState();
     };
 
-    const handleKeyDown = (e) => {
-      // Check if backspace or delete key is pressed
-      if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Backspace' && event.key !== 'Delete') return;
+      if (!isImageSelection(editor)) return;
 
-      // Find selected image
-      const selectedImg = proseMirrorEl?.querySelector('img.ProseMirror-selectednode, .ProseMirror-selectednode img');
-      if (!selectedImg) return;
-
-      e.preventDefault();
-
-      // Get the image position
-      const img = selectedImg.classList.contains('ProseMirror-selectednode') 
-        ? selectedImg 
-        : selectedImg.closest('.ProseMirror-selectednode')?.querySelector('img') || selectedImg;
-
-      // Try to delete the image from the editor
-      try {
-        // Dispatch a delete command or remove the element
-        img.remove();
-        
-        // Trigger editor update
-        if (proseMirrorEl) {
-          proseMirrorEl.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-      } catch (error) {
-        console.error('Error deleting image:', error);
-      }
+      event.preventDefault();
+      editor.chain().focus().deleteSelection().run();
     };
 
     editorElement.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    proseMirrorEl?.addEventListener('keydown', handleKeyDown);
+    proseMirrorEl.addEventListener('keydown', handleKeyDown);
 
     return () => {
       editorElement.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-      proseMirrorEl?.removeEventListener('keydown', handleKeyDown);
+      proseMirrorEl.removeEventListener('keydown', handleKeyDown);
+      dragStateRef.current = createIdleDragState();
     };
-  }, [editorRef]);
+  }, [editor, editorRef]);
 }
-

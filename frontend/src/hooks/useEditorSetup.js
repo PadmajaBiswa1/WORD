@@ -81,6 +81,28 @@ const ResizableImage = Image.extend({
         parseHTML: (element) => element.getAttribute('style') || null,
         renderHTML: (attributes) => (attributes.style ? { style: attributes.style } : {}),
       },
+      pictureEffects: {
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-picture-effects') || '',
+        renderHTML: (attributes) => (attributes.pictureEffects
+          ? { 'data-picture-effects': attributes.pictureEffects }
+          : {}),
+      },
+      rotate: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-rotate') || null,
+        renderHTML: (attributes) => (attributes.rotate ? { 'data-rotate': attributes.rotate } : {}),
+      },
+      wrap: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-wrap') || null,
+        renderHTML: (attributes) => (attributes.wrap ? { 'data-wrap': attributes.wrap } : {}),
+      },
+      zIndex: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-z') || null,
+        renderHTML: (attributes) => (attributes.zIndex ? { 'data-z': attributes.zIndex } : {}),
+      },
     };
   },
 });

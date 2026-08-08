@@ -1,9 +1,10 @@
-// ═══════════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════════
 //  EtherX Word — Central State (Zustand)
 // ═══════════════════════════════════════════════════════════════
 import { create } from 'zustand';
 
 const DESIGN_STORAGE_PREFIX = 'etherx-doc-design:';
+const HEADER_FOOTER_STORAGE_PREFIX = 'etherx-doc-header-footer:';
 
 function getDefaultPageColor() {
   try {
@@ -30,12 +31,8 @@ const baseDesignState = () => ({
   effect: 'none',
 });
 
-const baseDocumentState = () => ({
-  id: null,
-  title: 'Untitled Document',
-  content: '',
-  design: baseDesignState(),
-  headerFooter: {
+function getDefaultHeaderFooter() {
+  return {
     headerText: '',
     headerAlign: 'Center',
     footerText: '',
@@ -43,7 +40,36 @@ const baseDocumentState = () => ({
     pageNumberEnabled: false,
     pageNumberStyle: 'bottom-center',
     pageNumberStart: 1,
-  },
+  };
+}
+
+function readStoredHeaderFooter(docId) {
+  if (typeof window === 'undefined' || !docId) return null;
+  try {
+    const raw = window.localStorage.getItem(`${HEADER_FOOTER_STORAGE_PREFIX}${docId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredHeaderFooter(docId, headerFooter) {
+  if (typeof window === 'undefined' || !docId) return;
+  try {
+    window.localStorage.setItem(`${HEADER_FOOTER_STORAGE_PREFIX}${docId}`, JSON.stringify(headerFooter || {}));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+const baseDocumentState = () => ({
+  id: null,
+  title: 'Untitled Document',
+  content: '',
+  design: baseDesignState(),
+  headerFooter: getDefaultHeaderFooter(),
   isDirty: false,
   isSaving: false,
   lastSaved: null,
@@ -84,23 +110,31 @@ function writeStoredDesign(docId, design) {
 
 /* ── Document Store ─────────────────────────────────────────── */
 export const useDocumentStore = create((set, get) => ({
-    ...baseDocumentState(),
+  ...baseDocumentState(),
 
-    setId: (id) => set({ id }),
-    hydrateDocument: (doc = {}) =>
-      set((state) => ({
+  setId: (id) => set({ id }),
+  hydrateDocument: (doc = {}) =>
+    set((state) => {
+      const docId = doc.id ?? doc._id ?? state.id ?? null;
+      const storedDesign = readStoredDesign(docId);
+      const storedHeaderFooter = readStoredHeaderFooter(docId);
+      const nextDesign = {
+        ...baseDesignState(),
+        ...(storedDesign || {}),
+        ...(doc.design || doc.pageDesign || {}),
+      };
+      const nextHeaderFooter = {
+        ...getDefaultHeaderFooter(),
+        ...(storedHeaderFooter || {}),
+        ...(doc.headerFooter || {}),
+      };
+      return {
         ...state,
-        id: doc.id ?? doc._id ?? state.id ?? null,
+        id: docId,
         title: doc.title || 'Untitled Document',
-        content: doc.content ?? '<p></p>',
-        design: {
-          ...state.design,
-          ...(doc.design || doc.pageDesign || readStoredDesign(doc.id ?? doc._id) || {}),
-        },
-        headerFooter: {
-          ...state.headerFooter,
-          ...(doc.headerFooter || {}),
-        },
+        content: typeof doc.content === 'string' ? doc.content : '<p></p>',
+        design: nextDesign,
+        headerFooter: nextHeaderFooter,
         isDirty: false,
         isSaving: false,
         lastSaved: doc.updatedAt ? new Date(doc.updatedAt) : state.lastSaved,
@@ -110,24 +144,26 @@ export const useDocumentStore = create((set, get) => ({
         versions: Array.isArray(doc.versions) ? doc.versions : [],
         comments: Array.isArray(doc.comments) ? doc.comments : [],
         trackChanges: Boolean(doc.trackChanges),
-      })),
-    applyRemoteUpdate: (patch = {}) =>
-      set((state) => ({
-        title: patch.title ?? state.title,
-        content: typeof patch.content === 'string' ? patch.content : state.content,
-        design: patch.design ? { ...state.design, ...patch.design } : state.design,
-        headerFooter: patch.headerFooter ? { ...state.headerFooter, ...patch.headerFooter } : state.headerFooter,
-        comments: Array.isArray(patch.comments) ? patch.comments : state.comments,
-        trackChanges: typeof patch.trackChanges === 'boolean' ? patch.trackChanges : state.trackChanges,
-        updatedAt: patch.updatedAt ? new Date(patch.updatedAt) : new Date(),
-        revision: Number.isFinite(Number(patch.revision)) ? Number(patch.revision) : state.revision,
-        lastSaved: patch.updatedAt ? new Date(patch.updatedAt) : state.lastSaved,
-        isDirty: false,
-      })),
+      };
+    }),
+  applyRemoteUpdate: (patch = {}) =>
+    set((state) => ({
+      title: patch.title ?? state.title,
+      content: typeof patch.content === 'string' ? patch.content : state.content,
+      design: patch.design ? { ...state.design, ...patch.design } : state.design,
+      headerFooter: patch.headerFooter ? { ...getDefaultHeaderFooter(), ...patch.headerFooter } : state.headerFooter,
+      comments: Array.isArray(patch.comments) ? patch.comments : state.comments,
+      trackChanges: typeof patch.trackChanges === 'boolean' ? patch.trackChanges : state.trackChanges,
+      updatedAt: patch.updatedAt ? new Date(patch.updatedAt) : new Date(),
+      revision: Number.isFinite(Number(patch.revision)) ? Number(patch.revision) : state.revision,
+      lastSaved: patch.updatedAt ? new Date(patch.updatedAt) : state.lastSaved,
+      isDirty: false,
+    })),
 
-    setTitle:    (title)   => set({ title,   isDirty: true }),
-    setContent:  (content) => set({ content, isDirty: true, updatedAt: new Date() }),
-    setDesign:   (design = {}) => set((state) => {
+  setTitle: (title) => set({ title, isDirty: true }),
+  setContent: (content) => set({ content, isDirty: true, updatedAt: new Date() }),
+  setDesign: (design = {}) =>
+    set((state) => {
       const nextDesign = { ...state.design, ...design };
       writeStoredDesign(state.id, nextDesign);
       return {
@@ -136,71 +172,80 @@ export const useDocumentStore = create((set, get) => ({
         updatedAt: new Date(),
       };
     }),
-    setHeaderFooter: (headerFooter = {}) =>
-      set((state) => ({
-        headerFooter: { ...state.headerFooter, ...headerFooter },
+  setHeaderFooter: (headerFooter = {}) =>
+    set((state) => {
+      const nextHeaderFooter = { ...state.headerFooter, ...headerFooter };
+      writeStoredHeaderFooter(state.id, nextHeaderFooter);
+      return {
+        headerFooter: nextHeaderFooter,
         isDirty: true,
         updatedAt: new Date(),
-      })),
-    setSaving:   (v)       => set({ isSaving: v }),
-    setRevision: (revision) => set((state) => ({
+      };
+    }),
+  setSaving: (v) => set({ isSaving: v }),
+  setRevision: (revision) =>
+    set((state) => ({
       revision: Number.isFinite(Number(revision)) ? Number(revision) : state.revision,
     })),
-    setLastSaved:(value = new Date()) => set({ lastSaved: value instanceof Date ? value : new Date(value), isDirty: false }),
-    setStats: ({ wordCount = 0, charCount = 0, pageCount = 1 }) =>
-      set((s) => {
-        if (s.pageCount === pageCount) {
-          return { wordCount, charCount, pageCount, readingTime: Math.ceil(wordCount / 200) };
-        }
-        const prev = s.pageOrder;
-        const newOrder = Array.from({ length: pageCount }, (_, i) => i);
-        const kept = prev.filter((p) => p < pageCount);
-        const added = newOrder.filter((p) => !kept.includes(p));
-        return { wordCount, charCount, pageCount, readingTime: Math.ceil(wordCount / 200), pageOrder: [...kept, ...added] };
-      }),
-    setThumbnail: (index, dataUrl) =>
-      set((s) => ({ pageThumbnails: { ...s.pageThumbnails, [index]: dataUrl } })),
-    reorderPages: (from, to) =>
-      set((s) => {
-        const order = [...s.pageOrder];
-        const [moved] = order.splice(from, 1);
-        order.splice(to, 0, moved);
-        return { pageOrder: order };
-      }),
-    addVersion: (snapshot) =>
-      set((s) => ({ versions: [{ id: Date.now(), snapshot, savedAt: new Date(), label: `v${s.versions.length + 1}` }, ...s.versions] })),
-    setComments: (comments) => set({ comments, isDirty: true, updatedAt: new Date() }),
-    replaceComments: (comments) => set({ comments, isDirty: false, updatedAt: new Date() }),
-    addComment: (c)  => set((s) => ({ comments: [...s.comments, { id: Date.now(), ...c, resolved: false }], isDirty: true, updatedAt: new Date() })),
-    deleteComment: (id) => set((s) => ({ comments: s.comments.filter((c) => c.id !== id), isDirty: true, updatedAt: new Date() })),
-    resolveComment: (id) => set((s) => ({ comments: s.comments.map((c) => c.id === id ? { ...c, resolved: true } : c), isDirty: true, updatedAt: new Date() })),
-    toggleTrackChanges: () => set((s) => ({ trackChanges: !s.trackChanges, isDirty: true, updatedAt: new Date() })),
-    reset: () => {
-      const currentId = get().id;
-      if (currentId) {
-        try {
-          window.localStorage.removeItem(`${DESIGN_STORAGE_PREFIX}${currentId}`);
-        } catch {
-          // ignore storage errors
-        }
+  setLastSaved: (value = new Date()) => set({ lastSaved: value instanceof Date ? value : new Date(value), isDirty: false }),
+  setStats: ({ wordCount = 0, charCount = 0, pageCount = 1 }) =>
+    set((s) => {
+      if (s.pageCount === pageCount) {
+        return { wordCount, charCount, pageCount, readingTime: Math.ceil(wordCount / 200) };
       }
-      set(baseDocumentState());
-    },
+      const prev = s.pageOrder;
+      const newOrder = Array.from({ length: pageCount }, (_, i) => i);
+      const kept = prev.filter((p) => p < pageCount);
+      const added = newOrder.filter((p) => !kept.includes(p));
+      return { wordCount, charCount, pageCount, readingTime: Math.ceil(wordCount / 200), pageOrder: [...kept, ...added] };
+    }),
+  setThumbnail: (index, dataUrl) => set((s) => ({ pageThumbnails: { ...s.pageThumbnails, [index]: dataUrl } })),
+  reorderPages: (from, to) =>
+    set((s) => {
+      const order = [...s.pageOrder];
+      const [moved] = order.splice(from, 1);
+      order.splice(to, 0, moved);
+      return { pageOrder: order };
+    }),
+  addVersion: (snapshot) =>
+    set((s) => ({ versions: [{ id: Date.now(), snapshot, savedAt: new Date(), label: `v${s.versions.length + 1}` }, ...s.versions] })),
+  setComments: (comments) => set({ comments, isDirty: true, updatedAt: new Date() }),
+  replaceComments: (comments) => set({ comments, isDirty: false, updatedAt: new Date() }),
+  addComment: (c) => set((s) => ({ comments: [...s.comments, { id: Date.now(), ...c, resolved: false }], isDirty: true, updatedAt: new Date() })),
+  deleteComment: (id) => set((s) => ({ comments: s.comments.filter((c) => c.id !== id), isDirty: true, updatedAt: new Date() })),
+  resolveComment: (id) => set((s) => ({ comments: s.comments.map((c) => (c.id === id ? { ...c, resolved: true } : c)), isDirty: true, updatedAt: new Date() })),
+  toggleTrackChanges: () => set((s) => ({ trackChanges: !s.trackChanges, isDirty: true, updatedAt: new Date() })),
+  reset: () => {
+    const currentId = get().id;
+    if (currentId) {
+      try {
+        window.localStorage.removeItem(`${DESIGN_STORAGE_PREFIX}${currentId}`);
+        window.localStorage.removeItem(`${HEADER_FOOTER_STORAGE_PREFIX}${currentId}`);
+      } catch {
+        // ignore storage errors
+      }
+    }
+    set(baseDocumentState());
+  },
 }));
 
 /* ── UI Store ───────────────────────────────────────────────── */
 export const useUIStore = create((set) => ({
-  theme: localStorage.getItem('etherx-theme') || 'dark',
-  autoSaveEnabled: localStorage.getItem('etherx-autosave') !== 'false',
+  theme: typeof localStorage !== 'undefined' ? localStorage.getItem('etherx-theme') || 'dark' : 'dark',
+  autoSaveEnabled: typeof localStorage !== 'undefined' ? localStorage.getItem('etherx-autosave') !== 'false' : true,
   toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
   toggleAutoSave: () =>
     set((s) => {
       const next = !s.autoSaveEnabled;
-      localStorage.setItem('etherx-autosave', next ? 'true' : 'false');
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('etherx-autosave', next ? 'true' : 'false');
+      }
       return { autoSaveEnabled: next };
     }),
   setAutoSaveEnabled: (enabled) => {
-    localStorage.setItem('etherx-autosave', enabled ? 'true' : 'false');
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('etherx-autosave', enabled ? 'true' : 'false');
+    }
     set({ autoSaveEnabled: !!enabled });
   },
   sidebarOpen: true,
@@ -211,35 +256,34 @@ export const useUIStore = create((set) => ({
   activePage: 0,
   headerFooterTab: 'header',
 
-  // Page layout state
   rulerVisible: false,
   gridlinesVisible: false,
-  pageOrientation: 'portrait',  // 'portrait' | 'landscape'
-  pageSize: 'a4',               // 'a4' | 'letter' | 'legal' | 'a3'
-  pageMargin: 'normal',         // 'normal' | 'narrow' | 'moderate' | 'wide'
+  pageOrientation: 'portrait',
+  pageSize: 'a4',
+  pageMargin: 'normal',
   pageColumns: 1,
   drawTool: 'pen',
   drawColor: '#111111',
   drawSize: 4,
   drawOpacity: 0.4,
 
-  toggleSidebar:      () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  toggleFullscreen:   () => set((s) => ({ fullscreen: !s.fullscreen })),
-  toggleRibbon:       () => set((s) => ({ ribbonCollapsed: !s.ribbonCollapsed })),
-  toggleRuler:        () => set((s) => ({ rulerVisible: !s.rulerVisible })),
-  toggleGridlines:    () => set((s) => ({ gridlinesVisible: !s.gridlinesVisible })),
-  setZoom:            (z) => set({ zoom: Math.min(200, Math.max(25, z)) }),
-  setActiveTab:       (t) => set({ activeTab: t }),
-  setActivePage:      (p) => set({ activePage: p }),
+  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  toggleFullscreen: () => set((s) => ({ fullscreen: !s.fullscreen })),
+  toggleRibbon: () => set((s) => ({ ribbonCollapsed: !s.ribbonCollapsed })),
+  toggleRuler: () => set((s) => ({ rulerVisible: !s.rulerVisible })),
+  toggleGridlines: () => set((s) => ({ gridlinesVisible: !s.gridlinesVisible })),
+  setZoom: (z) => set({ zoom: Math.min(200, Math.max(25, z)) }),
+  setActiveTab: (t) => set({ activeTab: t }),
+  setActivePage: (p) => set({ activePage: p }),
   setHeaderFooterTab: (t) => set({ headerFooterTab: t }),
   setPageOrientation: (o) => set({ pageOrientation: o }),
-  setPageSize:        (s) => set({ pageSize: s }),
-  setPageMargin:      (m) => set({ pageMargin: m }),
-  setPageColumns:     (c) => set({ pageColumns: c }),
-  setDrawTool:        (t) => set({ drawTool: t }),
-  setDrawColor:       (c) => set({ drawColor: c }),
-  setDrawSize:        (s) => set({ drawSize: s }),
-  setDrawOpacity:     (o) => set({ drawOpacity: Math.max(0.1, Math.min(1, o)) }),
+  setPageSize: (s) => set({ pageSize: s }),
+  setPageMargin: (m) => set({ pageMargin: m }),
+  setPageColumns: (c) => set({ pageColumns: c }),
+  setDrawTool: (t) => set({ drawTool: t }),
+  setDrawColor: (c) => set({ drawColor: c }),
+  setDrawSize: (s) => set({ drawSize: s }),
+  setDrawOpacity: (o) => set({ drawOpacity: Math.max(0.1, Math.min(1, o)) }),
 
   dialogs: {
     insertImage: false, insertTable: false, insertLink: false,
@@ -263,9 +307,9 @@ export const useUIStore = create((set) => ({
     commandMap: false,
     help: false, feedback: false, whatsNew: false, about: false,
   },
-  openDialog:  (name) => set((s) => ({ dialogs: { ...s.dialogs, [name]: true  } })),
+  openDialog: (name) => set((s) => ({ dialogs: { ...s.dialogs, [name]: true } })),
   closeDialog: (name) => set((s) => ({ dialogs: { ...s.dialogs, [name]: false } })),
-  closeAll:    ()     => set((s) => ({ dialogs: Object.fromEntries(Object.keys(s.dialogs).map((k) => [k, false])) })),
+  closeAll: () => set((s) => ({ dialogs: Object.fromEntries(Object.keys(s.dialogs).map((k) => [k, false])) })),
 
   toasts: [],
   toast: (message, type = 'info', duration = 3200) =>
@@ -273,7 +317,7 @@ export const useUIStore = create((set) => ({
   removeToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
   findQuery: '', replaceQuery: '',
-  setFindQuery:    (v) => set({ findQuery: v }),
+  setFindQuery: (v) => set({ findQuery: v }),
   setReplaceQuery: (v) => set({ replaceQuery: v }),
 }));
 
@@ -284,14 +328,13 @@ export const useEditorStore = create((set) => ({
   fontFamily: 'Crimson Pro',
   fontSize: '12',
   setFontFamily: (v) => set({ fontFamily: v }),
-  setFontSize:   (v) => set({ fontSize: v }),
+  setFontSize: (v) => set({ fontSize: v }),
   spellCheck: true,
   toggleSpellCheck: () => set((s) => ({ spellCheck: !s.spellCheck })),
   isProgrammaticChange: false,
   programmaticContent: null,
   beginProgrammaticChange: (content = null) => set({ isProgrammaticChange: true, programmaticContent: content }),
   endProgrammaticChange: () => set({ isProgrammaticChange: false, programmaticContent: null }),
-  // Format painter: stores captured marks to apply on next selection
   formatPainterMarks: null,
   setFormatPainterMarks: (marks) => set({ formatPainterMarks: marks }),
 }));
@@ -301,6 +344,7 @@ export const useCollaborationStore = create((set) => ({
   sessionId: null,
   connected: false,
   status: 'Not shared',
+  collaborationEnabled: false,
   userName: 'You',
   role: 'editor',
   collaborators: [],
@@ -315,6 +359,8 @@ export const useCollaborationStore = create((set) => ({
       role,
       status: 'Connecting…',
     }),
+  enableCollaboration: () => set({ collaborationEnabled: true }),
+  disableCollaboration: () => set({ collaborationEnabled: false }),
   setConnected: (connected) =>
     set({
       connected,
@@ -331,6 +377,7 @@ export const useCollaborationStore = create((set) => ({
       sessionId: null,
       connected: false,
       status: 'Not shared',
+      collaborationEnabled: false,
       userName: 'You',
       role: 'editor',
       collaborators: [],

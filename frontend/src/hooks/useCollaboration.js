@@ -23,6 +23,7 @@ export function useCollaboration(docId) {
   const trackChanges = useDocumentStore((s) => s.trackChanges);
   const revision = useDocumentStore((s) => s.revision);
   const setRevision = useDocumentStore((s) => s.setRevision);
+  const collaborationEnabled = useCollaborationStore((s) => s.collaborationEnabled);
   const setCollaborators = useCollaborationStore((s) => s.setCollaborators);
   const setTypingUsers = useCollaborationStore((s) => s.setTypingUsers);
   const setConnected = useCollaborationStore((s) => s.setConnected);
@@ -43,7 +44,7 @@ export function useCollaboration(docId) {
   const typingTimersRef = useRef(new Map());
 
   useEffect(() => {
-    if (!docId) {
+    if (!docId || !collaborationEnabled) {
       resetCollaboration();
       typingTimersRef.current.forEach((t) => clearTimeout(t));
       typingTimersRef.current.clear();
@@ -222,7 +223,7 @@ export function useCollaboration(docId) {
       setTypingUsers([]);
     };
 
-  }, [docId, configureSession, resetCollaboration, setCollaborators, setConnected, setLastRemoteEditAt, setLastSyncedAt, setRevision, toast]);
+  }, [docId, collaborationEnabled, configureSession, resetCollaboration, setCollaborators, setConnected, setLastRemoteEditAt, setLastSyncedAt, setRevision, toast]);
 
   useEffect(() => {
     const collab = getCollab();

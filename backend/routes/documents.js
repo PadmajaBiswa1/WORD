@@ -10,7 +10,6 @@ const {
   shareDocument,
   updateDocument,
 } = require('../lib/documentStore');
-const { sendInviteEmail } = require('../utils/sendEmail');
 const ipfsService = require('../utils/ipfsService');
 const {
   broadcast,
@@ -31,7 +30,7 @@ function requestUser(req) {
 }
 
 router.get('/', (_req, res) => {
-  res.json({ documents: listDocuments() });
+  res.json({ documents: listDocuments(requestUser(_req)) });
 });
 
 router.post('/', (req, res) => {
@@ -40,7 +39,7 @@ router.post('/', (req, res) => {
 });
 
 router.get('/:id', (req, res) => {
-  const document = getDocument(req.params.id);
+  const document = getDocument(req.params.id, requestUser(req));
   if (!document) return res.status(404).json({ message: 'Document not found' });
   res.json(document);
 });
@@ -76,35 +75,17 @@ router.post('/test/send-email', async (req, res) => {
     return res.status(400).json({ message: 'testEmail is required' });
   }
 
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const testDocUrl = `${frontendUrl.replace(/\/$/, '')}/shared/test-demo`;
-  try {
-    await sendInviteEmail({
-      toEmail: testEmail,
-      inviterName: 'EtherX Word Test',
-      documentTitle: 'Welcome to EtherX Word - Test Document',
-      shareUrl: testDocUrl,
-      role: 'viewer',
-    });
-    res.json({
-      ok: true,
-      message: `Test email sent to ${testEmail}`,
-      testEmail,
-      shareUrl: testDocUrl,
-    });
-  } catch (error) {
-    res.status(500).json({
-      ok: false,
-      message: 'Failed to send test email',
-      error: error?.message || 'Unknown error',
-      details: {
-        smtpUser: process.env.SMTP_USER ? '✓ Set' : '✗ Missing',
-        smtpPass: process.env.SMTP_PASS ? '✓ Set' : '✗ Missing',
-        smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
-        smtpPort: process.env.SMTP_PORT || 465,
-      },
-    });
-  }
+  res.json({
+    ok: true,
+    message: 'EmailJS sending now happens in the browser. Use the app UI to send test mail.',
+    testEmail,
+    details: {
+      emailjsServiceId: process.env.EMAILJS_SERVICE_ID ? '✓ Set' : '✗ Missing',
+      emailjsTemplateId: process.env.EMAILJS_TEMPLATE_ID ? '✓ Set' : '✗ Missing',
+      emailjsPublicKey: process.env.EMAILJS_PUBLIC_KEY ? '✓ Set' : '✗ Missing',
+      emailjsPrivateKey: process.env.EMAILJS_PRIVATE_KEY ? '✓ Set' : '✗ Missing',
+    },
+  });
 });
 
 // IPFS — Test connection and status (MUST come before /:id routes)
@@ -147,7 +128,7 @@ async function handleShareDocument(req, res) {
   try {
     console.log(`[${shareRequestId}] 📤 Share request received for document: ${req.params.id}`);
     
-    const document = getDocument(req.params.id);
+    const document = getDocument(req.params.id, requestUser(req));
     if (!document) {
       console.log(`[${shareRequestId}] ❌ Document not found`);
       return res.status(404).json({ message: 'Document not found' });
@@ -174,7 +155,7 @@ async function handleShareDocument(req, res) {
       shareUrl,
       sharedWith: Array.isArray(updatedDocument?.sharedWith) ? updatedDocument.sharedWith : [],
       inviteEmailSent: false,
-      inviteEmailQueued: !!share?.email,
+      inviteEmailQueued: false,
       inviteEmailError: null,
     };
 
@@ -183,40 +164,6 @@ async function handleShareDocument(req, res) {
     res.json(response);
     console.log(`[${shareRequestId}] ✅ Response sent to client`);
 
-    // Handle email sending asynchronously in background (don't await)
-    if (share?.email) {
-      console.log(`[${shareRequestId}] 📧 Scheduling async email send for ${share.email}`);
-      
-      // Use setImmediate to send email after response is sent
-      setImmediate(async () => {
-        const asyncId = `async-${shareRequestId}`;
-        try {
-          console.log(`[${asyncId}] 📧 [ASYNC] Starting email send...`);
-          console.log(`[${asyncId}] 📧 [ASYNC] To: ${share.email}`);
-          console.log(`[${asyncId}] 📧 [ASYNC] Document: ${updatedDocument?.title || document.title}`);
-          console.log(`[${asyncId}] 📧 [ASYNC] URL: ${shareUrl}`);
-          console.log(`[${asyncId}] 📧 [ASYNC] Inviter: ${inviter?.name || 'A collaborator'}`);
-          
-          const emailResult = await sendInviteEmail({
-            toEmail: share.email,
-            inviterName: inviter?.name || 'A collaborator',
-            documentTitle: updatedDocument?.title || document.title,
-            shareUrl,
-            role: share.role || 'viewer',
-          });
-          
-          console.log(`[${asyncId}] ✅ [ASYNC] Email sent successfully to ${share.email}`);
-          console.log(`[${asyncId}] ✅ [ASYNC] MessageId:`, emailResult?.messageId);
-        } catch (emailError) {
-          console.error(`[${asyncId}] ❌ [ASYNC] Email service error for ${share.email}`);
-          console.error(`[${asyncId}] ❌ [ASYNC] Error name:`, emailError?.name);
-          console.error(`[${asyncId}] ❌ [ASYNC] Error message:`, emailError?.message || 'Unknown error');
-          console.error(`[${asyncId}] ❌ [ASYNC] Error code:`, emailError?.code);
-          console.error(`[${asyncId}] ❌ [ASYNC] Stack:`, emailError?.stack?.substring(0, 200));
-        }
-      });
-    }
-    
   } catch (mainError) {
     try {
       const errorMsg = mainError?.message || 'Unknown error';
@@ -253,7 +200,7 @@ router.post('/:id/invite', handleShareDocument);
 
 router.get('/:id/collaboration/stream', (req, res) => {
   const docId = req.params.id;
-  const document = getDocument(docId);
+  const document = getDocument(docId, requestUser(req));
   if (!document) return res.status(404).json({ message: 'Document not found' });
 
   const session = {

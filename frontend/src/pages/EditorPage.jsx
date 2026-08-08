@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  EditorPage — Main editor layout
 // ═══════════════════════════════════════════════════════════════
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { TitleBar }       from '@/components/editor/TitleBar';
 import { Ribbon }         from '@/components/toolbar/Ribbon';
@@ -13,7 +13,7 @@ import { ToastContainer } from '@/components/ui/Toast';
 import { useAutoSave }    from '@/hooks/useAutoSave';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useUIStore, useDocumentStore } from '@/store';
+import { useUIStore, useDocumentStore, useCollaborationStore } from '@/store';
 import { documentApi } from '@/services/api';
 
 function getDefaultPageColor() {
@@ -27,11 +27,23 @@ function getDefaultPageColor() {
 export function EditorPage({ isShared = false }) {
   const { id: routeId } = useParams();
   const fullscreen = useUIStore((s) => s.fullscreen);
+  // Store actions — read once into refs so they never appear in deps
   const reset = useDocumentStore((s) => s.reset);
   const hydrateDocument = useDocumentStore((s) => s.hydrateDocument);
   const setId = useDocumentStore((s) => s.setId);
   const documentId = useDocumentStore((s) => s.id);
   const toast = useUIStore((s) => s.toast);
+  const enableCollaboration = useCollaborationStore((s) => s.enableCollaboration);
+  const disableCollaboration = useCollaborationStore((s) => s.disableCollaboration);
+
+  // Stable refs for actions — prevents stale-closure issues without
+  // adding the action functions to the useEffect dependency array
+  // (Zustand actions are stable, but inline selectors create new fn
+  //  references each render which would cause an infinite loop)
+  const actionsRef = useRef({ reset, hydrateDocument, setId, toast });
+  useEffect(() => {
+    actionsRef.current = { reset, hydrateDocument, setId, toast };
+  });
 
   const { save } = useAutoSave();
   useKeyboardShortcuts();
@@ -40,8 +52,19 @@ export function EditorPage({ isShared = false }) {
   const activeDocId = isShared ? routeId : (routeId && routeId !== 'new' ? routeId : documentId);
   useCollaboration(activeDocId && activeDocId !== 'new' ? activeDocId : null);
 
-  // Load doc if ID provided, or create new doc on backend
   useEffect(() => {
+    if (isShared) {
+      enableCollaboration();
+    } else {
+      disableCollaboration();
+    }
+  }, [disableCollaboration, enableCollaboration, isShared]);
+
+  // Load doc when routeId / isShared / documentId changes.
+  // Actions are accessed via actionsRef to avoid adding them as deps
+  // (which would cause an infinite re-render loop).
+  useEffect(() => {
+    const { reset, hydrateDocument, setId, toast } = actionsRef.current;
     const docIdToLoad = isShared ? routeId : (routeId && routeId !== 'new' ? routeId : documentId);
     
     if (docIdToLoad && docIdToLoad !== 'new') {
@@ -84,7 +107,8 @@ export function EditorPage({ isShared = false }) {
           console.warn(`⚠️  Could not create document on backend:`, err?.message);
         });
     }
-  }, [hydrateDocument, reset, routeId, setId, documentId, toast, isShared]);
+  // ✅ Only the actual data values that should trigger a reload
+  }, [routeId, isShared, documentId]);
 
   return (
     <div style={{

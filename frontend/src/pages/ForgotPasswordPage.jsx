@@ -2,6 +2,27 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '@/hooks/useTheme';
 import { authApi } from '@/services/api';
+import { sendOtpEmail } from '@/services/emailjs';
+
+function ThemeIcon({ dark }) {
+  return dark ? (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M13.5 3.5a8.5 8.5 0 1 0 7 13.3 9.5 9.5 0 1 1-7-13.3Z" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2.5" />
+      <path d="M12 19.5V22" />
+      <path d="M4.9 4.9l1.8 1.8" />
+      <path d="M17.3 17.3l1.8 1.8" />
+      <path d="M2 12h2.5" />
+      <path d="M19.5 12H22" />
+      <path d="M4.9 19.1l1.8-1.8" />
+      <path d="M17.3 6.7l1.8-1.8" />
+    </svg>
+  );
+}
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -22,8 +43,17 @@ export function ForgotPasswordPage() {
     setError('');
     setLoading(true);
     try {
-      await authApi.forgotPassword({ email });
+      const response = await authApi.forgotPassword({ email });
       setStep('otp');
+
+      if (response?.otp) {
+        await sendOtpEmail({
+          toEmail: email,
+          toName: email,
+          code: response.otp,
+          purpose: 'reset',
+        });
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -64,7 +94,15 @@ export function ForgotPasswordPage() {
   const handleResend = async () => {
     setError('');
     try {
-      await authApi.resendOtp({ email, type: 'reset' });
+      const response = await authApi.resendOtp({ email, type: 'reset' });
+      if (response?.otp) {
+        await sendOtpEmail({
+          toEmail: email,
+          toName: email,
+          code: response.otp,
+          purpose: 'reset',
+        });
+      }
       setResent(true);
       setTimeout(() => setResent(false), 4000);
     } catch (err) {
@@ -74,8 +112,8 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="auth-bg">
-      <button className="auth-theme-toggle" onClick={toggleTheme} title="Toggle theme">
-        {theme === 'dark' ? '☀' : '🌙'}
+      <button className="auth-theme-toggle" onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
+        <ThemeIcon dark={theme === 'dark'} />
       </button>
       <div className="auth-card anim-scale-in">
         <div className="auth-logo-wrap">

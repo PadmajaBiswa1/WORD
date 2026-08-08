@@ -2,21 +2,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom';
 import { useEditorStore, useUIStore } from '@/store';
 import { PictureFormatTab } from '@/components/toolbar/tabs/PictureFormatTab';
+import { getSelectedImageElement, isImageSelection } from '@/utils/imageSelection';
 
-function selectedImageElement() {
-  return document.querySelector('.ProseMirror img.ProseMirror-selectednode')
-    || document.querySelector('.ProseMirror .ProseMirror-selectednode img');
-}
-
-function isImageSelection(editor) {
-  return Boolean(
-    editor?.isActive?.('image')
-    || editor?.state?.selection?.node?.type?.name === 'image'
-  );
+function isFocusablePictureField(target) {
+  return Boolean(target?.closest?.('input, select, textarea, [contenteditable="true"]'));
 }
 
 function getImageBounds(editor) {
-  const img = selectedImageElement();
+  const img = getSelectedImageElement(editor);
   if (img) {
     const rect = img.getBoundingClientRect();
     return {
@@ -237,6 +230,7 @@ export function PictureFormatToolbar({ editor, scrollContainerRef }) {
     // Losing focus entirely (clicking outside the editor's own DOM, e.g. a
     // sidebar or blank page area) doesn't always fire selectionUpdate.
     editor.on('blur', syncFromSelection);
+    document.addEventListener('selectionchange', syncFromSelection);
     window.addEventListener('resize', handleWindowInteraction);
 
     const scrollEl = scrollContainerRef?.current;
@@ -246,6 +240,7 @@ export function PictureFormatToolbar({ editor, scrollContainerRef }) {
       editor.off('selectionUpdate', syncFromSelection);
       editor.off('update', syncFromSelection);
       editor.off('blur', syncFromSelection);
+      document.removeEventListener('selectionchange', syncFromSelection);
       window.removeEventListener('resize', handleWindowInteraction);
       if (scrollEl) scrollEl.removeEventListener('scroll', handleWindowInteraction);
     };
@@ -263,15 +258,25 @@ export function PictureFormatToolbar({ editor, scrollContainerRef }) {
     const handleOutsidePointerDown = (event) => {
       const target = event.target;
       if (toolbarRef.current?.contains(target)) return;
-      requestAnimationFrame(() => {
-        if (selectedImageElement()) return; // an image is (still/now) selected
-        hideToolbar();
-      });
+      if (target?.closest?.('[data-select-menu="true"]')) return;
+
+      // A node selection can remain active in ProseMirror after the editor
+      // loses focus. Convert it to a regular text selection before blurring so
+      // the selection event cannot immediately reopen this portal.
+      const image = getSelectedImageElement(editor);
+      if (image?.contains(target)) return;
+
+      const selection = editor?.state?.selection;
+      if (selection?.node?.type?.name === 'image') {
+        const position = Math.max(1, Math.min(editor.state.doc.content.size, selection.from));
+        editor.chain().setTextSelection(position).blur().run();
+      }
+      hideToolbar();
     };
 
-    document.addEventListener('mousedown', handleOutsidePointerDown, true);
-    return () => document.removeEventListener('mousedown', handleOutsidePointerDown, true);
-  }, [mounted, hideToolbar]);
+    document.addEventListener('pointerdown', handleOutsidePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown, true);
+  }, [editor, mounted, hideToolbar]);
 
   useEffect(() => () => clearTimeout(hideTimerRef.current), []);
 
@@ -375,6 +380,11 @@ export function PictureFormatToolbar({ editor, scrollContainerRef }) {
           <span>Move</span>
         </div>
         <div
+          onMouseDown={(event) => {
+            // Keep the ProseMirror node selection while toolbar buttons run
+            // image commands. Native inputs/selects still receive focus.
+            if (!isFocusablePictureField(event.target)) event.preventDefault();
+          }}
           style={{
             padding: '8px 10px',
             overflowX: 'hidden',

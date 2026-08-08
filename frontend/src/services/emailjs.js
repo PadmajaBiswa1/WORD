@@ -1,0 +1,85 @@
+import emailjs from '@emailjs/browser';
+
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+if (EMAILJS_PUBLIC_KEY) {
+  emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+}
+
+function ensureEmailJsConfig() {
+  if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+    throw new Error('EmailJS is not configured in the frontend environment');
+  }
+}
+
+function baseTemplateParams({ toEmail, toName, message, subject, ...extra }) {
+  return {
+    to_email: toEmail,
+    email: toEmail,
+    recipient: toEmail,
+    user_email: toEmail,
+    to_name: toName || toEmail,
+    name: toName || toEmail,
+    subject,
+    message,
+    ...extra,
+  };
+}
+
+export async function sendOtpEmail({ toEmail, toName, code, purpose }) {
+  ensureEmailJsConfig();
+
+  const otpText = String(code || '').trim();
+  const subject = purpose === 'reset'
+    ? `Your EtherXWord reset code: ${otpText}`
+    : `Your EtherXWord OTP: ${otpText}`;
+  const message = purpose === 'reset'
+    ? `Your EtherXWord password reset code is ${otpText}. It expires in 10 minutes.`
+    : `Your EtherXWord verification code is ${otpText}. It expires in 10 minutes.`;
+
+  const templateParams = baseTemplateParams({
+    toEmail,
+    toName,
+    code,
+    otp: otpText,
+    otp_code: otpText,
+    verification_code: otpText,
+    verificationCode: otpText,
+    purpose,
+    action_label: purpose === 'reset' ? 'reset your password' : 'verify your account',
+    action: purpose === 'reset' ? 'reset your password' : 'verify your account',
+    subject,
+    message,
+    body: message,
+    text: message,
+  });
+
+  return emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, {
+    publicKey: EMAILJS_PUBLIC_KEY,
+  });
+}
+
+export async function sendInviteEmail({ toEmail, toName, inviterName, documentTitle, shareUrl, role }) {
+  ensureEmailJsConfig();
+
+  const templateParams = baseTemplateParams({
+    toEmail,
+    toName,
+    inviter_name: inviterName,
+    inviterName,
+    document_title: documentTitle,
+    documentTitle,
+    share_url: shareUrl,
+    shareUrl,
+    role,
+    from_name: inviterName,
+    reply_to: toEmail,
+    message: `${inviterName || 'A collaborator'} invited you to collaborate on ${documentTitle || 'Untitled Document'}`,
+  });
+
+  return emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, {
+    publicKey: EMAILJS_PUBLIC_KEY,
+  });
+}

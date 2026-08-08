@@ -1,98 +1,71 @@
-const nodemailer = require('nodemailer');
+const axios = require('axios');
 
-// Create a shared transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT) || 465,
-  secure: parseInt(process.env.SMTP_PORT) === 465 ? true : false,
-  auth: { 
-    user: process.env.SMTP_USER, 
-    pass: process.env.SMTP_PASS 
-  },
-  tls: { 
-    rejectUnauthorized: false,
-    minVersion: 'TLSv1.2'
-  },
-  connectionTimeout: 10000,
-  socketTimeout: 10000,
-  logger: false,
-  debug: false,
-});
-
-// Verify connection on startup - async
-(async () => {
-  try {
-    await transporter.verify();
-    console.log('✅ SMTP connection verified - Email service ready');
-  } catch (err) {
-    console.error('❌ SMTP connection failed:', err.message);
-    console.error('   Make sure:');
-    console.error('   1. Gmail app-specific password is correct (not regular password)');
-    console.error('   2. 2FA is enabled on Gmail account');
-    console.error('   3. App password is using: Settings > Security > App passwords');
-    console.error('   4. SMTP_USER and SMTP_PASS are set in .env file');
-  }
-})();
+function getEmailJsConfig() {
+  return {
+    serviceId: process.env.EMAILJS_SERVICE_ID,
+    templateId: process.env.EMAILJS_TEMPLATE_ID,
+    publicKey: process.env.EMAILJS_PUBLIC_KEY,
+    privateKey: process.env.EMAILJS_PRIVATE_KEY,
+  };
+}
 
 function generateOTP() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-// Helper function to send mail with better error handling
-async function sendMailWithTimeout(mailOptions, timeoutMs = 30000) {
-  try {
-    console.log('[sendMail] Starting email send...');
-    console.log('[sendMail] To:', mailOptions.to);
-    console.log('[sendMail] Subject:', mailOptions.subject.substring(0, 50) + '...');
-    
-    // Create a promise that rejects after timeout
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error(`Email send timeout after ${timeoutMs}ms`)), timeoutMs)
-    );
-    
-    // Race between sending and timeout
-    const info = await Promise.race([
-      transporter.sendMail(mailOptions),
-      timeoutPromise
-    ]);
-    
-    console.log('[sendMail] ✅ Email sent successfully!');
-    console.log('[sendMail] MessageId:', info?.messageId);
-    console.log('[sendMail] Response:', info?.response?.substring(0, 100));
-    
-    return info;
-  } catch (err) {
-    console.error('[sendMail] ❌ Error in sendMailWithTimeout:', err.message);
-    console.error('[sendMail] Error code:', err.code);
-    console.error('[sendMail] Error response:', err.response?.substring(0, 100));
-    throw err;
+async function sendEmailJs(templateParams, toEmail, timeoutMs = 30000) {
+  const { serviceId, templateId, publicKey, privateKey } = getEmailJsConfig();
+
+  if (!serviceId || !templateId || !publicKey || !privateKey) {
+    throw new Error('EmailJS credentials are not configured. Set EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY, and EMAILJS_PRIVATE_KEY in backend/.env');
   }
+
+  console.log('[EmailJS] Sending message to:', toEmail);
+  console.log('[EmailJS] Service ID:', serviceId);
+  console.log('[EmailJS] Template ID:', templateId);
+
+  const payload = {
+    service_id: serviceId,
+    template_id: templateId,
+    user_id: publicKey,
+    accessToken: privateKey,
+    template_params: {
+      to_email: toEmail,
+      ...templateParams,
+    },
+  };
+
+  const response = await axios.post('https://api.emailjs.com/api/v1.0/email/send', payload, {
+    timeout: timeoutMs,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`EmailJS request failed with status ${response.status}`);
+  }
+
+  return {
+    messageId: `emailjs:${serviceId}:${templateId}`,
+    response: response.data,
+  };
 }
 
 async function sendOTPEmail(email, otp, type) {
-  const subject = type === 'verify' ? 'Verify your EtherxWord account' : 'Reset your EtherxWord password';
-  const action  = type === 'verify' ? 'verify your account' : 'reset your password';
+  const action = type === 'verify' ? 'verify your account' : 'reset your password';
 
   try {
-    const mailOptions = {
-      from: `"EtherxWord" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject,
-      html: `
-        <div style="font-family:sans-serif;max-width:420px;margin:auto;padding:32px;background:#0f0f0f;color:#e8e0d0;border-radius:8px">
-          <h2 style="color:#c9a84c;margin-bottom:8px">EtherxWord</h2>
-          <p>Use the code below to ${action}. It expires in <strong>10 minutes</strong>.</p>
-          <div style="font-size:36px;font-weight:700;letter-spacing:10px;color:#c9a84c;margin:24px 0;text-align:center">
-            ${otp}
-          </div>
-          <p style="font-size:12px;color:#888">If you didn't request this, you can safely ignore this email.</p>
-        </div>
-      `,
-    };
-    
-    const info = await sendMailWithTimeout(mailOptions, 30000);
-    console.log('✅ OTP email sent to', email, '| MessageId:', info.messageId);
-    return info;
+    const result = await sendEmailJs(
+      {
+        otp_code: otp,
+        action,
+        action_label: action,
+        message: `Use the code below to ${action}. It expires in 10 minutes.`,
+      },
+      email,
+    );
+
+    console.log('✅ OTP email sent to', email, '| MessageId:', result.messageId);
+    return result;
   } catch (err) {
     console.error('❌ Failed to send OTP email:', err.message);
     throw err;
@@ -100,13 +73,12 @@ async function sendOTPEmail(email, otp, type) {
 }
 
 async function sendInviteEmail({ toEmail, inviterName, documentTitle, shareUrl, role = 'viewer' }) {
-  let inviteAttemptId = `invite-${Date.now()}`;
+  const inviteAttemptId = `invite-${Date.now()}`;
   try {
-    console.log(`[${inviteAttemptId}] 📬 Starting email invite process...`);
-    
+    console.log(`[${inviteAttemptId}] 📬 Starting EmailJS invite process...`);
+
     if (!toEmail) throw new Error('Invite email is required');
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(toEmail)) {
       throw new Error(`Invalid email format: ${toEmail}`);
@@ -116,89 +88,22 @@ async function sendInviteEmail({ toEmail, inviterName, documentTitle, shareUrl, 
     const safeTitle = documentTitle || 'Untitled Document';
     const safeRole = role || 'viewer';
 
-    console.log(`[${inviteAttemptId}] 📬 Preparing to send invite email to: ${toEmail}`);
-    console.log(`[${inviteAttemptId}]    Inviter: ${safeInviter}, Role: ${safeRole}, Document: ${safeTitle}`);
+    const result = await sendEmailJs(
+      {
+        inviter_name: safeInviter,
+        document_title: safeTitle,
+        role: safeRole,
+        share_url: shareUrl,
+        message: `${safeInviter} invited you to collaborate on ${safeTitle}`,
+      },
+      toEmail,
+    );
 
-    // Ensure transporter credentials exist
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      throw new Error('SMTP credentials not configured in environment variables (SMTP_USER, SMTP_PASS)');
-    }
-    console.log(`[${inviteAttemptId}] ✓ SMTP credentials verified`);
-
-    console.log(`[${inviteAttemptId}] 📨 Building email content and calling nodemailer...`);
-    
-    try {
-      console.log(`[${inviteAttemptId}] 📨 Email message being constructed...`);
-      console.log(`[${inviteAttemptId}]    To: ${toEmail}`);
-      console.log(`[${inviteAttemptId}]    From: "EtherxWord" <${process.env.SMTP_USER}>`);
-      console.log(`[${inviteAttemptId}]    Subject: ${safeInviter} invited you to collaborate on "${safeTitle}"`);
-      
-      const mailOptions = {
-        from: `"EtherxWord" <${process.env.SMTP_USER}>`,
-        to: toEmail,
-        subject: `${safeInviter} invited you to collaborate on "${safeTitle}"`,
-        html: `
-          <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:28px;background:#0f0f0f;color:#e8e0d0;border-radius:8px">
-            <h2 style="color:#c9a84c;margin:0 0 8px 0">EtherxWord Collaboration Invite</h2>
-            <p style="margin:0 0 14px 0"><strong>${safeInviter}</strong> invited you to join <strong>${safeTitle}</strong> as <strong>${safeRole}</strong>.</p>
-            <a href="${shareUrl}" style="display:inline-block;padding:10px 16px;background:#c9a84c;color:#121212;text-decoration:none;border-radius:6px;font-weight:700;text-align:center">Open Document</a>
-            <p style="margin:14px 0 0 0;font-size:12px;color:#999">If the button does not work, copy this link:<br><code style="background:#1a1a1a;padding:4px 8px;border-radius:4px;word-break:break-all">${shareUrl}</code></p>
-            <hr style="border:none;border-top:1px solid #333;margin:20px 0">
-            <p style="font-size:11px;color:#666;margin:0">This is an automated message from EtherxWord. Do not reply directly to this email.</p>
-          </div>
-        `,
-        replyTo: process.env.SMTP_USER,
-      };
-      
-      console.log(`[${inviteAttemptId}] 📨 Calling sendMailWithTimeout (fresh transporter)...`);
-      const info = await sendMailWithTimeout(mailOptions, 30000);
-      
-      console.log(`[${inviteAttemptId}] ✓ Transporter returned - email dispatch successful`);
-      console.log(`[${inviteAttemptId}] ✅ Email sent successfully! MessageId: ${info?.messageId}`);
-      
-      const result = { messageId: info?.messageId, response: info?.response };
-      console.log(`[${inviteAttemptId}] ✓ Returning result:`, result);
-      return result;
-    } catch (sendMailError) {
-      const errorMsg = sendMailError?.message || 'Unknown error in sendMail';
-      const errorCode = sendMailError?.code || 'UNKNOWN';
-      console.error(`[${inviteAttemptId}] ❌ Error in sendMail():`, errorMsg);
-      console.error(`[${inviteAttemptId}] ❌ Error code: ${errorCode}`);
-      console.error(`[${inviteAttemptId}] ❌ Error details:`, {
-        name: sendMailError?.name,
-        message: errorMsg,
-        code: errorCode,
-      });
-      throw sendMailError;
-    }
-
+    console.log(`[${inviteAttemptId}] ✅ EmailJS invite sent successfully! MessageId: ${result.messageId}`);
+    return result;
   } catch (err) {
     const errorMsg = err?.message || 'Unknown error';
-    const errorCode = err?.code || 'UNKNOWN';
-    
     console.error(`[${inviteAttemptId}] ❌ ERROR in sendInviteEmail:`, errorMsg);
-    console.error(`[${inviteAttemptId}] ❌ Error code: ${errorCode}`);
-    
-    try {
-      console.error(`[${inviteAttemptId}] ❌ Error object keys:`, Object.keys(err || {}));
-    } catch (keyErr) {
-      console.error(`[${inviteAttemptId}] ❌ Could not get error keys`);
-    }
-    
-    // Provide detailed error context for common issues
-    if (errorMsg.includes('Credential') || errorCode === 'INVALID_LOGIN') {
-      console.error(`[${inviteAttemptId}]    → Gmail credentials not set correctly`);
-      console.error(`[${inviteAttemptId}]    → Fix: Use Gmail App Password (not your regular password)`);
-      console.error(`[${inviteAttemptId}]    → Setup: https://support.google.com/accounts/answer/185833`);
-    } else if (errorMsg.includes('ECONNREFUSED') || errorCode === 'ECONNREFUSED') {
-      console.error(`[${inviteAttemptId}]    → Cannot connect to SMTP server`);
-      console.error(`[${inviteAttemptId}]    → Fix: Check SMTP_HOST and SMTP_PORT in .env`);
-    } else if (errorMsg.includes('timeout') || errorCode === 'ETIMEDOUT') {
-      console.error(`[${inviteAttemptId}]    → SMTP connection timeout`);
-      console.error(`[${inviteAttemptId}]    → Fix: Check network connectivity and SMTP server status`);
-    }
-    
-    console.error(`[${inviteAttemptId}] ❌ Throwing error to caller...`);
     throw err;
   }
 }

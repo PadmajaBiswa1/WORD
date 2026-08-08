@@ -24,6 +24,23 @@ function defaultDesign() {
   };
 }
 
+function defaultHeaderFooter() {
+  return {
+    headerText: '',
+    headerAlign: 'Center',
+    footerText: '',
+    footerAlign: 'Center',
+    pageNumberEnabled: false,
+    pageNumberStyle: 'bottom-center',
+    pageNumberStart: 1,
+  };
+}
+
+function normalizeHeaderFooter(headerFooter) {
+  if (!headerFooter || typeof headerFooter !== 'object') return defaultHeaderFooter();
+  return { ...defaultHeaderFooter(), ...headerFooter };
+}
+
 function ensureStore() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) {
@@ -79,11 +96,32 @@ function normalizeDoc(document) {
     design: document.design && typeof document.design === 'object'
       ? { ...defaultDesign(), ...document.design }
       : defaultDesign(),
+    headerFooter: normalizeHeaderFooter(document.headerFooter),
     // IPFS fields
     ipfsHash: document.ipfsHash || null,
     ipfsGatewayUrl: document.ipfsGatewayUrl || null,
     ipfsPinnedAt: document.ipfsPinnedAt || null,
   };
+}
+
+function isSameUser(a = {}, b = {}) {
+  const left = sanitizeUser(a);
+  const right = sanitizeUser(b);
+  return Boolean(left.id && right.id) && left.id === right.id;
+}
+
+function canAccessDocument(document, user = {}) {
+  if (!document) return false;
+  const owner = document.owner || null;
+  if (owner && isSameUser(owner, user)) return true;
+
+  const email = String(user.email || '').trim().toLowerCase();
+  const id = String(user.id || '').trim().toLowerCase();
+  return Array.isArray(document.sharedWith) && document.sharedWith.some((entry) => {
+    const shareEmail = String(entry?.email || '').trim().toLowerCase();
+    const shareId = String(entry?.id || '').trim().toLowerCase();
+    return (email && shareEmail === email) || (id && shareId === id);
+  });
 }
 
 function sanitizeUser(user = {}) {
@@ -93,17 +131,22 @@ function sanitizeUser(user = {}) {
   return { id, name, email };
 }
 
-function listDocuments() {
+function listDocuments(user = {}) {
   const store = readStore();
+  const normalizedUser = sanitizeUser(user);
   return store.documents
     .map(normalizeDoc)
+    .filter((document) => !document.owner || canAccessDocument(document, normalizedUser))
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
-function getDocument(id) {
+function getDocument(id, user = {}) {
   const store = readStore();
   const document = store.documents.find((entry) => entry.id === id);
-  return document ? normalizeDoc(document) : null;
+  const normalized = document ? normalizeDoc(document) : null;
+  if (!normalized) return null;
+  if (!normalized.owner) return normalized;
+  return canAccessDocument(normalized, user) ? normalized : null;
 }
 
 function createDocument(input = {}, user = {}) {
@@ -122,6 +165,7 @@ function createDocument(input = {}, user = {}) {
     comments: Array.isArray(input.comments) ? input.comments : [],
     trackChanges: Boolean(input.trackChanges),
     design: input.design && typeof input.design === 'object' ? { ...defaultDesign(), ...input.design } : defaultDesign(),
+    headerFooter: normalizeHeaderFooter(input.headerFooter),
   });
   store.documents.unshift(doc);
   writeStore(store);
@@ -144,6 +188,9 @@ function updateDocument(id, input = {}, options = {}) {
   if (input.design && typeof input.design === 'object') {
     next.design = { ...defaultDesign(), ...(current.design || {}), ...input.design };
   }
+  if (input.headerFooter && typeof input.headerFooter === 'object') {
+    next.headerFooter = normalizeHeaderFooter({ ...(current.headerFooter || {}), ...input.headerFooter });
+  }
   
   // Handle IPFS fields
   if (typeof input.ipfsHash === 'string' || input.ipfsHash === null) next.ipfsHash = input.ipfsHash || null;
@@ -155,7 +202,8 @@ function updateDocument(id, input = {}, options = {}) {
     || typeof input.content === 'string'
     || Array.isArray(input.comments)
     || typeof input.trackChanges === 'boolean'
-    || (input.design && typeof input.design === 'object');
+    || (input.design && typeof input.design === 'object')
+    || (input.headerFooter && typeof input.headerFooter === 'object');
 
   if (hasCollabMutation) {
     next.revision = Number(current.revision || 0) + 1;

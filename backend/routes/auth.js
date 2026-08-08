@@ -3,7 +3,7 @@ const jwt     = require('jsonwebtoken');
 const bcrypt  = require('bcryptjs');
 const User    = require('../models/User');
 const OTP     = require('../models/OTP');
-const { generateOTP, sendOTPEmail } = require('../utils/sendEmail');
+const { generateOTP } = require('../utils/sendEmail');
 const authMiddleware = require('../middleware/auth');
 
 function signToken(user) {
@@ -38,9 +38,11 @@ router.post('/signup', async (req, res) => {
     const otp = generateOTP();
     await OTP.deleteMany({ email, type: 'verify' });
     await OTP.create({ email, otp, type: 'verify', expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
-    await sendOTPEmail(email, otp, 'verify');
 
-    res.status(201).json({ message: 'Account created. Check your email for the OTP.' });
+    res.status(201).json({
+      message: 'Account created. Check your email for the OTP.',
+      otp,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -76,9 +78,8 @@ router.post('/resend-otp', async (req, res) => {
     const otp = generateOTP();
     await OTP.deleteMany({ email, type });
     await OTP.create({ email, otp, type, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
-    await sendOTPEmail(email, otp, type);
 
-    res.json({ message: 'OTP resent' });
+    res.json({ message: 'OTP resent', otp });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -108,14 +109,13 @@ router.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
     // Always respond OK to prevent email enumeration
-    if (!user) return res.json({ message: 'If that email exists, an OTP has been sent.' });
+    if (!user) return res.json({ message: 'If that email exists, an OTP has been sent.', otp: null });
 
     const otp = generateOTP();
     await OTP.deleteMany({ email, type: 'reset' });
     await OTP.create({ email, otp, type: 'reset', expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
-    await sendOTPEmail(email, otp, 'reset');
 
-    res.json({ message: 'If that email exists, an OTP has been sent.' });
+    res.json({ message: 'If that email exists, an OTP has been sent.', otp });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

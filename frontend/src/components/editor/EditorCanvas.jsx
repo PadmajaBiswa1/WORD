@@ -48,6 +48,7 @@ export function EditorCanvas() {
   const editor    = useEditorSetup();
   const { zoom, setActivePage, rulerVisible, pageSize, pageOrientation, pageMargin, pageColumns, theme }  = useUIStore();
   const design = useDocumentStore((s) => s.design);
+  const documentId = useDocumentStore((s) => s.id);
   const { setStats, headerFooter, setHeaderFooter } = useDocumentStore();
   const collaborators = useCollaborationStore((s) => s.collaborators);
   const sessionId = useCollaborationStore((s) => s.sessionId);
@@ -60,8 +61,9 @@ export function EditorCanvas() {
   const overflowTimer = useRef(null);
 
   useEffect(() => {
+    if (!documentId) return;
     try {
-      const raw = window.localStorage.getItem(HEADER_FOOTER_STORAGE_KEY);
+      const raw = window.localStorage.getItem(`${HEADER_FOOTER_STORAGE_KEY}:${documentId}`);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
@@ -70,13 +72,13 @@ export function EditorCanvas() {
     } catch {
       // ignore storage errors
     }
-  }, [setHeaderFooter]);
+  }, [documentId, setHeaderFooter]);
 
   // Generate and update thumbnails
   useThumbnailGenerator();
 
   // Enable image resize and drag functionality
-  useImageResizeAndDrag(wrapRef);
+  useImageResizeAndDrag(editor, wrapRef);
   
   const layoutMetrics = useMemo(() => getLayoutMetrics({ size: pageSize, orientation: pageOrientation, margin: pageMargin }), [pageSize, pageOrientation, pageMargin]);
 
